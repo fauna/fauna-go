@@ -15,5 +15,5 @@ func TestStringLengthRequest(t *testing.T) {
 	var i *int
 	err = client.Query(q, &i)
 	assert.NoError(t, err)
-	assert.Equal(t, len(s), i)
+	assert.Equal(t, len(s), *i)
 }
