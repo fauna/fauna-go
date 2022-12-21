@@ -7,11 +7,13 @@ import (
 )
 
 func TestStringLengthRequest(t *testing.T) {
+	client, err := DefaultClient()
+	assert.NoError(t, err)
+	client.url = previewUrl
 	s := "foo"
 	q := fmt.Sprintf("\"%v\".length", s)
-	client := DefaultClient()
-	client.url = previewUrl
-	req := NewRequest(q)
-	res := Query[int](client, req)
-	assert.Equal(t, len(s), res.Data)
+	var i *int
+	err = client.Query(q, &i)
+	assert.NoError(t, err)
+	assert.Equal(t, len(s), i)
 }

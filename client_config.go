@@ -1,12 +1,14 @@
 package fauna
 
-const productionUrl = "https://db.fauna.com/query/1"
-const previewUrl = "https://db.fauna-preview.com/query/1"
-const localUrl = "http://localhost:8443/query/1"
+const (
+	productionUrl = "https://db.fauna.com/query/1"
+	previewUrl    = "https://db.fauna-preview.com/query/1"
+	localUrl      = "http://localhost:8443/query/1"
 
-const secretKey = "FAUNA_KEY"
-const defaultMaxConnections = 10
-const defaultTimeoutMilliseconds = 60 * 1000
+	secretKey                  = "FAUNA_KEY"
+	defaultMaxConnections      = 10
+	defaultTimeoutMilliseconds = 60 * 10004
+)
 
 type ClientConfig func(*Client)
 

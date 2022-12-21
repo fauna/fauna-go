@@ -3,6 +3,7 @@ package fauna
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -14,9 +15,11 @@ import (
 	"time"
 )
 
-var authorizationHeader = "Authorization"
-var txnTimeHeader = "X-Txn-Time"
-var lastSeenTxnHeader = "X-Last-Seen-Txn"
+const (
+	authorizationHeader = "Authorization"
+	txnTimeHeader       = "X-Txn-Time"
+	lastSeenTxnHeader   = "X-Last-Seen-Txn"
+)
 
 type Client struct {
 	url                 string
@@ -37,12 +40,13 @@ type Client struct {
 	// traceParent?
 }
 
-func DefaultClient() *Client {
+func DefaultClient() (*Client, error) {
 	secret := os.Getenv(secretKey)
 	if secret == "" {
-		return nil
+		err := errors.New(fmt.Sprintf("unable to load key from environment variable '%v'", secretKey))
+		return nil, err
 	}
-	return NewClient(secret, URL(productionUrl), MaxConnections(defaultMaxConnections), TimeoutMilliseconds(defaultTimeoutMilliseconds))
+	return NewClient(secret, URL(productionUrl), MaxConnections(defaultMaxConnections), TimeoutMilliseconds(defaultTimeoutMilliseconds)), nil
 }
 
 func NewClient(secret string, configs ...ClientConfig) *Client {
@@ -64,15 +68,24 @@ func NewClient(secret string, configs ...ClientConfig) *Client {
 	return client
 }
 
-func Query[T any](c *Client, request *Request) *Response[T] {
+func (c *Client) Query(fql string, obj any) error {
+	req := NewRequest(fql)
+	res := c.Do(req)
+	if res.err != nil {
+		return res.err
+	}
+	return json.Unmarshal(res.Data, obj)
+}
+
+func (c *Client) Do(request *Request) *Response {
 	bout, err := json.Marshal(request)
 	if err != nil {
-		return ErrorResponse[T](err)
+		return ErrorResponse(err)
 	}
 
 	request.raw, err = http.NewRequest(http.MethodPost, c.url, bytes.NewReader(bout))
 	if err != nil {
-		return ErrorResponse[T](err)
+		return ErrorResponse(err)
 	}
 
 	request.raw.Header.Add(authorizationHeader, c.token())
@@ -88,23 +101,24 @@ func Query[T any](c *Client, request *Request) *Response[T] {
 
 	r, err := c.http.Do(request.raw)
 	if err != nil {
-		return ErrorResponse[T](err)
+		return ErrorResponse(err)
 	}
 
 	bin, err := io.ReadAll(r.Body)
 	if err != nil {
-		return ErrorResponse[T](err)
+		return ErrorResponse(err)
 	}
 
-	var response *Response[T]
+	var response *Response
 	err = json.Unmarshal(bin, &response)
 	if err != nil {
-		return ErrorResponse[T](err)
+		return ErrorResponse(err)
 	}
+	response.raw = r
 
 	err = c.storeLastTxnTime(response.raw.Header)
 	if err != nil {
-		return ErrorResponse[T](err)
+		return ErrorResponse(err)
 	}
 
 	response.raw = r

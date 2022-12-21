@@ -1,27 +1,28 @@
 package fauna
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 )
 
-type Response[T any] struct {
+type Response struct {
 	raw        *http.Response
 	err        error
-	Data       T         `json:"data"`
-	TxnTime    time.Time `json:"txn_time"`
-	StaticType string    `json:"static_type"`
-	Summary    string    `json:"summary"`
+	Data       json.RawMessage `json:"data"`
+	TxnTime    time.Time       `json:"txn_time"`
+	StaticType string          `json:"static_type"`
+	Summary    string          `json:"summary"`
 }
 
-func NewResponse[T any]() *Response[T] {
-	return &Response[T]{
+func NewResponse() *Response {
+	return &Response{
 		TxnTime: time.Time{},
 	}
 }
 
-func ErrorResponse[T any](err error) *Response[T] {
-	return &Response[T]{
+func ErrorResponse(err error) *Response {
+	return &Response{
 		err: err,
 	}
 }
