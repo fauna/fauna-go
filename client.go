@@ -5,13 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"os"
+	"strconv"
+	"sync/atomic"
 	"time"
 )
 
 var authorizationHeader = "Authorization"
+var txnTimeHeader = "X-Txn-Time"
+var lastSeenTxnHeader = "X-Last-Seen-Txn"
 
 type Client struct {
 	url                 string
@@ -19,6 +24,8 @@ type Client struct {
 	maxConnections      int
 	timeoutMilliseconds int
 	headers             map[string]string
+	txnTimeEnabled      bool
+	lastTxnTime         int64
 
 	tcp      *http.Transport
 	http     *http.Client
@@ -73,6 +80,12 @@ func Query[T any](c *Client, request *Request) *Response[T] {
 		request.raw.Header.Add(k, v)
 	}
 
+	if c.txnTimeEnabled {
+		if lastSeen := atomic.LoadInt64(&c.lastTxnTime); lastSeen != 0 {
+			request.raw.Header.Add(lastSeenTxnHeader, strconv.FormatInt(lastSeen, 10))
+		}
+	}
+
 	r, err := c.http.Do(request.raw)
 	if err != nil {
 		return ErrorResponse[T](err)
@@ -89,8 +102,46 @@ func Query[T any](c *Client, request *Request) *Response[T] {
 		return ErrorResponse[T](err)
 	}
 
+	err = c.storeLastTxnTime(response.raw.Header)
+	if err != nil {
+		return ErrorResponse[T](err)
+	}
+
 	response.raw = r
 	return response
+}
+
+func (c *Client) storeLastTxnTime(header http.Header) (err error) {
+	if c.txnTimeEnabled {
+		t, err := parseTxnTimeHeader(header)
+		if err != nil {
+			return err
+		}
+		c.syncLastTxnTime(t)
+	}
+
+	return nil
+}
+
+func (c *Client) syncLastTxnTime(newTxnTime int64) {
+	if c.txnTimeEnabled {
+		for {
+			oldTxnTime := atomic.LoadInt64(&c.lastTxnTime)
+			if oldTxnTime >= newTxnTime ||
+				atomic.CompareAndSwapInt64(&c.lastTxnTime, oldTxnTime, newTxnTime) {
+				break
+			}
+		}
+	}
+}
+
+func parseTxnTimeHeader(header http.Header) (txnTime int64, err error) {
+	h := header.Get(txnTimeHeader)
+	if h != "" {
+		return strconv.ParseInt(h, 10, 64)
+	} else {
+		return math.MinInt, nil
+	}
 }
 
 func (c *Client) token() string {
