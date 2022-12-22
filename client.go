@@ -29,6 +29,7 @@ type Client struct {
 	headers             map[string]string
 	txnTimeEnabled      bool
 	lastTxnTime         int64
+	forceTypeCheck      bool
 
 	tcp      *http.Transport
 	http     *http.Client
@@ -105,6 +106,10 @@ func (c *Client) Do(request *Request) *Response {
 		if lastSeen := atomic.LoadInt64(&c.lastTxnTime); lastSeen != 0 {
 			request.raw.Header.Add(lastSeenTxnHeader, strconv.FormatInt(lastSeen, 10))
 		}
+	}
+
+	if c.forceTypeCheck {
+		request.Typecheck = true
 	}
 
 	r, err := c.http.Do(request.raw)
