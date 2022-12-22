@@ -1,6 +1,9 @@
 package fauna
 
-import "net/http"
+import (
+	"encoding/json"
+	"net/http"
+)
 
 type Request struct {
 	raw       *http.Request
@@ -9,10 +12,18 @@ type Request struct {
 	Typecheck bool              `json:"typecheck"`
 }
 
-func NewRequest(query string) *Request {
+func NewRequest(query string, arguments map[string]string) *Request {
 	return &Request{
 		Query:     query,
-		Arguments: make(map[string]string),
+		Arguments: arguments,
 		Typecheck: true,
 	}
+}
+
+func (r *Request) String() string {
+	j, e := json.Marshal(r)
+	if e != nil {
+		return ""
+	}
+	return string(j)
 }

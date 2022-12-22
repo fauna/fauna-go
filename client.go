@@ -69,8 +69,8 @@ func NewClient(secret string, configs ...ClientConfig) *Client {
 	return client
 }
 
-func (c *Client) Query(fql string, obj any) error {
-	req := NewRequest(fql)
+func (c *Client) Query(fql string, args map[string]string, obj any) error {
+	req := NewRequest(fql, args)
 	res := c.Do(req)
 	if res.err != nil {
 		return res.err
