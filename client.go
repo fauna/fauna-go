@@ -74,7 +74,15 @@ func (c *Client) Query(fql string, obj any) error {
 	if res.err != nil {
 		return res.err
 	}
-	return json.Unmarshal(res.Data, obj)
+
+	if obj != nil {
+		err := json.Unmarshal(res.Data, obj)
+		if err != nil {
+			return err
+		}
+	}
+
+	return GetServiceError(res.raw.StatusCode, res.Error)
 }
 
 func (c *Client) Do(request *Request) *Response {

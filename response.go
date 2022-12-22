@@ -10,9 +10,10 @@ type Response struct {
 	raw        *http.Response
 	err        error
 	Data       json.RawMessage `json:"data"`
-	TxnTime    time.Time       `json:"txn_time"`
-	StaticType string          `json:"static_type"`
+	Error      ServiceError    `json:"error"`
 	Summary    string          `json:"summary"`
+	StaticType string          `json:"static_type"`
+	TxnTime    time.Time       `json:"txn_time"`
 }
 
 func NewResponse() *Response {
