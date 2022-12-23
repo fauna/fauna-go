@@ -12,10 +12,10 @@ func TestStringLengthRequest(t *testing.T) {
 	client.url = previewUrl
 	s := "foo"
 	q := fmt.Sprintf("\"%v\".length", s)
-	var i *int
+	var i int
 	err = client.Query(q, nil, &i)
 	assert.NoError(t, err)
-	assert.Equal(t, len(s), *i)
+	assert.Equal(t, len(s), i)
 }
 
 func TestStringLengthArgumentRequest(t *testing.T) {
@@ -25,8 +25,8 @@ func TestStringLengthArgumentRequest(t *testing.T) {
 	a := "arg1"
 	s := "maverick"
 	q := fmt.Sprintf("%v.length", a)
-	var i *int
+	var i int
 	err = client.Query(q, map[string]string{a: s}, &i)
 	assert.NoError(t, err)
-	assert.Equal(t, len(s), *i)
+	assert.Equal(t, len(s), i)
 }

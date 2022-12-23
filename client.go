@@ -77,9 +77,13 @@ func (c *Client) Query(fql string, args map[string]string, obj any) error {
 	}
 
 	if obj != nil {
-		err := json.Unmarshal(res.Data, obj)
-		if err != nil {
-			return err
+		if res.Data != nil {
+			err := json.Unmarshal(res.Data, &obj)
+			if err != nil {
+				return err
+			}
+		} else {
+			obj = nil
 		}
 	}
 
