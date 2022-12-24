@@ -1,32 +1,55 @@
-package fauna
+package fauna_test
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/fauna/fauna-go"
 )
 
-func TestStringLengthRequest(t *testing.T) {
-	client, err := DefaultClient()
-	assert.NoError(t, err)
-	client.url = previewUrl
-	s := "foo"
-	q := fmt.Sprintf("\"%v\".length", s)
-	var i int
-	err = client.Query(q, nil, &i)
-	assert.NoError(t, err)
-	assert.Equal(t, len(s), i)
-}
+func TestDefaultClient(t *testing.T) {
+	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointPreview)
+	client, err := fauna.DefaultClient()
+	if err != nil {
+		t.FailNow()
+	}
 
-func TestStringLengthArgumentRequest(t *testing.T) {
-	client, err := DefaultClient()
-	assert.NoError(t, err)
-	client.url = previewUrl
-	a := "arg1"
-	s := "maverick"
-	q := fmt.Sprintf("%v.length", a)
-	var i int
-	err = client.Query(q, map[string]string{a: s}, &i)
-	assert.NoError(t, err)
-	assert.Equal(t, len(s), i)
+	t.Run("String Length Request", func(t *testing.T) {
+		s := "foo"
+
+		var i int
+		if queryErr := client.Query(fmt.Sprintf(`"%v".length`, s), nil, &i); queryErr != nil {
+			t.FailNow()
+		}
+
+		if len(s) != i {
+			t.Fail()
+		}
+	})
+
+	t.Run("Argument Request", func(t *testing.T) {
+		a := "arg1"
+		s := "maverick"
+
+		var i int
+		if queryErr := client.Query(fmt.Sprintf(`%v.length`, a), map[string]interface{}{a: s}, &i); queryErr != nil {
+			t.FailNow()
+		}
+
+		if len(s) != i {
+			t.Fail()
+		}
+	})
+
+	t.Run("unauthorized client", func(t *testing.T) {
+		t.Setenv(fauna.EnvFaunaKey, "I'm a little tea pot")
+		failClient, clientErr := fauna.DefaultClient()
+		if clientErr != nil {
+			t.FailNow()
+		}
+
+		if queryErr := failClient.Query("", nil, nil); queryErr == nil {
+			t.FailNow()
+		}
+	})
 }
