@@ -3,7 +3,6 @@ package fauna
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -16,20 +15,42 @@ import (
 )
 
 const (
-	authorizationHeader = "Authorization"
-	txnTimeHeader       = "X-Txn-Time"
-	lastSeenTxnHeader   = "X-Last-Seen-Txn"
+	EndpointProduction = "https://db.fauna.com/query/1"
+	EndpointPreview    = "https://db.fauna-preview.com/query/1"
+
+	EnvFaunaEndpoint         = "FAUNA_ENDPOINT"
+	EnvFaunaKey              = "FAUNA_KEY"
+	EnvFaunaTypeCheckEnabled = "FAUNA_TYPE_CHECK_ENABLED"
+
+	DefaultMaxConnections = 10
+	DefaultTimeout        = 60 * time.Second
+
+	HeaderAuthorization = "Authorization"
+	HeaderTxnTime       = "X-Txn-Time"
+	HeaderLastSeenTxn   = "X-Last-Seen-Txn"
 )
 
+type ClientConfigFn func(*Client)
+
+func URL(url string) ClientConfigFn {
+	return func(c *Client) { c.url = url }
+}
+
+func HTTPClient(client *http.Client) ClientConfigFn {
+	return func(c *Client) { c.http = client }
+}
+
+func Headers(headers map[string]string) ClientConfigFn {
+	return func(c *Client) { c.headers = headers }
+}
+
 type Client struct {
-	url                 string
-	secret              string
-	maxConnections      int
-	timeoutMilliseconds int
-	headers             map[string]string
-	txnTimeEnabled      bool
-	lastTxnTime         int64
-	forceTypeCheck      bool
+	url            string
+	secret         string
+	headers        map[string]string
+	txnTimeEnabled bool
+	lastTxnTime    int64
+	forceTypeCheck bool
 
 	tcp      *http.Transport
 	http     *http.Client
@@ -42,107 +63,111 @@ type Client struct {
 }
 
 func DefaultClient() (*Client, error) {
-	secret := os.Getenv(secretKey)
-	if secret == "" {
-		err := errors.New(fmt.Sprintf("unable to load key from environment variable '%v'", secretKey))
-		return nil, err
+	secret, found := os.LookupEnv(EnvFaunaKey)
+	if !found {
+		return nil, fmt.Errorf("unable to load key from environment variable '%s'", EnvFaunaKey)
 	}
-	return NewClient(secret, URL(productionUrl), MaxConnections(defaultMaxConnections), TimeoutMilliseconds(defaultTimeoutMilliseconds)), nil
+
+	url, urlFound := os.LookupEnv(EnvFaunaEndpoint)
+	if !urlFound {
+		url = EndpointProduction
+	}
+
+	return NewClient(
+		secret,
+		URL(url),
+		HTTPClient(&http.Client{
+			Transport: &http.Transport{
+				MaxConnsPerHost:       DefaultMaxConnections,
+				ResponseHeaderTimeout: DefaultTimeout,
+			},
+		}),
+		Headers(map[string]string{
+			HeaderAuthorization: fmt.Sprintf("Bearer %s", secret),
+		}),
+	), nil
 }
 
-func NewClient(secret string, configs ...ClientConfig) *Client {
+func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	client := &Client{secret: secret}
-
-	for _, config := range configs {
-		config(client)
-	}
-
-	client.tcp = &http.Transport{
-		MaxConnsPerHost:       client.maxConnections,
-		ResponseHeaderTimeout: time.Duration(client.timeoutMilliseconds) * time.Millisecond,
-	}
-
-	client.http = &http.Client{
-		Transport: client.tcp,
+	for _, configFn := range configFns {
+		configFn(client)
 	}
 
 	return client
 }
 
-func (c *Client) Query(fql string, args map[string]string, obj any) error {
-	req := NewRequest(fql, args)
-	res := c.Do(req)
-	if res.err != nil {
-		return res.err
+// Query invoke `fql`
+func (c *Client) Query(fql string, args map[string]interface{}, obj any) error {
+	res, err := c.do(NewRequest(fql, args))
+	if err != nil {
+		return err
 	}
 
-	if obj != nil {
-		if res.Data != nil {
-			err := json.Unmarshal(res.Data, &obj)
-			if err != nil {
-				return err
-			}
-		} else {
-			obj = nil
-		}
+	if unmarshalErr := json.Unmarshal(res.Data, &obj); unmarshalErr != nil {
+		return unmarshalErr
 	}
 
-	return GetServiceError(res.raw.StatusCode, res.Error)
+	if res.Error != nil {
+		return fmt.Errorf("%s", res.Error.Message)
+	}
+
+	return nil
 }
 
-func (c *Client) Do(request *Request) *Response {
-	bout, err := json.Marshal(request)
+func (c *Client) do(request *Request) (*Response, error) {
+	bytesOut, err := json.Marshal(request)
 	if err != nil {
-		return ErrorResponse(err)
+		return nil, err
 	}
 
-	request.raw, err = http.NewRequest(http.MethodPost, c.url, bytes.NewReader(bout))
+	request.Raw, err = http.NewRequest(http.MethodPost, c.url, bytes.NewReader(bytesOut))
 	if err != nil {
-		return ErrorResponse(err)
+		return nil, err
 	}
 
-	request.raw.Header.Add(authorizationHeader, c.token())
+	request.Raw.Header.Add(HeaderAuthorization, fmt.Sprintf("Bearer %s", c.secret))
 	for k, v := range c.headers {
-		request.raw.Header.Add(k, v)
+		request.Raw.Header.Add(k, v)
 	}
 
 	if c.txnTimeEnabled {
 		if lastSeen := atomic.LoadInt64(&c.lastTxnTime); lastSeen != 0 {
-			request.raw.Header.Add(lastSeenTxnHeader, strconv.FormatInt(lastSeen, 10))
+			request.Raw.Header.Add(HeaderLastSeenTxn, strconv.FormatInt(lastSeen, 10))
 		}
 	}
 
 	if c.forceTypeCheck {
-		request.Typecheck = true
+		request.TypeCheck = true
 	}
 
-	r, err := c.http.Do(request.raw)
-	if err != nil {
-		return ErrorResponse(err)
+	r, reqErr := c.http.Do(request.Raw)
+	if reqErr != nil {
+		return nil, reqErr
+	}
+	defer func() {
+		_ = request.Raw.Body.Close()
+	}()
+
+	bin, readErr := io.ReadAll(r.Body)
+	if readErr != nil {
+		return nil, readErr
 	}
 
-	bin, err := io.ReadAll(r.Body)
-	if err != nil {
-		return ErrorResponse(err)
+	var response Response
+	if unmarshalErr := json.Unmarshal(bin, &response); unmarshalErr != nil {
+		return nil, unmarshalErr
+	}
+	response.Raw = r
+
+	if txnTimeErr := c.storeLastTxnTime(response.Raw.Header); txnTimeErr != nil {
+		return nil, txnTimeErr
 	}
 
-	var response *Response
-	err = json.Unmarshal(bin, &response)
-	if err != nil {
-		return ErrorResponse(err)
-	}
-	response.raw = r
-
-	err = c.storeLastTxnTime(response.raw.Header)
-	if err != nil {
-		return ErrorResponse(err)
-	}
-
-	response.raw = r
-	return response
+	return &response, nil
 }
 
-func (c *Client) storeLastTxnTime(header http.Header) (err error) {
+func (c *Client) storeLastTxnTime(header http.Header) error {
 	if c.txnTimeEnabled {
 		t, err := parseTxnTimeHeader(header)
 		if err != nil {
@@ -166,15 +191,10 @@ func (c *Client) syncLastTxnTime(newTxnTime int64) {
 	}
 }
 
-func parseTxnTimeHeader(header http.Header) (txnTime int64, err error) {
-	h := header.Get(txnTimeHeader)
-	if h != "" {
+func parseTxnTimeHeader(header http.Header) (int64, error) {
+	if h := header.Get(HeaderTxnTime); h != "" {
 		return strconv.ParseInt(h, 10, 64)
-	} else {
-		return math.MinInt, nil
 	}
-}
 
-func (c *Client) token() string {
-	return fmt.Sprintf("Bearer %s", c.secret)
+	return math.MinInt, nil
 }

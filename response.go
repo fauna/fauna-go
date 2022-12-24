@@ -6,32 +6,16 @@ import (
 	"time"
 )
 
+type ResponseError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
 type Response struct {
-	raw        *http.Response
-	err        error
+	Raw        *http.Response
 	Data       json.RawMessage `json:"data"`
-	Error      ServiceError    `json:"error"`
+	Error      *ResponseError  `json:"error,omitempty"`
 	Summary    string          `json:"summary"`
 	StaticType string          `json:"static_type"`
 	TxnTime    time.Time       `json:"txn_time"`
-}
-
-func NewResponse() *Response {
-	return &Response{
-		TxnTime: time.Time{},
-	}
-}
-
-func (r *Response) String() string {
-	j, e := json.Marshal(r)
-	if e != nil {
-		return ""
-	}
-	return string(j)
-}
-
-func ErrorResponse(err error) *Response {
-	return &Response{
-		err: err,
-	}
 }
