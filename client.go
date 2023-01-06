@@ -31,6 +31,7 @@ const (
 	HeaderLastSeenTxn   = "X-Last-Seen-Txn"
 )
 
+// ClientConfigFn configuration options for fauna.Client
 type ClientConfigFn func(*Client)
 
 // URL set the client URL
@@ -97,7 +98,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	// sensible default
 	typeCheckEnabled := true
 	if typeCheckEnabledVal, found := os.LookupEnv(EnvFaunaTypeCheckEnabled); found {
-		// TRICKY: invert boolean check
+		// TRICKY: invert boolean check, we only want to disable if explicitly set to false
 		typeCheckEnabled = !(strings.ToLower(typeCheckEnabledVal) == "false")
 	}
 
@@ -189,7 +190,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	response.Raw = r
 
 	if r.StatusCode >= http.StatusBadRequest {
-		return &response, fmt.Errorf("request failed: [Status Code: %d] %s", r.StatusCode, r.Status)
+		return &response, GetServiceError(r.StatusCode, response.Error)
 	}
 
 	bin, readErr := io.ReadAll(r.Body)
@@ -208,7 +209,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	if response.Error != nil {
-		return &response, fmt.Errorf("%s", response.Error.Error())
+		return &response, GetServiceError(r.StatusCode, response.Error)
 	}
 
 	return &response, nil
