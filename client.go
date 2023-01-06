@@ -2,6 +2,7 @@ package fauna
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -59,6 +60,7 @@ type Client struct {
 	typeCheckingEnabled bool
 
 	http *http.Client
+	ctx  context.Context
 
 	// maxRetries?
 	// linearized?
@@ -67,7 +69,7 @@ type Client struct {
 }
 
 // DefaultClient initialize fauna.Client with recommend settings
-func DefaultClient() (*Client, error) {
+func DefaultClient(ctx context.Context) (*Client, error) {
 	secret, found := os.LookupEnv(EnvFaunaKey)
 	if !found {
 		return nil, fmt.Errorf("unable to load key from environment variable '%s'", EnvFaunaKey)
@@ -79,6 +81,7 @@ func DefaultClient() (*Client, error) {
 	}
 
 	return NewClient(
+		ctx,
 		secret,
 		URL(url),
 		HTTPClient(&http.Client{
@@ -94,7 +97,7 @@ func DefaultClient() (*Client, error) {
 }
 
 // NewClient initialize a new fauna.Client with custom settings
-func NewClient(secret string, configFns ...ClientConfigFn) *Client {
+func NewClient(ctx context.Context, secret string, configFns ...ClientConfigFn) *Client {
 	// sensible default
 	typeCheckEnabled := true
 	if typeCheckEnabledVal, found := os.LookupEnv(EnvFaunaTypeCheckEnabled); found {
@@ -103,6 +106,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	}
 
 	client := &Client{
+		ctx:    ctx,
 		secret: secret,
 		http:   http.DefaultClient,
 		url:    EndpointProduction,
@@ -120,14 +124,34 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	return client
 }
 
-// Query invoke fql with args and map to the provided obj
-func (c *Client) Query(fql string, args map[string]interface{}, obj any) (*Response, error) {
-	return c.query(fql, args, obj, c.typeCheckingEnabled)
+// SetHeader update fauna.Client header
+func (c *Client) SetHeader(key string, val string) {
+	c.headers[key] = val
 }
 
-// QueryPlain invoke `fql` without static checking enabled
+// SetTypeChecking update fauna.Client type checking setting
+func (c *Client) SetTypeChecking(enabled bool) {
+	c.typeCheckingEnabled = enabled
+}
+
+// Query invoke fql with args and map to the provided obj
+func (c *Client) Query(fql string, args map[string]interface{}, obj any) (*Response, error) {
+	return c.query(c.ctx, fql, args, obj, c.typeCheckingEnabled)
+}
+
+// QueryPlain invoke `fql` without static checking disabled
 func (c *Client) QueryPlain(fql string, args map[string]interface{}, obj any) (*Response, error) {
-	return c.query(fql, args, obj, false)
+	return c.query(c.ctx, fql, args, obj, false)
+}
+
+// QueryWithContext invoke fql with context.Context
+func (c *Client) QueryWithContext(ctx context.Context, fql string, args map[string]interface{}, obj any) (*Response, error) {
+	return c.query(ctx, fql, args, obj, c.typeCheckingEnabled)
+}
+
+// QueryPlanWithContext invoke fql with context.Context and static checking disabled
+func (c *Client) QueryPlanWithContext(ctx context.Context, fql string, args map[string]interface{}, obj any) (*Response, error) {
+	return c.query(ctx, fql, args, obj, false)
 }
 
 type fqlRequest struct {
@@ -136,8 +160,8 @@ type fqlRequest struct {
 	TypeCheck bool                   `json:"typecheck"`
 }
 
-func (c *Client) query(fql string, args map[string]interface{}, obj any, typeChecking bool) (*Response, error) {
-	res, err := c.do(&fqlRequest{
+func (c *Client) query(ctx context.Context, fql string, args map[string]interface{}, obj any, typeChecking bool) (*Response, error) {
+	res, err := c.do(ctx, &fqlRequest{
 		Query:     fql,
 		Arguments: args,
 		TypeCheck: typeChecking,
@@ -156,13 +180,13 @@ func (c *Client) query(fql string, args map[string]interface{}, obj any, typeChe
 	return res, nil
 }
 
-func (c *Client) do(request *fqlRequest) (*Response, error) {
+func (c *Client) do(ctx context.Context, request *fqlRequest) (*Response, error) {
 	bytesOut, bytesErr := json.Marshal(request)
 	if bytesErr != nil {
 		return nil, bytesErr
 	}
 
-	req, reqErr := http.NewRequest(http.MethodPost, c.url, bytes.NewReader(bytesOut))
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodPost, c.url, bytes.NewReader(bytesOut))
 	if reqErr != nil {
 		return nil, reqErr
 	}
@@ -190,7 +214,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	response.Raw = r
 
 	if r.StatusCode >= http.StatusBadRequest {
-		return &response, GetServiceError(r.StatusCode, response.Error)
+		return &response, fmt.Errorf("whoops")
 	}
 
 	bin, readErr := io.ReadAll(r.Body)

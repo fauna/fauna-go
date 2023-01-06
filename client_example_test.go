@@ -1,6 +1,7 @@
 package fauna_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 //	docker run --rm -p 8443:8443 fauna/faunadb:fqlx
 func ExampleNewClient() {
 	client := fauna.NewClient(
+		context.TODO(),
 		"secret",
 		fauna.URL(fauna.EndpointLocal),
 		fauna.HTTPClient(http.DefaultClient),

@@ -1,6 +1,7 @@
 package fauna_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -14,7 +15,7 @@ func TestDefaultClient(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 	t.Setenv(fauna.EnvFaunaKey, "secret")
 
-	client, err := fauna.DefaultClient()
+	client, err := fauna.DefaultClient(context.TODO())
 	if err != nil {
 		t.FailNow()
 	}
@@ -57,7 +58,7 @@ func Test_UnauthorizedClient(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaKey, "I'm a little tea pot")
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
-	failClient, clientErr := fauna.DefaultClient()
+	failClient, clientErr := fauna.DefaultClient(context.TODO())
 	if clientErr != nil {
 		t.FailNow()
 	}
@@ -69,6 +70,7 @@ func Test_UnauthorizedClient(t *testing.T) {
 	}
 
 	if res.Raw.StatusCode != http.StatusUnauthorized {
+		t.Logf("should be StatusUnauthorized")
 		t.FailNow()
 	}
 }
@@ -99,7 +101,7 @@ func randomString(n int) string {
 func TestBasicCrudRequests(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaKey, "secret")
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
-	client, err := fauna.DefaultClient()
+	client, err := fauna.DefaultClient(context.TODO())
 	if err != nil {
 		t.Errorf("%s", err.Error())
 		t.FailNow()
