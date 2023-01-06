@@ -24,7 +24,7 @@ const (
 	EnvFaunaTypeCheckEnabled = "FAUNA_TYPE_CHECK_ENABLED"
 
 	DefaultMaxConnections = 10
-	DefaultTimeout        = 60 * time.Second
+	DefaultTimeout        = time.Minute
 
 	HeaderAuthorization = "Authorization"
 	HeaderTxnTime       = "X-Txn-Time"
