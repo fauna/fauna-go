@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"reflect"
 	"testing"
 	"time"
 
@@ -266,7 +265,7 @@ func TestErrorHandling(t *testing.T) {
 		}
 
 		if !errors.As(queryErr, &fauna.AuthenticationError{}) {
-			t.Errorf("wrong type: %v", reflect.TypeOf(queryErr))
+			t.Errorf("wrong type: %T", queryErr)
 		}
 	})
 
@@ -287,7 +286,7 @@ func TestErrorHandling(t *testing.T) {
 		}
 
 		if !errors.As(queryErr, &fauna.QueryCheckError{}) {
-			t.Errorf("wrong type: %v", reflect.TypeOf(queryErr))
+			t.Errorf("wrong type: %T", queryErr)
 		}
 	})
 
@@ -315,7 +314,7 @@ func TestErrorHandling(t *testing.T) {
 			t.Errorf("expected this to fail")
 		} else {
 			if !errors.As(queryErr, &fauna.ServiceInternalError{}) {
-				t.Errorf("wrong type: %v", reflect.TypeOf(queryErr))
+				t.Errorf("wrong type: %T", queryErr)
 			}
 		}
 
