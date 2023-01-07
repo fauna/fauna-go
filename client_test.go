@@ -22,6 +22,12 @@ func TestDefaultClient(t *testing.T) {
 		t.FailNow()
 	}
 
+	t.Run("should have version", func(t *testing.T) {
+		if fauna.DriverVersion == "" {
+			t.Errorf("driver version should not be empty")
+		}
+	})
+
 	t.Run("String Length Request", func(t *testing.T) {
 		s := "foo"
 

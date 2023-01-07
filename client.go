@@ -3,6 +3,7 @@ package fauna
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,6 +15,9 @@ import (
 	"sync/atomic"
 	"time"
 )
+
+//go:embed version
+var DriverVersion string
 
 const (
 	EndpointProduction = "https://db.fauna.com/query/1"
