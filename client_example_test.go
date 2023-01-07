@@ -15,13 +15,13 @@ import (
 //	docker run --rm -p 8443:8443 fauna/faunadb:fqlx
 func ExampleNewClient() {
 	client := fauna.NewClient(
-		context.TODO(),
 		"secret",
 		fauna.URL(fauna.EndpointLocal),
 		fauna.HTTPClient(http.DefaultClient),
 		fauna.Headers(map[string]string{
 			fauna.HeaderTxnTime: fmt.Sprintf("%v", time.Now().UnixMicro()),
 		}),
+		fauna.Context(context.TODO()),
 	)
 
 	var result float32

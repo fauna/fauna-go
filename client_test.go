@@ -1,11 +1,12 @@
 package fauna_test
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
+	"reflect"
 	"testing"
 
 	"github.com/fauna/fauna-go"
@@ -15,7 +16,7 @@ func TestDefaultClient(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 	t.Setenv(fauna.EnvFaunaKey, "secret")
 
-	client, err := fauna.DefaultClient(context.TODO())
+	client, err := fauna.DefaultClient()
 	if err != nil {
 		t.FailNow()
 	}
@@ -58,7 +59,7 @@ func Test_UnauthorizedClient(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaKey, "I'm a little tea pot")
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
-	failClient, clientErr := fauna.DefaultClient(context.TODO())
+	failClient, clientErr := fauna.DefaultClient()
 	if clientErr != nil {
 		t.FailNow()
 	}
@@ -101,7 +102,7 @@ func randomString(n int) string {
 func TestBasicCrudRequests(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaKey, "secret")
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
-	client, err := fauna.DefaultClient(context.TODO())
+	client, err := fauna.DefaultClient()
 	if err != nil {
 		t.Errorf("%s", err.Error())
 		t.FailNow()
@@ -110,7 +111,7 @@ func TestBasicCrudRequests(t *testing.T) {
 	coll := fmt.Sprintf("Person_%v", randomString(12))
 
 	t.Run("Create a collection", func(t *testing.T) {
-		res, queryErr := client.Query(`Collection.create({ name: arg1 })`, map[string]interface{}{"arg1": coll}, nil)
+		res, queryErr := client.Query(`Collection.create({ name: arg1 })`, fauna.QueryArguments(fauna.QueryArg("arg1", coll)), nil)
 		if queryErr != nil {
 			t.Logf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
 			t.FailNow()
@@ -158,7 +159,7 @@ func TestBasicCrudRequests(t *testing.T) {
 	})
 
 	t.Run("Delete a Person", func(t *testing.T) {
-		res, queryErr := client.Query(fmt.Sprintf(`%s.all.firstWhere(.name == arg1).delete()`, coll), map[string]interface{}{"arg1": p.Name}, &q)
+		res, queryErr := client.Query(fmt.Sprintf(`%s.all.firstWhere(.name == arg1).delete()`, coll), fauna.QueryArguments(fauna.QueryArg("arg1", p.Name)), &q)
 		if queryErr != nil {
 			t.Logf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
 			t.FailNow()
@@ -166,9 +167,90 @@ func TestBasicCrudRequests(t *testing.T) {
 	})
 
 	t.Run("Delete a Collection", func(t *testing.T) {
-		res, queryErr := client.Query(`Collection.byName(arg1).delete()`, map[string]interface{}{"arg1": coll}, nil)
+		res, queryErr := client.Query(`Collection.byName(arg1).delete()`, fauna.QueryArguments(fauna.QueryArg("arg1", coll)), nil)
 		if queryErr != nil {
 			t.Logf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
+			t.FailNow()
+		}
+	})
+}
+
+func TestErrorHandling(t *testing.T) {
+	t.Run("authorization error", func(t *testing.T) {
+		t.Setenv(fauna.EnvFaunaKey, "I'm a little teapot")
+		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+
+		client, clientErr := fauna.DefaultClient()
+		if clientErr != nil {
+			t.Errorf("failed to init fauna.Client")
+			t.FailNow()
+		}
+
+		_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
+		if queryErr == nil {
+			t.Errorf("expected an error")
+			t.FailNow()
+		}
+
+		if !errors.As(queryErr, &fauna.AuthenticationError{}) {
+			t.Errorf("wrong type: %v", reflect.TypeOf(queryErr))
+		}
+	})
+
+	t.Run("invalid query", func(t *testing.T) {
+		t.Setenv(fauna.EnvFaunaKey, "secret")
+		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+
+		client, clientErr := fauna.DefaultClient()
+		if clientErr != nil {
+			t.Errorf("failed to init fauna.Client")
+			t.FailNow()
+		}
+
+		_, queryErr := client.Query(`SillyPants`, nil, nil)
+		if queryErr == nil {
+			t.Errorf("expected an error")
+			t.FailNow()
+		}
+
+		if !errors.As(queryErr, &fauna.QueryCheckError{}) {
+			t.Errorf("wrong type: %v", reflect.TypeOf(queryErr))
+		}
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		t.Setenv(fauna.EnvFaunaKey, "secret")
+		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+
+		client, clientErr := fauna.DefaultClient()
+		if clientErr != nil {
+			t.Errorf("failed to init fauna.Client")
+			t.FailNow()
+		}
+
+		testCollection := "testing"
+
+		res, queryErr := client.Query(`Collection.create({ name: arg1 })`, fauna.QueryArguments(fauna.QueryArg("arg1", testCollection)), nil)
+		if queryErr != nil {
+			t.Logf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
+			t.FailNow()
+		}
+
+		res, queryErr = client.Query(`Collection.create({ name: arg1 })`, fauna.QueryArguments(fauna.QueryArg("arg1", testCollection)), nil)
+		if queryErr == nil {
+			t.Logf("response: %v", res.Data)
+			t.Errorf("expected this to fail")
+		} else {
+			if !errors.As(queryErr, &fauna.ServiceInternalError{}) {
+				t.Errorf("wrong type: %v", reflect.TypeOf(queryErr))
+			}
+		}
+
+		t.Logf("status: %d\nbody: %s", res.Raw.StatusCode, res.Bytes)
+
+		res, queryErr = client.Query(`Collection.byName(arg1).delete()`, fauna.QueryArguments(fauna.QueryArg("arg1", testCollection)), nil)
+		if queryErr != nil {
+			t.Logf("error: %s", queryErr.Error())
 			t.FailNow()
 		}
 	})

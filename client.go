@@ -27,9 +27,12 @@ const (
 	DefaultMaxConnections = 10
 	DefaultTimeout        = time.Minute
 
-	HeaderAuthorization = "Authorization"
-	HeaderTxnTime       = "X-Txn-Time"
-	HeaderLastSeenTxn   = "X-Last-Seen-Txn"
+	HeaderAuthorization        = "Authorization"
+	HeaderTxnTime              = "X-Txn-Time"
+	HeaderLastSeenTxn          = "X-Last-Seen-Txn"
+	HeaderLinearized           = "X-Linearized"
+	HeaderMaxContentionRetries = "X-Max-Contention-Retries"
+	HeaderTimeoutMs            = "X-Timeout-Ms"
 )
 
 // ClientConfigFn configuration options for fauna.Client
@@ -45,9 +48,46 @@ func HTTPClient(client *http.Client) ClientConfigFn {
 	return func(c *Client) { c.http = client }
 }
 
-// Headers specify headers to be used on every http.Request
+// Headers specify headers to on the fauna.Client
 func Headers(headers map[string]string) ClientConfigFn {
-	return func(c *Client) { c.headers = headers }
+	return func(c *Client) {
+		if c.headers != nil {
+			for k, v := range headers {
+				c.headers[k] = v
+			}
+		} else {
+			c.headers = headers
+		}
+	}
+}
+
+// Linearized set header on the fauna.Client
+// A boolean. If true, unconditionally run the query as strictly serialized/linearized.
+// This affects read-only transactions, as transactions which write will be strictly serialized.
+func Linearized(enabled bool) ClientConfigFn {
+	return func(c *Client) {
+		c.SetHeader(HeaderLinearized, fmt.Sprintf("%v", enabled))
+	}
+}
+
+// MaxContentionRetries set header on the fauna.Client
+// An integer. The maximum number of times a transaction is retried due to OCC failure.
+func MaxContentionRetries(i int) ClientConfigFn {
+	return func(c *Client) {
+		c.SetHeader(HeaderMaxContentionRetries, fmt.Sprintf("%v", i))
+	}
+}
+
+// Timeout set header on the fauna.Client
+func Timeout(d time.Duration) ClientConfigFn {
+	return func(c *Client) {
+		c.SetHeader(HeaderTimeoutMs, fmt.Sprintf("%v", d.Milliseconds()))
+	}
+}
+
+// Context specify the context to be used for fauna.Client
+func Context(ctx context.Context) ClientConfigFn {
+	return func(c *Client) { c.ctx = ctx }
 }
 
 // Client type for
@@ -62,14 +102,12 @@ type Client struct {
 	http *http.Client
 	ctx  context.Context
 
-	// maxRetries?
-	// linearized?
 	// tags?
 	// traceParent?
 }
 
 // DefaultClient initialize fauna.Client with recommend settings
-func DefaultClient(ctx context.Context) (*Client, error) {
+func DefaultClient() (*Client, error) {
 	secret, found := os.LookupEnv(EnvFaunaKey)
 	if !found {
 		return nil, fmt.Errorf("unable to load key from environment variable '%s'", EnvFaunaKey)
@@ -81,7 +119,6 @@ func DefaultClient(ctx context.Context) (*Client, error) {
 	}
 
 	return NewClient(
-		ctx,
 		secret,
 		URL(url),
 		HTTPClient(&http.Client{
@@ -93,11 +130,13 @@ func DefaultClient(ctx context.Context) (*Client, error) {
 		Headers(map[string]string{
 			HeaderAuthorization: fmt.Sprintf("Bearer %s", secret),
 		}),
+		Context(context.TODO()),
+		Timeout(DefaultTimeout),
 	), nil
 }
 
 // NewClient initialize a new fauna.Client with custom settings
-func NewClient(ctx context.Context, secret string, configFns ...ClientConfigFn) *Client {
+func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	// sensible default
 	typeCheckEnabled := true
 	if typeCheckEnabledVal, found := os.LookupEnv(EnvFaunaTypeCheckEnabled); found {
@@ -106,7 +145,7 @@ func NewClient(ctx context.Context, secret string, configFns ...ClientConfigFn) 
 	}
 
 	client := &Client{
-		ctx:    ctx,
+		ctx:    context.TODO(),
 		secret: secret,
 		http:   http.DefaultClient,
 		url:    EndpointProduction,
@@ -125,8 +164,14 @@ func NewClient(ctx context.Context, secret string, configFns ...ClientConfigFn) 
 }
 
 // SetHeader update fauna.Client header
-func (c *Client) SetHeader(key string, val string) {
-	c.headers[key] = val
+func (c *Client) SetHeader(key, val string) {
+	if c.headers != nil {
+		c.headers[key] = val
+	} else {
+		c.headers = map[string]string{
+			key: val,
+		}
+	}
 }
 
 // SetTypeChecking update fauna.Client type checking setting
@@ -139,19 +184,13 @@ func (c *Client) Query(fql string, args map[string]interface{}, obj any) (*Respo
 	return c.query(c.ctx, fql, args, obj, c.typeCheckingEnabled)
 }
 
-// QueryPlain invoke `fql` without static checking disabled
-func (c *Client) QueryPlain(fql string, args map[string]interface{}, obj any) (*Response, error) {
-	return c.query(c.ctx, fql, args, obj, false)
-}
+func (c *Client) QueryWithOptions(fql string, args map[string]interface{}, obj any, opts ...ClientConfigFn) (*Response, error) {
+	tempClient := *c
+	for _, o := range opts {
+		o(&tempClient)
+	}
 
-// QueryWithContext invoke fql with context.Context
-func (c *Client) QueryWithContext(ctx context.Context, fql string, args map[string]interface{}, obj any) (*Response, error) {
-	return c.query(ctx, fql, args, obj, c.typeCheckingEnabled)
-}
-
-// QueryPlanWithContext invoke fql with context.Context and static checking disabled
-func (c *Client) QueryPlanWithContext(ctx context.Context, fql string, args map[string]interface{}, obj any) (*Response, error) {
-	return c.query(ctx, fql, args, obj, false)
+	return tempClient.query(tempClient.ctx, fql, args, obj, tempClient.typeCheckingEnabled)
 }
 
 type fqlRequest struct {
@@ -212,10 +251,6 @@ func (c *Client) do(ctx context.Context, request *fqlRequest) (*Response, error)
 
 	var response Response
 	response.Raw = r
-
-	if r.StatusCode >= http.StatusBadRequest {
-		return &response, fmt.Errorf("whoops")
-	}
 
 	bin, readErr := io.ReadAll(r.Body)
 	if readErr != nil {
