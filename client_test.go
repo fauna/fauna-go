@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/fauna/fauna-go"
 )
@@ -173,6 +175,77 @@ func TestBasicCrudRequests(t *testing.T) {
 			t.FailNow()
 		}
 	})
+}
+
+func TestHeaders(t *testing.T) {
+	var currentHeader string
+	var expectedValue string
+
+	testingClient := &http.Client{Transport: &http.Transport{
+		Proxy: func(request *http.Request) (*url.URL, error) {
+			if val := request.Header.Get(currentHeader); val != expectedValue {
+				t.Errorf("header [%s] wrong, got [%s] should be [%s]", currentHeader, val, expectedValue)
+			}
+
+			return request.URL, nil
+		},
+	}}
+
+	type args struct {
+		header    string
+		headerOpt fauna.ClientConfigFn
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "linearized should be true",
+			args: args{
+				headerOpt: fauna.Linearized(true),
+				header:    fauna.HeaderLinearized,
+			},
+			want: "true",
+		},
+		{
+			name: "timeout should be 1m",
+			args: args{
+				header:    fauna.HeaderTimeoutMs,
+				headerOpt: fauna.Timeout(time.Minute),
+			},
+			want: fmt.Sprintf("%d", time.Minute.Milliseconds()),
+		},
+		{
+			name: "max contention retries should be 1",
+			args: args{
+				header:    fauna.HeaderMaxContentionRetries,
+				headerOpt: fauna.MaxContentionRetries(1),
+			},
+			want: "1",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			currentHeader = tt.args.header
+			expectedValue = tt.want
+
+			client := fauna.NewClient(
+				"secret",
+				fauna.URL(fauna.EndpointLocal),
+				fauna.HTTPClient(testingClient),
+				tt.args.headerOpt,
+			)
+
+			// running a simple query just to invoke the request
+			_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
+			if queryErr != nil {
+				t.Errorf("%s", queryErr.Error())
+				t.FailNow()
+			}
+		})
+	}
+
 }
 
 func TestErrorHandling(t *testing.T) {
