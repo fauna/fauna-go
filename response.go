@@ -16,12 +16,13 @@ type Stats struct {
 
 // Response represent a standard response from Fauna request
 type Response struct {
-	Raw        *http.Response
 	Bytes      []byte
 	Data       json.RawMessage `json:"data"`
 	Error      *ServiceError   `json:"error,omitempty"`
-	Summary    string          `json:"summary"`
-	StaticType string          `json:"static_type"`
-	TxnTime    time.Time       `json:"txn_time"`
-	Stats      *Stats          `json:"stats,omitempty"`
+	Logging    []string        `json:"logging,omitempty"`
+	Raw        *http.Response
+	StaticType string    `json:"static_type"`
+	Stats      *Stats    `json:"stats,omitempty"`
+	Summary    string    `json:"summary"`
+	TxnTime    time.Time `json:"txn_time"`
 }

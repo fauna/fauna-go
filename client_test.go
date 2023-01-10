@@ -15,7 +15,7 @@ import (
 
 func TestDefaultClient(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
-	t.Setenv(fauna.EnvFaunaKey, "secret")
+	t.Setenv(fauna.EnvFaunaSecret, "secret")
 
 	client, err := fauna.DefaultClient()
 	if err != nil {
@@ -34,8 +34,17 @@ func TestDefaultClient(t *testing.T) {
 		var i int
 		res, queryErr := client.Query(fmt.Sprintf(`"%v".length`, s), nil, &i)
 		if queryErr != nil {
-			t.Logf("response: %s", res.Bytes)
 			t.Errorf("%s", queryErr.Error())
+		}
+
+		expectedProto := "HTTP/2.0"
+		if res.Raw.Proto != expectedProto {
+			t.Errorf("request protocol got [%s] expected [%s]", res.Raw.Proto, expectedProto)
+		}
+
+		if res != nil {
+			t.Logf("%s", res.Raw.Request.Proto)
+			t.Logf("response: %s", res.Bytes)
 		}
 
 		n := len(s)
@@ -63,7 +72,7 @@ func TestDefaultClient(t *testing.T) {
 }
 
 func TestBasicCrudRequests(t *testing.T) {
-	t.Setenv(fauna.EnvFaunaKey, "secret")
+	t.Setenv(fauna.EnvFaunaSecret, "secret")
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 	client, err := fauna.DefaultClient()
 	if err != nil {
@@ -213,7 +222,7 @@ func TestHeaders(t *testing.T) {
 
 func TestErrorHandling(t *testing.T) {
 	t.Run("authorization error", func(t *testing.T) {
-		t.Setenv(fauna.EnvFaunaKey, "I'm a little teapot")
+		t.Setenv(fauna.EnvFaunaSecret, "I'm a little teapot")
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
 		client, clientErr := fauna.DefaultClient()
@@ -234,7 +243,7 @@ func TestErrorHandling(t *testing.T) {
 	})
 
 	t.Run("invalid query", func(t *testing.T) {
-		t.Setenv(fauna.EnvFaunaKey, "secret")
+		t.Setenv(fauna.EnvFaunaSecret, "secret")
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
 		client, clientErr := fauna.DefaultClient()
@@ -255,7 +264,7 @@ func TestErrorHandling(t *testing.T) {
 	})
 
 	t.Run("service error", func(t *testing.T) {
-		t.Setenv(fauna.EnvFaunaKey, "secret")
+		t.Setenv(fauna.EnvFaunaSecret, "secret")
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
 		client, clientErr := fauna.DefaultClient()
