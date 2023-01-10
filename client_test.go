@@ -62,50 +62,6 @@ func TestDefaultClient(t *testing.T) {
 	})
 }
 
-func Test_UnauthorizedClient(t *testing.T) {
-	t.Setenv(fauna.EnvFaunaKey, "I'm a little tea pot")
-	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
-
-	failClient, clientErr := fauna.DefaultClient()
-	if clientErr != nil {
-		t.FailNow()
-	}
-
-	res, queryErr := failClient.Query("", nil, nil)
-	if queryErr == nil {
-		t.Log("we expected an error")
-		t.FailNow()
-	}
-
-	if res.Raw.StatusCode != http.StatusUnauthorized {
-		t.Logf("should be StatusUnauthorized")
-		t.FailNow()
-	}
-}
-
-type Person struct {
-	Name    string `json:"name"`
-	Address string `json:"address"`
-}
-
-func (p *Person) String() string {
-	j, e := json.Marshal(p)
-	if e != nil {
-		return ""
-	}
-	return string(j)
-}
-
-func randomString(n int) string {
-	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-	s := make([]rune, n)
-	for i := range s {
-		s[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(s)
-}
-
 func TestBasicCrudRequests(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaKey, "secret")
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
@@ -183,8 +139,10 @@ func TestBasicCrudRequests(t *testing.T) {
 }
 
 func TestHeaders(t *testing.T) {
-	var currentHeader string
-	var expectedValue string
+	var (
+		currentHeader string
+		expectedValue string
+	)
 
 	testingClient := &http.Client{Transport: &http.Transport{
 		Proxy: func(request *http.Request) (*url.URL, error) {
@@ -332,4 +290,27 @@ func TestErrorHandling(t *testing.T) {
 			t.FailNow()
 		}
 	})
+}
+
+type Person struct {
+	Name    string `json:"name"`
+	Address string `json:"address"`
+}
+
+func (p *Person) String() string {
+	j, e := json.Marshal(p)
+	if e != nil {
+		return ""
+	}
+	return string(j)
+}
+
+func randomString(n int) string {
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	s := make([]rune, n)
+	for i := range s {
+		s[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(s)
 }
