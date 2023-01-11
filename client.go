@@ -28,7 +28,6 @@ const (
 	EnvFaunaTimeout          = "FAUNA_TIMEOUT"
 	EnvFaunaTypeCheckEnabled = "FAUNA_TYPE_CHECK_ENABLED"
 
-	DefaultMaxConnections = 10
 	// DefaultTimeout for both the http.Request and the HeaderTimeoutMs
 	DefaultTimeout = time.Minute
 
@@ -81,20 +80,20 @@ func DefaultClient() (*Client, error) {
 		}
 	}
 
-	transport := &http2.Transport{
-		DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-			return net.Dial(network, addr)
-		},
-		AllowHTTP: url == EndpointLocal,
-	}
-	httpClient := &http.Client{
-		Transport: transport,
-	}
-
 	return NewClient(
 		secret,
 		URL(url),
-		HTTPClient(httpClient),
+		HTTPClient(&http.Client{
+			Transport: &http2.Transport{
+				DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+					return net.Dial(network, addr)
+				},
+				AllowHTTP:        url == EndpointLocal,
+				ReadIdleTimeout:  DefaultTimeout,
+				PingTimeout:      time.Second * 3,
+				WriteByteTimeout: time.Second * 5,
+			},
+		}),
 		Headers(map[string]string{
 			HeaderAuthorization:        fmt.Sprintf("Bearer %s", secret),
 			HeaderContentType:          "application/json; charset=utf-8",
@@ -137,15 +136,28 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 }
 
 // Query invoke fql with args and map to the provided obj
-func (c *Client) Query(fql string, args map[string]interface{}, obj any) (*Response, error) {
+func (c *Client) Query(fql string, args QueryArgs, obj any) (*Response, error) {
 	return c.query(c.ctx, fql, args, obj, c.typeCheckingEnabled)
 }
 
-func (c *Client) QueryWithOptions(fql string, args map[string]interface{}, obj any, opts ...ClientConfigFn) (*Response, error) {
+func (c *Client) QueryWithOptions(fql string, args QueryArgs, obj any, opts ...ClientConfigFn) (*Response, error) {
 	tempClient := *c
 	for _, o := range opts {
 		o(&tempClient)
 	}
 
 	return tempClient.query(tempClient.ctx, fql, args, obj, tempClient.typeCheckingEnabled)
+}
+
+func (c *Client) Close() {
+	c.http.CloseIdleConnections()
+}
+
+// GetLastTxnTime gets the freshest timestamp reported to this client.
+func (c *Client) GetLastTxnTime() int64 {
+	if c.txnTimeEnabled {
+		return c.lastTxnTime
+	}
+
+	return 0
 }

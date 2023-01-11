@@ -24,7 +24,9 @@ func QueryArg(key string, value any) QueryArgItem {
 	}
 }
 
-func QueryArguments(args ...QueryArgItem) map[string]interface{} {
+type QueryArgs map[string]interface{}
+
+func QueryArguments(args ...QueryArgItem) QueryArgs {
 	out := map[string]interface{}{}
 	for n := range args {
 		arg := args[n]
@@ -40,7 +42,7 @@ type fqlRequest struct {
 	TypeCheck bool                   `json:"typecheck"`
 }
 
-func (c *Client) query(ctx context.Context, fql string, args map[string]interface{}, obj any, typeChecking bool) (*Response, error) {
+func (c *Client) query(ctx context.Context, fql string, args QueryArgs, obj any, typeChecking bool) (*Response, error) {
 	res, err := c.do(ctx, &fqlRequest{
 		Query:     fql,
 		Arguments: args,
@@ -128,13 +130,15 @@ func (c *Client) storeLastTxnTime(header http.Header) error {
 }
 
 func (c *Client) syncLastTxnTime(newTxnTime int64) {
-	if c.txnTimeEnabled {
-		for {
-			oldTxnTime := atomic.LoadInt64(&c.lastTxnTime)
-			if oldTxnTime >= newTxnTime ||
-				atomic.CompareAndSwapInt64(&c.lastTxnTime, oldTxnTime, newTxnTime) {
-				break
-			}
+	if !c.txnTimeEnabled {
+		return
+	}
+
+	for {
+		oldTxnTime := atomic.LoadInt64(&c.lastTxnTime)
+		if oldTxnTime >= newTxnTime ||
+			atomic.CompareAndSwapInt64(&c.lastTxnTime, oldTxnTime, newTxnTime) {
+			break
 		}
 	}
 }

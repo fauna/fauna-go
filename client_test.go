@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 	"testing"
 	"time"
 
@@ -28,50 +29,67 @@ func TestDefaultClient(t *testing.T) {
 		}
 	})
 
-	t.Run("String Length Request", func(t *testing.T) {
-		s := "foo"
+	t.Run("basic requests", func(t *testing.T) {
+		t.Run("String Length Request", func(t *testing.T) {
+			s := "foo"
 
-		var i int
-		res, queryErr := client.Query(fmt.Sprintf(`"%v".length`, s), nil, &i)
-		if queryErr != nil {
-			t.Errorf("%s", queryErr.Error())
-		}
+			var i int
+			res, queryErr := client.Query(fmt.Sprintf(`"%v".length`, s), nil, &i)
+			if queryErr != nil {
+				t.Errorf("%s", queryErr.Error())
+			}
 
-		expectedProto := "HTTP/2.0"
-		if res.Raw.Proto != expectedProto {
-			t.Errorf("request protocol got [%s] expected [%s]", res.Raw.Proto, expectedProto)
-		}
+			expectedProto := "HTTP/2.0"
+			if res.Raw.Proto != expectedProto {
+				t.Errorf("request protocol got [%s] expected [%s]", res.Raw.Proto, expectedProto)
+			}
 
-		if res != nil {
-			t.Logf("%s", res.Raw.Request.Proto)
-			t.Logf("response: %s", res.Bytes)
-		}
+			n := len(s)
+			if n != i {
+				t.Errorf("expected [%d] got [%d]", n, i)
+			}
+		})
 
-		n := len(s)
-		if n != i {
-			t.Errorf("expected [%d] got [%d]", n, i)
-		}
+		t.Run("Argument Request", func(t *testing.T) {
+			a := "arg1"
+			s := "maverick"
+
+			var i int
+			res, queryErr := client.Query(fmt.Sprintf(`%v.length`, a), fauna.QueryArguments(fauna.QueryArg(a, s)), &i)
+			if queryErr != nil {
+				t.Logf("response: %s", res.Bytes)
+				t.Errorf("%s", queryErr.Error())
+			}
+
+			n := len(s)
+			if n != i {
+				t.Errorf("expected [%d] got [%d]", n, i)
+			}
+		})
 	})
 
-	t.Run("Argument Request", func(t *testing.T) {
-		a := "arg1"
-		s := "maverick"
+	t.Run("validate preview", func(t *testing.T) {
+		if val, found := os.LookupEnv("FAUNA_PREVIEW_SECRET"); !found {
+			t.Skip()
+		} else {
+			t.Setenv("FAUNA_SECRET", val)
+			t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointPreview)
 
-		var i int
-		res, queryErr := client.Query(fmt.Sprintf(`%v.length`, a), map[string]interface{}{a: s}, &i)
-		if queryErr != nil {
-			t.Logf("response: %s", res.Bytes)
-			t.Errorf("%s", queryErr.Error())
-		}
+			previewClient, clientErr := fauna.DefaultClient()
+			if clientErr != nil {
+				t.Errorf("failed to init preview client: %v", clientErr.Error())
+				t.Fail()
+			}
 
-		n := len(s)
-		if n != i {
-			t.Errorf("expected [%d] got [%d]", n, i)
+			_, queryErr := previewClient.Query(`Math.abs(-5.123e3)`, nil, nil)
+			if queryErr != nil {
+				t.Errorf("query env preview failed: %v", clientErr.Error())
+			}
 		}
 	})
 }
 
-func TestBasicCrudRequests(t *testing.T) {
+func TestBasicCRUDRequests(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaSecret, "secret")
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 	client, err := fauna.DefaultClient()
@@ -239,6 +257,10 @@ func TestErrorHandling(t *testing.T) {
 
 		if !errors.As(queryErr, &fauna.AuthenticationError{}) {
 			t.Errorf("wrong type: %T", queryErr)
+		}
+
+		if errors.Unwrap(queryErr) != nil {
+			t.Errorf("should be able to unwrap: %v", queryErr)
 		}
 	})
 
