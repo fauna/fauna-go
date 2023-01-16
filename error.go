@@ -1,5 +1,7 @@
 package fauna
 
+import "net/http"
+
 var queryCheckFailureCodes = map[string]struct{}{
 	"invalid_function_definition": {},
 	"invalid_identifier":          {},
@@ -17,25 +19,27 @@ func (e ServiceError) Error() string {
 	return e.Message
 }
 
+// GetServiceError return a typed error based on the http status code
+// and ServiceError response from fauna
 func GetServiceError(httpStatus int, e *ServiceError) error {
 	switch httpStatus {
-	case 400:
+	case http.StatusBadRequest:
 		if _, found := queryCheckFailureCodes[e.Code]; found {
 			return NewQueryCheckError(e)
 		} else {
 			return NewQueryRuntimeError(e)
 		}
-	case 401:
+	case http.StatusUnauthorized:
 		return NewAuthenticationError(e)
-	case 403:
+	case http.StatusForbidden:
 		return NewAuthorizationError(e)
-	case 429:
+	case http.StatusTooManyRequests:
 		return NewThrottlingError(e)
 	case 440:
 		return NewQueryTimeoutError(e)
-	case 500:
+	case http.StatusInternalServerError:
 		return NewServiceInternalError(e)
-	case 503:
+	case http.StatusServiceUnavailable:
 		return NewServiceTimeoutError(e)
 	}
 
@@ -121,3 +125,5 @@ func NewServiceTimeoutError(e *ServiceError) ServiceTimeoutError {
 		ServiceError: *e,
 	}
 }
+
+type NetworkError error

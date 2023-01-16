@@ -74,7 +74,7 @@ func DefaultClient() (*Client, error) {
 	if val, found := os.LookupEnv(EnvFaunaTimeout); found {
 		timeoutFromEnv, err := time.ParseDuration(val)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "failed to parse timeout, using default")
+			_, _ = fmt.Fprintf(os.Stderr, "failed to parse timeout, using default\n")
 		} else {
 			clientTimeout = timeoutFromEnv
 		}
@@ -117,14 +117,13 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	}
 
 	client := &Client{
-		ctx:    context.TODO(),
-		secret: secret,
-		http:   http.DefaultClient,
-		url:    EndpointProduction,
-		headers: map[string]string{
-			HeaderAuthorization: fmt.Sprintf("Bearer %s", secret),
-		},
+		ctx:                 context.TODO(),
+		secret:              secret,
+		http:                http.DefaultClient,
+		url:                 EndpointProduction,
+		headers:             map[string]string{},
 		typeCheckingEnabled: typeCheckEnabled,
+		txnTimeEnabled:      true,
 	}
 
 	// set options to override defaults
@@ -140,6 +139,7 @@ func (c *Client) Query(fql string, args QueryArgs, obj any) (*Response, error) {
 	return c.query(c.ctx, fql, args, obj, c.typeCheckingEnabled)
 }
 
+// QueryWithOptions invoke fql with request options
 func (c *Client) QueryWithOptions(fql string, args QueryArgs, obj any, opts ...ClientConfigFn) (*Response, error) {
 	tempClient := *c
 	for _, o := range opts {
@@ -147,10 +147,6 @@ func (c *Client) QueryWithOptions(fql string, args QueryArgs, obj any, opts ...C
 	}
 
 	return tempClient.query(tempClient.ctx, fql, args, obj, tempClient.typeCheckingEnabled)
-}
-
-func (c *Client) Close() {
-	c.http.CloseIdleConnections()
 }
 
 // GetLastTxnTime gets the freshest timestamp reported to this client.

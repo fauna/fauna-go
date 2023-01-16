@@ -23,13 +23,16 @@ func HTTPClient(client *http.Client) ClientConfigFn {
 // Headers specify headers to on the fauna.Client
 func Headers(headers map[string]string) ClientConfigFn {
 	return func(c *Client) {
-		if c.headers != nil {
-			for k, v := range headers {
-				c.headers[k] = v
-			}
-		} else {
-			c.headers = headers
+		for k, v := range headers {
+			c.headers[k] = v
 		}
+	}
+}
+
+// LastTransactionTime toggle if fauna.Client records the last transaction time
+func LastTransactionTime(enabled bool) ClientConfigFn {
+	return func(c *Client) {
+		c.txnTimeEnabled = enabled
 	}
 }
 
@@ -64,13 +67,7 @@ func Context(ctx context.Context) ClientConfigFn {
 
 // SetHeader update fauna.Client header
 func (c *Client) SetHeader(key, val string) {
-	if c.headers != nil {
-		c.headers[key] = val
-	} else {
-		c.headers = map[string]string{
-			key: val,
-		}
-	}
+	c.headers[key] = val
 }
 
 // SetTypeChecking update fauna.Client type checking setting

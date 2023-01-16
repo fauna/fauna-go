@@ -12,11 +12,13 @@ import (
 	"sync/atomic"
 )
 
+// QueryArgItem query args structure
 type QueryArgItem struct {
 	Key   string
 	Value any
 }
 
+// QueryArg create a QueryArgItem
 func QueryArg(key string, value any) QueryArgItem {
 	return QueryArgItem{
 		Key:   key,
@@ -24,8 +26,10 @@ func QueryArg(key string, value any) QueryArgItem {
 	}
 }
 
+// QueryArgs list of QueryArg items
 type QueryArgs map[string]interface{}
 
+// QueryArguments convenience method to structure QueryArgs
 func QueryArguments(args ...QueryArgItem) QueryArgs {
 	out := map[string]interface{}{}
 	for n := range args {
@@ -70,10 +74,10 @@ func (c *Client) do(ctx context.Context, request *fqlRequest) (*Response, error)
 
 	req, reqErr := http.NewRequestWithContext(ctx, http.MethodPost, c.url, bytes.NewReader(bytesOut))
 	if reqErr != nil {
-		return nil, reqErr
+		return nil, fmt.Errorf("failed to init request: %w", reqErr)
 	}
 
-	req.Header.Set(HeaderAuthorization, fmt.Sprintf("Bearer %s", c.secret))
+	req.Header.Set(HeaderAuthorization, `Bearer `+c.secret)
 	for k, v := range c.headers {
 		req.Header.Set(k, v)
 	}
@@ -86,8 +90,9 @@ func (c *Client) do(ctx context.Context, request *fqlRequest) (*Response, error)
 
 	r, doErr := c.http.Do(req)
 	if doErr != nil {
-		return nil, doErr
+		return nil, NetworkError(fmt.Errorf("request failed: %w", doErr))
 	}
+
 	defer func() {
 		_ = req.Body.Close()
 	}()
@@ -103,11 +108,11 @@ func (c *Client) do(ctx context.Context, request *fqlRequest) (*Response, error)
 	response.Bytes = bin
 
 	if unmarshalErr := json.Unmarshal(bin, &response); unmarshalErr != nil {
-		return &response, unmarshalErr
+		return &response, fmt.Errorf("failed to umarmshal response: %w", unmarshalErr)
 	}
 
 	if txnTimeErr := c.storeLastTxnTime(r.Header); txnTimeErr != nil {
-		return &response, txnTimeErr
+		return &response, fmt.Errorf("failed to parse transaction time: %w", txnTimeErr)
 	}
 
 	if response.Error != nil {
@@ -121,7 +126,7 @@ func (c *Client) storeLastTxnTime(header http.Header) error {
 	if c.txnTimeEnabled {
 		t, err := parseTxnTimeHeader(header)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to parse tranaction time: %w", err)
 		}
 		c.syncLastTxnTime(t)
 	}

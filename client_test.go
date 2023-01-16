@@ -1,6 +1,7 @@
 package fauna_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -57,13 +58,32 @@ func TestDefaultClient(t *testing.T) {
 			var i int
 			res, queryErr := client.Query(fmt.Sprintf(`%v.length`, a), fauna.QueryArguments(fauna.QueryArg(a, s)), &i)
 			if queryErr != nil {
-				t.Logf("response: %s", res.Bytes)
-				t.Errorf("%s", queryErr.Error())
+				if res != nil {
+					t.Logf("response: %s", res.Bytes)
+				}
+
+				t.Errorf("%s", queryErr)
+				t.FailNow()
 			}
 
 			n := len(s)
 			if n != i {
 				t.Errorf("expected [%d] got [%d]", n, i)
+			}
+
+			if client.GetLastTxnTime() == 0 {
+				t.Errorf("last transaction time should be greater than 0")
+			}
+		})
+
+		t.Run("Query options", func(t *testing.T) {
+			res, queryErr := client.QueryWithOptions(`Math.abs(-5.123e3)`, nil, nil, fauna.Timeout(time.Second))
+			if queryErr != nil {
+				t.Errorf("query failed: %s", queryErr.Error())
+			}
+
+			if res != nil {
+				t.Logf("summary: %s", res.Summary)
 			}
 		})
 	})
@@ -85,6 +105,78 @@ func TestDefaultClient(t *testing.T) {
 			if queryErr != nil {
 				t.Errorf("query env preview failed: %v", clientErr.Error())
 			}
+		}
+	})
+
+	t.Run("validate query args", func(t *testing.T) {
+		key := "key"
+		value := "value"
+		items := fauna.QueryArguments(fauna.QueryArg(key, value))
+		if v := items[key]; v != value {
+			t.Logf("expected [%v] got [%v]", value, v)
+		}
+	})
+
+	t.Run("invalid timeout", func(t *testing.T) {
+		t.Setenv(fauna.EnvFaunaTimeout, "invalidTime")
+
+		_, invalidErr := fauna.DefaultClient()
+		if invalidErr != nil {
+			t.Errorf("invalid: %s", invalidErr.Error())
+		}
+
+	})
+}
+
+func TestNewClient(t *testing.T) {
+	t.Run("default client", func(t *testing.T) {
+		t.Setenv(fauna.EnvFaunaSecret, "secret")
+		_, clientErr := fauna.DefaultClient()
+		if clientErr != nil {
+			t.Errorf("should be able to init default client: %s", clientErr.Error())
+		}
+	})
+
+	t.Run("missing secret", func(t *testing.T) {
+		_, clientErr := fauna.DefaultClient()
+		if clientErr == nil {
+			t.Errorf("should have failed due to missing secret")
+		}
+	})
+
+	t.Run("custom timeout", func(t *testing.T) {
+		t.Setenv(fauna.EnvFaunaSecret, "secret")
+		t.Setenv(fauna.EnvFaunaTimeout, "3s")
+
+		_, clientErr := fauna.DefaultClient()
+		if clientErr != nil {
+			t.Errorf("should be able to init a client with a custom timeout: %s", clientErr.Error())
+		}
+	})
+
+	t.Run("disable typechecking", func(t *testing.T) {
+		t.Setenv(fauna.EnvFaunaSecret, "secret")
+		t.Setenv(fauna.EnvFaunaTypeCheckEnabled, "false")
+
+		_, clientErr := fauna.DefaultClient()
+		if clientErr != nil {
+			t.Errorf("should be able to init a client without type checking: %s", clientErr.Error())
+		}
+	})
+
+	t.Run("disable last transaction time", func(t *testing.T) {
+		t.Setenv(fauna.EnvFaunaSecret, "secret")
+		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+
+		client := fauna.NewClient("secret", fauna.LastTransactionTime(false))
+
+		_, resErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
+		if resErr != nil {
+			t.Logf("query failed: %s", resErr)
+		}
+
+		if client.GetLastTxnTime() != 0 {
+			t.Errorf("last transaction time should be 0")
 		}
 	})
 }
@@ -130,8 +222,11 @@ func TestBasicCRUDRequests(t *testing.T) {
 			t.FailNow()
 		}
 
-		if p.Name != q.Name {
+		if res != nil {
 			t.Logf("response: %s", res.Bytes)
+		}
+
+		if p.Name != q.Name {
 			t.Errorf("expected Name [%s] got [%s]", p.Name, q.Name)
 		}
 	})
@@ -181,61 +276,87 @@ func TestHeaders(t *testing.T) {
 		},
 	}}
 
-	type args struct {
-		header    string
-		headerOpt fauna.ClientConfigFn
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "linearized should be true",
-			args: args{
-				headerOpt: fauna.Linearized(true),
-				header:    fauna.HeaderLinearized,
-			},
-			want: "true",
-		},
-		{
-			name: "timeout should be 1m",
-			args: args{
-				header:    fauna.HeaderTimeoutMs,
-				headerOpt: fauna.Timeout(time.Minute),
-			},
-			want: fmt.Sprintf("%d", time.Minute.Milliseconds()),
-		},
-		{
-			name: "max contention retries should be 1",
-			args: args{
-				header:    fauna.HeaderMaxContentionRetries,
-				headerOpt: fauna.MaxContentionRetries(1),
-			},
-			want: "1",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			currentHeader = tt.args.header
-			expectedValue = tt.want
+	t.Run("can set headers directly", func(t *testing.T) {
 
-			client := fauna.NewClient(
-				"secret",
-				fauna.URL(fauna.EndpointLocal),
-				fauna.HTTPClient(testingClient),
-				tt.args.headerOpt,
-			)
+		type args struct {
+			header    string
+			headerOpt fauna.ClientConfigFn
+		}
+		tests := []struct {
+			name string
+			args args
+			want string
+		}{
+			{
+				name: "linearized should be true",
+				args: args{
+					headerOpt: fauna.Linearized(true),
+					header:    fauna.HeaderLinearized,
+				},
+				want: "true",
+			},
+			{
+				name: "timeout should be 1m",
+				args: args{
+					header:    fauna.HeaderTimeoutMs,
+					headerOpt: fauna.Timeout(time.Minute),
+				},
+				want: fmt.Sprintf("%d", time.Minute.Milliseconds()),
+			},
+			{
+				name: "max contention retries should be 1",
+				args: args{
+					header:    fauna.HeaderMaxContentionRetries,
+					headerOpt: fauna.MaxContentionRetries(1),
+				},
+				want: "1",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				currentHeader = tt.args.header
+				expectedValue = tt.want
 
-			// running a simple query just to invoke the request
-			_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
-			if queryErr != nil {
-				t.Errorf("%s", queryErr.Error())
-				t.FailNow()
-			}
-		})
-	}
+				client := fauna.NewClient(
+					"secret",
+					fauna.URL(fauna.EndpointLocal),
+					fauna.HTTPClient(testingClient),
+					tt.args.headerOpt,
+				)
 
+				// running a simple query just to invoke the request
+				_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
+				if queryErr != nil {
+					t.Errorf("%s", queryErr.Error())
+					t.FailNow()
+				}
+			})
+		}
+	})
+
+	t.Run("can use convenience methods", func(t *testing.T) {
+		currentHeader = fauna.HeaderLinearized
+		expectedValue = "true"
+
+		client := fauna.NewClient(
+			"secret", fauna.URL(fauna.EndpointLocal),
+			fauna.HTTPClient(testingClient),
+			fauna.Linearized(true),
+			fauna.Timeout(time.Second*3),
+			fauna.MaxContentionRetries(5),
+			fauna.Context(context.Background()),
+			fauna.Headers(map[string]string{
+				"foobar": "steve",
+			}),
+		)
+		client.SetTypeChecking(false)
+		client.SetHeader(currentHeader, expectedValue)
+	})
+
+	t.Run("supports empty headers", func(t *testing.T) {
+		client := fauna.NewClient("secret", fauna.URL(fauna.EndpointLocal))
+		client.SetHeader("steve", "empty")
+	})
 }
 
 func TestErrorHandling(t *testing.T) {
