@@ -1,10 +1,9 @@
 package fauna_test
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"net/http"
+	"os"
 
 	"github.com/fauna/fauna-go"
 )
@@ -13,12 +12,14 @@ import (
 //
 //	docker run --rm -p 8443:8443 fauna/faunadb:latest
 func ExampleNewClient() {
-	client := fauna.NewClient(
-		"secret",
-		fauna.URL(fauna.EndpointLocal),
-		fauna.HTTPClient(http.DefaultClient),
-		fauna.Context(context.TODO()),
-	)
+	// TRICKY: don't actually hardcode secret, just for the purpose of example
+	_ = os.Setenv(fauna.EnvFaunaSecret, "secret")
+	_ = os.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+
+	client, clientErr := fauna.DefaultClient()
+	if clientErr != nil {
+		log.Fatalf("client should have been initialized: %s", clientErr.Error())
+	}
 
 	var result float32
 	_, queryErr := client.Query(`Math.abs(12e5)`, nil, &result)
