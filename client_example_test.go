@@ -11,7 +11,7 @@ import (
 
 // ExampleNewClient query fauna running in a local Docker instance
 //
-//	docker run --rm -p 8443:8443 fauna/faunadb:fqlx
+//	docker run --rm -p 8443:8443 fauna/faunadb:latest
 func ExampleNewClient() {
 	client := fauna.NewClient(
 		"secret",
