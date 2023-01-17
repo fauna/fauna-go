@@ -19,7 +19,7 @@ type QueryArgItem struct {
 }
 
 // QueryArg create a QueryArgItem
-func QueryArg(key string, value any) QueryArgItem {
+func QueryArg(key string, value interface{}) QueryArgItem {
 	return QueryArgItem{
 		Key:   key,
 		Value: value,
@@ -46,7 +46,7 @@ type fqlRequest struct {
 	TypeCheck bool                   `json:"typecheck"`
 }
 
-func (c *Client) query(ctx context.Context, fql string, args QueryArgs, obj any, typeChecking bool) (*Response, error) {
+func (c *Client) query(ctx context.Context, fql string, args QueryArgs, obj interface{}, typeChecking bool) (*Response, error) {
 	res, err := c.do(ctx, &fqlRequest{
 		Query:     fql,
 		Arguments: args,

@@ -142,12 +142,12 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 }
 
 // Query invoke fql with args and map to the provided obj
-func (c *Client) Query(fql string, args QueryArgs, obj any) (*Response, error) {
+func (c *Client) Query(fql string, args QueryArgs, obj interface{}) (*Response, error) {
 	return c.query(c.ctx, fql, args, obj, c.typeCheckingEnabled)
 }
 
 // QueryWithOptions invoke fql with request options
-func (c *Client) QueryWithOptions(fql string, args QueryArgs, obj any, opts ...ClientConfigFn) (*Response, error) {
+func (c *Client) QueryWithOptions(fql string, args QueryArgs, obj interface{}, opts ...ClientConfigFn) (*Response, error) {
 	tempClient := *c
 	for _, o := range opts {
 		o(&tempClient)
