@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"strconv"
 	"sync/atomic"
@@ -153,5 +152,5 @@ func parseTxnTimeHeader(header http.Header) (int64, error) {
 		return strconv.ParseInt(h, 10, 64)
 	}
 
-	return math.MinInt, nil
+	return 0, nil
 }
