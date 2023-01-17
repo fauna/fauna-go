@@ -19,9 +19,9 @@ func TestDefaultClient(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 	t.Setenv(fauna.EnvFaunaSecret, "secret")
 
-	client, err := fauna.DefaultClient()
-	if err != nil {
-		t.FailNow()
+	client, clientErr := fauna.DefaultClient()
+	if clientErr != nil {
+		t.Fatalf("should be able to init default client: %s", clientErr.Error())
 	}
 
 	t.Run("should have version", func(t *testing.T) {
@@ -62,8 +62,7 @@ func TestDefaultClient(t *testing.T) {
 					t.Logf("response: %s", res.Bytes)
 				}
 
-				t.Errorf("%s", queryErr)
-				t.FailNow()
+				t.Fatalf("%s", queryErr)
 			}
 
 			n := len(s)
@@ -154,30 +153,87 @@ func TestNewClient(t *testing.T) {
 		}
 	})
 
-	t.Run("disable typechecking", func(t *testing.T) {
+	t.Run("disable type checking", func(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
-		t.Setenv(fauna.EnvFaunaTypeCheckEnabled, "false")
+		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
-		_, clientErr := fauna.DefaultClient()
-		if clientErr != nil {
-			t.Errorf("should be able to init a client without type checking: %s", clientErr.Error())
-		}
+		t.Run("at client", func(t *testing.T) {
+			t.Setenv(fauna.EnvFaunaTypeCheckEnabled, "false")
+
+		})
+
+		t.Run("at request", func(t *testing.T) {
+			client, clientErr := fauna.DefaultClient()
+			if clientErr != nil {
+				t.Fatalf("should be able to init client: %s", clientErr.Error())
+			}
+
+			_, queryErr := client.QueryWithOptions(`Math.abs(-5.123e3)`, nil, nil, fauna.TypeChecking(false))
+			if queryErr != nil {
+				t.Fatalf("should be able to query without type checking: %s", queryErr)
+			}
+		})
 	})
 
 	t.Run("disable last transaction time", func(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
-		client := fauna.NewClient("secret", fauna.LastTransactionTime(false))
+		t.Run("at client", func(t *testing.T) {
+			t.Setenv(fauna.EnvFaunaTrackTransactionTimeEnabled, "false")
 
-		_, resErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
-		if resErr != nil {
-			t.Logf("query failed: %s", resErr)
-		}
+			client, clientErr := fauna.DefaultClient()
+			if clientErr != nil {
+				t.Errorf("should be able to init a client without type checking: %s", clientErr.Error())
+			}
 
-		if client.GetLastTxnTime() != 0 {
-			t.Errorf("last transaction time should be 0")
-		}
+			first := client.GetLastTxnTime()
+			if first != 0 {
+				t.Errorf("shouldn't have a transaction time")
+			}
+
+			_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
+			if queryErr != nil {
+				t.Fatalf("query shouldn't error: %s", queryErr.Error())
+			}
+
+			if after := client.GetLastTxnTime(); after != 0 {
+				t.Errorf("last transaction time should still be 0, got: %d", after)
+			}
+		})
+
+		t.Run("at request", func(t *testing.T) {
+			client, clientErr := fauna.DefaultClient()
+			if clientErr != nil {
+				t.Fatalf("should be able to init a client: %s", clientErr.Error())
+			}
+
+			first := client.GetLastTxnTime()
+			if first != 0 {
+				t.Errorf("shouldn't have a transaction time")
+			}
+
+			_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
+			if queryErr != nil {
+				t.Fatalf("query shouldn't error: %s", queryErr.Error())
+			}
+
+			before := client.GetLastTxnTime()
+			if before == 0 {
+				t.Errorf("should have a last transaction time greater than 0, got: %d", before)
+			}
+
+			_, queryErr = client.QueryWithOptions(`Math.abs(-5.123e3)`, nil, nil, fauna.LastTransactionTime(false))
+			if queryErr != nil {
+				t.Fatalf("query shouldn't error: %s", queryErr.Error())
+			}
+
+			after := client.GetLastTxnTime()
+
+			if before != after {
+				t.Errorf("transaction time shouldn't have changed, before [%d] after [%d]", before, after)
+			}
+		})
 	})
 }
 
@@ -186,8 +242,7 @@ func TestBasicCRUDRequests(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 	client, err := fauna.DefaultClient()
 	if err != nil {
-		t.Errorf("%s", err.Error())
-		t.FailNow()
+		t.Fatalf("%s", err.Error())
 	}
 
 	coll := fmt.Sprintf("Person_%v", randomString(12))
@@ -195,8 +250,7 @@ func TestBasicCRUDRequests(t *testing.T) {
 	t.Run("Create a collection", func(t *testing.T) {
 		res, queryErr := client.Query(`Collection.create({ name: arg1 })`, fauna.QueryArguments(fauna.QueryArg("arg1", coll)), nil)
 		if queryErr != nil {
-			t.Logf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
-			t.FailNow()
+			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
 		}
 	})
 
@@ -209,8 +263,7 @@ func TestBasicCRUDRequests(t *testing.T) {
 	t.Run("Create a Person", func(t *testing.T) {
 		res, queryErr := client.Query(fmt.Sprintf(`%s.create(%s)`, coll, p.String()), nil, nil)
 		if queryErr != nil {
-			t.Logf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
-			t.FailNow()
+			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
 		}
 	})
 
@@ -218,8 +271,7 @@ func TestBasicCRUDRequests(t *testing.T) {
 	t.Run("Query a Person", func(t *testing.T) {
 		res, queryErr := client.Query(fmt.Sprintf(`%s.all.firstWhere(.name == "%s")`, coll, n), nil, &q)
 		if queryErr != nil {
-			t.Logf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
-			t.FailNow()
+			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
 		}
 
 		if res != nil {
@@ -234,8 +286,7 @@ func TestBasicCRUDRequests(t *testing.T) {
 	t.Run("Update a Person", func(t *testing.T) {
 		res, queryErr := client.Query(fmt.Sprintf(`%v.all.firstWhere(.name == "%v").update({address: "321 Rainy St Seattle, WA 98011"})`, coll, n), nil, &q)
 		if queryErr != nil {
-			t.Logf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
-			t.FailNow()
+			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
 		}
 
 		if p.Address == q.Address {
@@ -246,16 +297,14 @@ func TestBasicCRUDRequests(t *testing.T) {
 	t.Run("Delete a Person", func(t *testing.T) {
 		res, queryErr := client.Query(fmt.Sprintf(`%s.all.firstWhere(.name == arg1).delete()`, coll), fauna.QueryArguments(fauna.QueryArg("arg1", p.Name)), &q)
 		if queryErr != nil {
-			t.Logf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
-			t.FailNow()
+			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
 		}
 	})
 
 	t.Run("Delete a Collection", func(t *testing.T) {
 		res, queryErr := client.Query(`Collection.byName(arg1).delete()`, fauna.QueryArguments(fauna.QueryArg("arg1", coll)), nil)
 		if queryErr != nil {
-			t.Logf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
-			t.FailNow()
+			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
 		}
 	})
 }
@@ -327,8 +376,7 @@ func TestHeaders(t *testing.T) {
 				// running a simple query just to invoke the request
 				_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
 				if queryErr != nil {
-					t.Errorf("%s", queryErr.Error())
-					t.FailNow()
+					t.Fatalf("%s", queryErr.Error())
 				}
 			})
 		}
@@ -366,14 +414,12 @@ func TestErrorHandling(t *testing.T) {
 
 		client, clientErr := fauna.DefaultClient()
 		if clientErr != nil {
-			t.Errorf("failed to init fauna.Client")
-			t.FailNow()
+			t.Fatalf("failed to init fauna.Client")
 		}
 
 		_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
 		if queryErr == nil {
-			t.Errorf("expected an error")
-			t.FailNow()
+			t.Fatalf("expected an error")
 		}
 
 		if !errors.As(queryErr, &fauna.AuthenticationError{}) {
@@ -391,14 +437,12 @@ func TestErrorHandling(t *testing.T) {
 
 		client, clientErr := fauna.DefaultClient()
 		if clientErr != nil {
-			t.Errorf("failed to init fauna.Client")
-			t.FailNow()
+			t.Fatalf("failed to init fauna.Client")
 		}
 
 		_, queryErr := client.Query(`SillyPants`, nil, nil)
 		if queryErr == nil {
-			t.Errorf("expected an error")
-			t.FailNow()
+			t.Fatalf("expected an error")
 		}
 
 		if !errors.As(queryErr, &fauna.QueryCheckError{}) {
@@ -412,16 +456,14 @@ func TestErrorHandling(t *testing.T) {
 
 		client, clientErr := fauna.DefaultClient()
 		if clientErr != nil {
-			t.Errorf("failed to init fauna.Client")
-			t.FailNow()
+			t.Fatalf("failed to init fauna.Client")
 		}
 
 		testCollection := "testing"
 
 		res, queryErr := client.Query(`Collection.create({ name: arg1 })`, fauna.QueryArguments(fauna.QueryArg("arg1", testCollection)), nil)
 		if queryErr != nil {
-			t.Logf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
-			t.FailNow()
+			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
 		}
 
 		res, queryErr = client.Query(`Collection.create({ name: arg1 })`, fauna.QueryArguments(fauna.QueryArg("arg1", testCollection)), nil)
@@ -438,8 +480,7 @@ func TestErrorHandling(t *testing.T) {
 
 		res, queryErr = client.Query(`Collection.byName(arg1).delete()`, fauna.QueryArguments(fauna.QueryArg("arg1", testCollection)), nil)
 		if queryErr != nil {
-			t.Logf("error: %s", queryErr.Error())
-			t.FailNow()
+			t.Fatalf("error: %s", queryErr.Error())
 		}
 	})
 }

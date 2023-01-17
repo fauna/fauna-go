@@ -29,13 +29,13 @@ func TestGetServiceError(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Query error",
+			name: "Query check error",
 			args: args{
 				httpStatus: http.StatusBadRequest,
-				e:          &fauna.ServiceError{Code: "invalid_identifier", Message: ""},
+				e:          &fauna.ServiceError{Code: "invalid_query", Message: ""},
 				errType:    fauna.QueryCheckError{},
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name: "Query runtime error",
@@ -44,7 +44,7 @@ func TestGetServiceError(t *testing.T) {
 				e:          &fauna.ServiceError{Code: "", Message: ""},
 				errType:    fauna.QueryRuntimeError{},
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name: "Unauthorized",
@@ -107,7 +107,7 @@ func TestGetServiceError(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetServiceError() error = %v, wantErr %v", err, tt.wantErr)
 			} else if tt.wantErr && !errors.Is(err, tt.args.errType) {
-				t.Errorf("error [%v] wanted [%v]", err, tt.args.errType)
+				t.Errorf("error [%T] wanted [%T]", err, tt.args.errType)
 			}
 		})
 	}

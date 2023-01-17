@@ -29,6 +29,13 @@ func Headers(headers map[string]string) ClientConfigFn {
 	}
 }
 
+// TypeChecking toggle if fauna.Client enforces type checking
+func TypeChecking(enabled bool) ClientConfigFn {
+	return func(c *Client) {
+		c.typeCheckingEnabled = enabled
+	}
+}
+
 // LastTransactionTime toggle if fauna.Client records the last transaction time
 func LastTransactionTime(enabled bool) ClientConfigFn {
 	return func(c *Client) {

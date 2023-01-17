@@ -23,10 +23,11 @@ const (
 	EndpointPreview    = "https://db.fauna-preview.com/query/1"
 	EndpointLocal      = "http://localhost:8443/query/1"
 
-	EnvFaunaEndpoint         = "FAUNA_ENDPOINT"
-	EnvFaunaSecret           = "FAUNA_SECRET"
-	EnvFaunaTimeout          = "FAUNA_TIMEOUT"
-	EnvFaunaTypeCheckEnabled = "FAUNA_TYPE_CHECK_ENABLED"
+	EnvFaunaEndpoint                    = "FAUNA_ENDPOINT"
+	EnvFaunaSecret                      = "FAUNA_SECRET"
+	EnvFaunaTimeout                     = "FAUNA_TIMEOUT"
+	EnvFaunaTypeCheckEnabled            = "FAUNA_TYPE_CHECK_ENABLED"
+	EnvFaunaTrackTransactionTimeEnabled = "FAUNA_TRACK_TRANSACTION_TIME_ENABLED"
 
 	// DefaultTimeout for both the http.Request and the HeaderTimeoutMs
 	DefaultTimeout = time.Minute
@@ -116,6 +117,12 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 		typeCheckEnabled = !(strings.ToLower(typeCheckEnabledVal) == "false")
 	}
 
+	txnTimeEnabled := true
+	if val, found := os.LookupEnv(EnvFaunaTrackTransactionTimeEnabled); found {
+		// TRICKY: invert boolean check, we only want to disable if explicitly set to false
+		txnTimeEnabled = !(strings.ToLower(val) == "false")
+	}
+
 	client := &Client{
 		ctx:                 context.TODO(),
 		secret:              secret,
@@ -123,7 +130,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 		url:                 EndpointProduction,
 		headers:             map[string]string{},
 		typeCheckingEnabled: typeCheckEnabled,
-		txnTimeEnabled:      true,
+		txnTimeEnabled:      txnTimeEnabled,
 	}
 
 	// set options to override defaults
