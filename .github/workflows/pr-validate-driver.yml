@@ -16,8 +16,6 @@ jobs:
         image: fauna/faunadb:latest
         ports:
           - 8443:8443
-        volumes:
-          - ./assets/docker/fauna-local-config.yml:/etc/faunadb.yml
 
     steps:
       - uses: actions/checkout@v3
