@@ -478,7 +478,7 @@ func TestErrorHandling(t *testing.T) {
 
 		t.Logf("status: %d\nbody: %s", res.Raw.StatusCode, res.Bytes)
 
-		res, queryErr = client.Query(`Collection.byName(arg1).delete()`, fauna.QueryArguments(fauna.QueryArg("arg1", testCollection)), nil)
+		_, queryErr = client.Query(`Collection.byName(arg1).delete()`, fauna.QueryArguments(fauna.QueryArg("arg1", testCollection)), nil)
 		if queryErr != nil {
 			t.Fatalf("error: %s", queryErr.Error())
 		}

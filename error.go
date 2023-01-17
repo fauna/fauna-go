@@ -1,6 +1,8 @@
 package fauna
 
-import "net/http"
+import (
+	"net/http"
+)
 
 var queryCheckFailureCodes = map[string]struct{}{
 	"invalid_function_definition": {},

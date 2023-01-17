@@ -1,7 +1,7 @@
 package fauna_test
 
 import (
-	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -10,9 +10,9 @@ import (
 
 func TestGetServiceError(t *testing.T) {
 	type args struct {
-		httpStatus int
-		e          *fauna.ServiceError
-		errType    error
+		httpStatus   int
+		serviceError *fauna.ServiceError
+		errType      error
 	}
 	tests := []struct {
 		name    string
@@ -22,92 +22,92 @@ func TestGetServiceError(t *testing.T) {
 		{
 			name: "No error",
 			args: args{
-				httpStatus: 200,
-				e:          nil,
-				errType:    nil,
+				httpStatus:   200,
+				serviceError: nil,
+				errType:      nil,
 			},
 			wantErr: false,
 		},
 		{
 			name: "Query check error",
 			args: args{
-				httpStatus: http.StatusBadRequest,
-				e:          &fauna.ServiceError{Code: "invalid_query", Message: ""},
-				errType:    fauna.QueryCheckError{},
+				httpStatus:   http.StatusBadRequest,
+				serviceError: &fauna.ServiceError{Code: "invalid_query", Message: ""},
+				errType:      fauna.QueryCheckError{},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Query runtime error",
 			args: args{
-				httpStatus: http.StatusBadRequest,
-				e:          &fauna.ServiceError{Code: "", Message: ""},
-				errType:    fauna.QueryRuntimeError{},
+				httpStatus:   http.StatusBadRequest,
+				serviceError: &fauna.ServiceError{Code: "", Message: ""},
+				errType:      fauna.QueryRuntimeError{},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Unauthorized",
 			args: args{
-				httpStatus: http.StatusUnauthorized,
-				e:          &fauna.ServiceError{Code: "", Message: ""},
-				errType:    fauna.AuthenticationError{},
+				httpStatus:   http.StatusUnauthorized,
+				serviceError: &fauna.ServiceError{Code: "", Message: ""},
+				errType:      fauna.AuthenticationError{},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Access not granted",
 			args: args{
-				httpStatus: http.StatusForbidden,
-				e:          &fauna.ServiceError{Code: "", Message: ""},
-				errType:    fauna.AuthorizationError{},
+				httpStatus:   http.StatusForbidden,
+				serviceError: &fauna.ServiceError{Code: "", Message: ""},
+				errType:      fauna.AuthorizationError{},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Too many requests",
 			args: args{
-				httpStatus: http.StatusTooManyRequests,
-				e:          &fauna.ServiceError{Code: "", Message: ""},
-				errType:    fauna.ThrottlingError{},
+				httpStatus:   http.StatusTooManyRequests,
+				serviceError: &fauna.ServiceError{Code: "", Message: ""},
+				errType:      fauna.ThrottlingError{},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Query timeout",
 			args: args{
-				httpStatus: 440,
-				e:          &fauna.ServiceError{Code: "", Message: ""},
-				errType:    fauna.QueryTimeoutError{},
+				httpStatus:   440,
+				serviceError: &fauna.ServiceError{Code: "", Message: ""},
+				errType:      fauna.QueryTimeoutError{},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Internal error",
 			args: args{
-				httpStatus: http.StatusInternalServerError,
-				e:          &fauna.ServiceError{Code: "", Message: ""},
-				errType:    fauna.ServiceInternalError{},
+				httpStatus:   http.StatusInternalServerError,
+				serviceError: &fauna.ServiceError{Code: "", Message: ""},
+				errType:      fauna.ServiceInternalError{},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Service timeout",
 			args: args{
-				httpStatus: http.StatusServiceUnavailable,
-				e:          &fauna.ServiceError{Code: "", Message: ""},
-				errType:    fauna.ServiceTimeoutError{},
+				httpStatus:   http.StatusServiceUnavailable,
+				serviceError: &fauna.ServiceError{Code: "", Message: ""},
+				errType:      fauna.ServiceTimeoutError{},
 			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := fauna.GetServiceError(tt.args.httpStatus, tt.args.e)
+			err := fauna.GetServiceError(tt.args.httpStatus, tt.args.serviceError)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetServiceError() error = %v, wantErr %v", err, tt.wantErr)
-			} else if tt.wantErr && !errors.Is(err, tt.args.errType) {
-				t.Errorf("error [%T] wanted [%T]", err, tt.args.errType)
+			} else if tt.wantErr && fmt.Sprintf("%T", err) != fmt.Sprintf("%T", tt.args.errType) {
+				t.Errorf("got [%T] wanted [%T]", err, tt.args.errType)
 			}
 		})
 	}
