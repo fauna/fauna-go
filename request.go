@@ -15,7 +15,7 @@ import (
 // QueryArgItem query args structure
 type QueryArgItem struct {
 	Key   string
-	Value any
+	Value interface{}
 }
 
 // QueryArg create a QueryArgItem
