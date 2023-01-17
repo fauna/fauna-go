@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fauna/fauna-go/internal/runtime"
+	"github.com/fauna/fauna-go/internal/fingerprinting"
 	"golang.org/x/net/http2"
 )
 
@@ -23,9 +23,10 @@ const (
 	EndpointPreview    = "https://db.fauna-preview.com/query/1"
 	EndpointLocal      = "http://localhost:8443/query/1"
 
-	EnvFaunaEndpoint                    = "FAUNA_ENDPOINT"
-	EnvFaunaSecret                      = "FAUNA_SECRET"
-	EnvFaunaTimeout                     = "FAUNA_TIMEOUT"
+	EnvFaunaEndpoint = "FAUNA_ENDPOINT"
+	EnvFaunaSecret   = "FAUNA_SECRET"
+	EnvFaunaTimeout  = "FAUNA_TIMEOUT"
+	// TODO: get input from product about naming & whether or not this should be in headers or body by default
 	EnvFaunaTypeCheckEnabled            = "FAUNA_TYPE_CHECK_ENABLED"
 	EnvFaunaTrackTransactionTimeEnabled = "FAUNA_TRACK_TRANSACTION_TIME_ENABLED"
 
@@ -99,9 +100,9 @@ func DefaultClient() (*Client, error) {
 			HeaderAuthorization:        fmt.Sprintf("Bearer %s", secret),
 			HeaderContentType:          "application/json; charset=utf-8",
 			"X-Fauna-Driver":           DriverVersion,
-			"X-Runtime-Environment-OS": runtime.EnvironmentOS(),
-			"X-Runtime-Environment":    runtime.Environment(),
-			"X-Go-Version":             runtime.Version(),
+			"X-Runtime-Environment-OS": fingerprinting.EnvironmentOS(),
+			"X-Runtime-Environment":    fingerprinting.Environment(),
+			"X-Go-Version":             fingerprinting.Version(),
 		}),
 		Context(context.TODO()),
 		Timeout(clientTimeout),
