@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/fauna/fauna-go"
 )
@@ -18,9 +17,6 @@ func ExampleNewClient() {
 		"secret",
 		fauna.URL(fauna.EndpointLocal),
 		fauna.HTTPClient(http.DefaultClient),
-		fauna.Headers(map[string]string{
-			fauna.HeaderTxnTime: fmt.Sprintf("%v", time.Now().UnixMicro()),
-		}),
 		fauna.Context(context.TODO()),
 	)
 
