@@ -24,11 +24,11 @@ const (
 	EndpointPreview    = "https://db.fauna-preview.com/query/1"
 	EndpointLocal      = "http://localhost:8443/query/1"
 
-	EnvFaunaEndpoint                    = "FAUNA_ENDPOINT"
-	EnvFaunaSecret                      = "FAUNA_SECRET"
-	EnvFaunaTimeout                     = "FAUNA_TIMEOUT"
-	EnvFaunaTypeCheckEnabled            = "FAUNA_TYPE_CHECK_ENABLED"
-	EnvFaunaTrackTransactionTimeEnabled = "FAUNA_TRACK_TRANSACTION_TIME_ENABLED"
+	EnvFaunaEndpoint            = "FAUNA_ENDPOINT"
+	EnvFaunaSecret              = "FAUNA_SECRET"
+	EnvFaunaTimeout             = "FAUNA_TIMEOUT"
+	EnvFaunaTypeCheckEnabled    = "FAUNA_TYPE_CHECK_ENABLED"
+	EnvFaunaTrackTxnTimeEnabled = "FAUNA_TRACK_TXN_TIME_ENABLED"
 
 	// DefaultTimeout for both the http.Request and the HeaderTimeoutMs
 	DefaultTimeout = time.Minute
@@ -120,7 +120,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	}
 
 	txnTimeEnabled := true
-	if val, found := os.LookupEnv(EnvFaunaTrackTransactionTimeEnabled); found {
+	if val, found := os.LookupEnv(EnvFaunaTrackTxnTimeEnabled); found {
 		// TRICKY: invert boolean check, we only want to disable if explicitly set to false
 		txnTimeEnabled = !(strings.ToLower(val) == "false")
 	}
@@ -145,15 +145,18 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 
 // Query invoke fql with args and map to the provided obj
 func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...QueryOptFn) (*Response, error) {
-	res, err := c.do(
-		c.ctx,
-		&fqlRequest{
-			Query:     fql,
-			Arguments: args,
-			TypeCheck: c.typeCheckingEnabled,
-		},
-		opts...,
-	)
+	req := &fqlRequest{
+		Context:        c.ctx,
+		Query:          fql,
+		Arguments:      args,
+		Headers:        c.headers,
+		TxnTimeEnabled: c.txnTimeEnabled,
+	}
+
+	for _, o := range opts {
+		o(req)
+	}
+	res, err := c.do(req)
 	if err != nil {
 		return res, err
 	}

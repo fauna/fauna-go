@@ -180,7 +180,7 @@ func TestNewClient(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
 		t.Run("at client", func(t *testing.T) {
-			t.Setenv(fauna.EnvFaunaTrackTransactionTimeEnabled, "false")
+			t.Setenv(fauna.EnvFaunaTrackTxnTimeEnabled, "false")
 
 			client, clientErr := fauna.DefaultClient()
 			if clientErr != nil {
@@ -223,7 +223,7 @@ func TestNewClient(t *testing.T) {
 				t.Errorf("should have a last transaction time greater than 0, got: %d", before)
 			}
 
-			_, queryErr = client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTransactionTime(false))
+			_, queryErr = client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTxnTime(false))
 			if queryErr != nil {
 				t.Fatalf("query shouldn't error: %s", queryErr.Error())
 			}

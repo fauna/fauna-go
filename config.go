@@ -36,8 +36,8 @@ func TypeChecking(enabled bool) ClientConfigFn {
 	}
 }
 
-// LastTransactionTime toggle if fauna.Client records the last transaction time
-func LastTransactionTime(enabled bool) ClientConfigFn {
+// LastTxnTime toggle if fauna.Client records the last transaction time
+func LastTxnTime(enabled bool) ClientConfigFn {
 	return func(c *Client) {
 		c.txnTimeEnabled = enabled
 	}
@@ -82,24 +82,32 @@ func (c *Client) SetTypeChecking(enabled bool) {
 	c.typeCheckingEnabled = enabled
 }
 
-type QueryOptFn func(req *http.Request)
+type QueryOptFn func(req *fqlRequest)
 
-// QueryTransactionTime toggle if fauna.Client records the last transaction for the Query
-func QueryTransactionTime(enabled bool) QueryOptFn {
-	return func(req *http.Request) {
-		req.Header.Set(EnvFaunaTrackTransactionTimeEnabled, fmt.Sprintf("%v", enabled))
+// QueryContext set the context.Context for the Query
+func QueryContext(ctx context.Context) QueryOptFn {
+	return func(req *fqlRequest) {
+		req.Context = ctx
+	}
+}
+
+// QueryTxnTime toggle if fauna.Client records the last transaction for the Query
+func QueryTxnTime(enabled bool) QueryOptFn {
+	return func(req *fqlRequest) {
+		req.TxnTimeEnabled = enabled
 	}
 }
 
 // QueryTypeChecking toggle if fauna.Client uses type checking
 func QueryTypeChecking(enabled bool) QueryOptFn {
-	return func(req *http.Request) {
-		req.Header.Set(HeaderTypeChecking, fmt.Sprintf("%v", enabled))
+	return func(req *fqlRequest) {
+		req.Headers[HeaderTypeChecking] = fmt.Sprintf("%v", enabled)
 	}
 }
 
+// QueryTimeout set the query timeout
 func QueryTimeout(dur time.Duration) QueryOptFn {
-	return func(req *http.Request) {
-		req.Header.Set(HeaderTypeChecking, fmt.Sprintf("%f", dur.Seconds()))
+	return func(req *fqlRequest) {
+		req.Headers[HeaderTypeChecking] = fmt.Sprintf("%f", dur.Seconds())
 	}
 }

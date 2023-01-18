@@ -40,36 +40,34 @@ func QueryArguments(args ...QueryArgItem) QueryArgs {
 }
 
 type fqlRequest struct {
-	Query     string                 `json:"query"`
-	Arguments map[string]interface{} `json:"arguments,omitempty"`
-	TypeCheck bool                   `json:"typecheck"`
+	Context        context.Context        `json:"-"`
+	Headers        map[string]string      `json:"-"`
+	TxnTimeEnabled bool                   `json:"-"`
+	Query          string                 `json:"query"`
+	Arguments      map[string]interface{} `json:"arguments,omitempty"`
+	TypeCheck      bool                   `json:"typecheck"`
 }
 
-func (c *Client) do(ctx context.Context, request *fqlRequest, opts ...QueryOptFn) (*Response, error) {
+func (c *Client) do(request *fqlRequest) (*Response, error) {
 	bytesOut, bytesErr := json.Marshal(request)
 	if bytesErr != nil {
 		return nil, bytesErr
 	}
 
-	req, reqErr := http.NewRequestWithContext(ctx, http.MethodPost, c.url, bytes.NewReader(bytesOut))
+	req, reqErr := http.NewRequestWithContext(request.Context, http.MethodPost, c.url, bytes.NewReader(bytesOut))
 	if reqErr != nil {
 		return nil, fmt.Errorf("failed to init request: %w", reqErr)
 	}
 
 	req.Header.Set(HeaderAuthorization, `Bearer `+c.secret)
-	for k, v := range c.headers {
+	for k, v := range request.Headers {
 		req.Header.Set(k, v)
 	}
 
-	if c.txnTimeEnabled {
+	if request.TxnTimeEnabled {
 		if lastSeen := atomic.LoadInt64(&c.lastTxnTime); lastSeen != 0 {
 			req.Header.Set(HeaderLastSeenTxn, strconv.FormatInt(lastSeen, 10))
 		}
-	}
-
-	// apply query options to request
-	for _, o := range opts {
-		o(req)
 	}
 
 	r, doErr := c.http.Do(req)
@@ -95,27 +93,25 @@ func (c *Client) do(ctx context.Context, request *fqlRequest, opts ...QueryOptFn
 		return &response, fmt.Errorf("failed to umarmshal response: %w", unmarshalErr)
 	}
 
-	if txnTimeErr := c.storeLastTxnTime(r.Header, req.Header.Get(EnvFaunaTrackTransactionTimeEnabled) != "false"); txnTimeErr != nil {
-		return &response, fmt.Errorf("failed to parse transaction time: %w", txnTimeErr)
+	if request.TxnTimeEnabled {
+		if txnTimeErr := c.storeLastTxnTime(r.Header); txnTimeErr != nil {
+			return &response, fmt.Errorf("failed to parse transaction time: %w", txnTimeErr)
+		}
 	}
 
-	if response.Error != nil {
-		return &response, GetServiceError(r.StatusCode, response.Error)
+	if serviceErr := GetServiceError(r.StatusCode, response.Error); serviceErr != nil {
+		return &response, serviceErr
 	}
 
 	return &response, nil
 }
 
-func (c *Client) storeLastTxnTime(header http.Header, enabled bool) error {
-	if !enabled {
-		c.syncLastTxnTime(0)
-	} else if c.txnTimeEnabled {
-		t, err := parseTxnTimeHeader(header)
-		if err != nil {
-			return fmt.Errorf("failed to parse tranaction time: %w", err)
-		}
-		c.syncLastTxnTime(t)
+func (c *Client) storeLastTxnTime(header http.Header) error {
+	t, err := parseTxnTimeHeader(header)
+	if err != nil {
+		return fmt.Errorf("failed to parse tranaction time: %w", err)
 	}
+	c.syncLastTxnTime(t)
 
 	return nil
 }
