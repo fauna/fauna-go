@@ -81,3 +81,25 @@ func (c *Client) SetHeader(key, val string) {
 func (c *Client) SetTypeChecking(enabled bool) {
 	c.typeCheckingEnabled = enabled
 }
+
+type QueryOptFn func(req *http.Request)
+
+// QueryTransactionTime toggle if fauna.Client records the last transaction for the Query
+func QueryTransactionTime(enabled bool) QueryOptFn {
+	return func(req *http.Request) {
+		req.Header.Set(EnvFaunaTrackTransactionTimeEnabled, fmt.Sprintf("%v", enabled))
+	}
+}
+
+// QueryTypeChecking toggle if fauna.Client uses type checking
+func QueryTypeChecking(enabled bool) QueryOptFn {
+	return func(req *http.Request) {
+		req.Header.Set(HeaderTypeChecking, fmt.Sprintf("%v", enabled))
+	}
+}
+
+func QueryTimeout(dur time.Duration) QueryOptFn {
+	return func(req *http.Request) {
+		req.Header.Set(HeaderTypeChecking, fmt.Sprintf("%f", dur.Seconds()))
+	}
+}

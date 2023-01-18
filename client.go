@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -23,10 +24,9 @@ const (
 	EndpointPreview    = "https://db.fauna-preview.com/query/1"
 	EndpointLocal      = "http://localhost:8443/query/1"
 
-	EnvFaunaEndpoint = "FAUNA_ENDPOINT"
-	EnvFaunaSecret   = "FAUNA_SECRET"
-	EnvFaunaTimeout  = "FAUNA_TIMEOUT"
-	// TODO: get input from product about naming & whether or not this should be in headers or body by default
+	EnvFaunaEndpoint                    = "FAUNA_ENDPOINT"
+	EnvFaunaSecret                      = "FAUNA_SECRET"
+	EnvFaunaTimeout                     = "FAUNA_TIMEOUT"
 	EnvFaunaTypeCheckEnabled            = "FAUNA_TYPE_CHECK_ENABLED"
 	EnvFaunaTrackTransactionTimeEnabled = "FAUNA_TRACK_TRANSACTION_TIME_ENABLED"
 
@@ -40,6 +40,7 @@ const (
 	HeaderLinearized           = "X-Linearized"
 	HeaderMaxContentionRetries = "X-Max-Contention-Retries"
 	HeaderTimeoutMs            = "X-Timeout-Ms"
+	HeaderTypeChecking         = "X-Fauna-Type-Checking"
 )
 
 // Client type for
@@ -143,18 +144,28 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 }
 
 // Query invoke fql with args and map to the provided obj
-func (c *Client) Query(fql string, args QueryArgs, obj interface{}) (*Response, error) {
-	return c.query(c.ctx, fql, args, obj, c.typeCheckingEnabled)
-}
-
-// QueryWithOptions invoke fql with request options
-func (c *Client) QueryWithOptions(fql string, args QueryArgs, obj interface{}, opts ...ClientConfigFn) (*Response, error) {
-	tempClient := *c
-	for _, o := range opts {
-		o(&tempClient)
+func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...QueryOptFn) (*Response, error) {
+	res, err := c.do(
+		c.ctx,
+		&fqlRequest{
+			Query:     fql,
+			Arguments: args,
+			TypeCheck: c.typeCheckingEnabled,
+		},
+		opts...,
+	)
+	if err != nil {
+		return res, err
 	}
 
-	return tempClient.query(tempClient.ctx, fql, args, obj, tempClient.typeCheckingEnabled)
+	if obj != nil {
+		unmarshalErr := json.Unmarshal(res.Data, obj)
+		if unmarshalErr != nil {
+			return res, unmarshalErr
+		}
+	}
+
+	return res, nil
 }
 
 // GetLastTxnTime gets the freshest timestamp reported to this client.

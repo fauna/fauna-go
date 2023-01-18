@@ -75,8 +75,8 @@ func TestDefaultClient(t *testing.T) {
 			}
 		})
 
-		t.Run("Query options", func(t *testing.T) {
-			res, queryErr := client.QueryWithOptions(`Math.abs(-5.123e3)`, nil, nil, fauna.Timeout(time.Second))
+		t.Run("Query with options", func(t *testing.T) {
+			res, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTimeout(time.Second))
 			if queryErr != nil {
 				t.Errorf("query failed: %s", queryErr.Error())
 			}
@@ -168,7 +168,7 @@ func TestNewClient(t *testing.T) {
 				t.Fatalf("should be able to init client: %s", clientErr.Error())
 			}
 
-			_, queryErr := client.QueryWithOptions(`Math.abs(-5.123e3)`, nil, nil, fauna.TypeChecking(false))
+			_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTypeChecking(false))
 			if queryErr != nil {
 				t.Fatalf("should be able to query without type checking: %s", queryErr)
 			}
@@ -210,7 +210,7 @@ func TestNewClient(t *testing.T) {
 
 			first := client.GetLastTxnTime()
 			if first != 0 {
-				t.Errorf("shouldn't have a transaction time")
+				t.Fatalf("shouldn't have a transaction time")
 			}
 
 			_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
@@ -223,15 +223,14 @@ func TestNewClient(t *testing.T) {
 				t.Errorf("should have a last transaction time greater than 0, got: %d", before)
 			}
 
-			_, queryErr = client.QueryWithOptions(`Math.abs(-5.123e3)`, nil, nil, fauna.LastTransactionTime(false))
+			_, queryErr = client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTransactionTime(false))
 			if queryErr != nil {
 				t.Fatalf("query shouldn't error: %s", queryErr.Error())
 			}
 
 			after := client.GetLastTxnTime()
-
 			if before != after {
-				t.Errorf("transaction time shouldn't have changed, before [%d] after [%d]", before, after)
+				t.Errorf("transaction time not have changed, before [%d] after [%d]", before, after)
 			}
 		})
 	})

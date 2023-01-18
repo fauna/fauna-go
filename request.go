@@ -45,27 +45,7 @@ type fqlRequest struct {
 	TypeCheck bool                   `json:"typecheck"`
 }
 
-func (c *Client) query(ctx context.Context, fql string, args QueryArgs, obj interface{}, typeChecking bool) (*Response, error) {
-	res, err := c.do(ctx, &fqlRequest{
-		Query:     fql,
-		Arguments: args,
-		TypeCheck: typeChecking,
-	})
-	if err != nil {
-		return res, err
-	}
-
-	if obj != nil {
-		unmarshalErr := json.Unmarshal(res.Data, obj)
-		if unmarshalErr != nil {
-			return res, unmarshalErr
-		}
-	}
-
-	return res, nil
-}
-
-func (c *Client) do(ctx context.Context, request *fqlRequest) (*Response, error) {
+func (c *Client) do(ctx context.Context, request *fqlRequest, opts ...QueryOptFn) (*Response, error) {
 	bytesOut, bytesErr := json.Marshal(request)
 	if bytesErr != nil {
 		return nil, bytesErr
@@ -85,6 +65,11 @@ func (c *Client) do(ctx context.Context, request *fqlRequest) (*Response, error)
 		if lastSeen := atomic.LoadInt64(&c.lastTxnTime); lastSeen != 0 {
 			req.Header.Set(HeaderLastSeenTxn, strconv.FormatInt(lastSeen, 10))
 		}
+	}
+
+	// apply query options to request
+	for _, o := range opts {
+		o(req)
 	}
 
 	r, doErr := c.http.Do(req)
@@ -110,7 +95,7 @@ func (c *Client) do(ctx context.Context, request *fqlRequest) (*Response, error)
 		return &response, fmt.Errorf("failed to umarmshal response: %w", unmarshalErr)
 	}
 
-	if txnTimeErr := c.storeLastTxnTime(r.Header); txnTimeErr != nil {
+	if txnTimeErr := c.storeLastTxnTime(r.Header, req.Header.Get(EnvFaunaTrackTransactionTimeEnabled) != "false"); txnTimeErr != nil {
 		return &response, fmt.Errorf("failed to parse transaction time: %w", txnTimeErr)
 	}
 
@@ -121,8 +106,10 @@ func (c *Client) do(ctx context.Context, request *fqlRequest) (*Response, error)
 	return &response, nil
 }
 
-func (c *Client) storeLastTxnTime(header http.Header) error {
-	if c.txnTimeEnabled {
+func (c *Client) storeLastTxnTime(header http.Header, enabled bool) error {
+	if !enabled {
+		c.syncLastTxnTime(0)
+	} else if c.txnTimeEnabled {
 		t, err := parseTxnTimeHeader(header)
 		if err != nil {
 			return fmt.Errorf("failed to parse tranaction time: %w", err)
