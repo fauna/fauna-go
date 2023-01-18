@@ -392,11 +392,11 @@ func TestHeaders(t *testing.T) {
 			fauna.Timeout(time.Second*3),
 			fauna.MaxContentionRetries(5),
 			fauna.Context(context.Background()),
+			fauna.TypeChecking(true),
 			fauna.Headers(map[string]string{
 				"foobar": "steve",
 			}),
 		)
-		client.SetTypeChecking(false)
 		client.SetHeader(currentHeader, expectedValue)
 	})
 

@@ -1,3 +1,4 @@
+// Package fauna HTTP client for fqlx
 package fauna
 
 import (
@@ -16,6 +17,8 @@ import (
 	"golang.org/x/net/http2"
 )
 
+// DriverVersion semantic version of the driver
+//
 //go:embed version
 var DriverVersion string
 
@@ -43,7 +46,7 @@ const (
 	HeaderTypeChecking         = "X-Fauna-Type-Checking"
 )
 
-// Client type for
+// Client is the Fauna Client.
 type Client struct {
 	url                 string
 	secret              string
@@ -59,7 +62,7 @@ type Client struct {
 	// traceParent?
 }
 
-// DefaultClient initialize fauna.Client with recommend settings
+// DefaultClient initialize a [fauna.Client] with recommend default settings
 func DefaultClient() (*Client, error) {
 	var secret string
 	if val, found := os.LookupEnv(EnvFaunaSecret); !found {
@@ -110,7 +113,7 @@ func DefaultClient() (*Client, error) {
 	), nil
 }
 
-// NewClient initialize a new fauna.Client with custom settings
+// NewClient initialize a new [fauna.Client] with custom settings
 func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	// sensible default
 	typeCheckEnabled := true
@@ -143,7 +146,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	return client
 }
 
-// Query invoke fql with args and map to the provided obj
+// Query invoke fql with args and map to the provided obj, optionally set [QueryOptFn]
 func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...QueryOptFn) (*Response, error) {
 	req := &fqlRequest{
 		Context:        c.ctx,

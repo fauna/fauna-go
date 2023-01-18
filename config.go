@@ -7,20 +7,20 @@ import (
 	"time"
 )
 
-// ClientConfigFn configuration options for fauna.Client
+// ClientConfigFn configuration options for the [fauna.Client]
 type ClientConfigFn func(*Client)
 
-// URL set the client URL
-func URL(url string) ClientConfigFn {
-	return func(c *Client) { c.url = url }
+// Context specify the context to be used for the [fauna.Client]
+func Context(ctx context.Context) ClientConfigFn {
+	return func(c *Client) { c.ctx = ctx }
 }
 
-// HTTPClient set the http.Client for the fauna.Client
+// HTTPClient set the http.Client for the [fauna.Client]
 func HTTPClient(client *http.Client) ClientConfigFn {
 	return func(c *Client) { c.http = client }
 }
 
-// Headers specify headers to on the fauna.Client
+// Headers specify headers for the [fauna.Client]
 func Headers(headers map[string]string) ClientConfigFn {
 	return func(c *Client) {
 		for k, v := range headers {
@@ -29,21 +29,14 @@ func Headers(headers map[string]string) ClientConfigFn {
 	}
 }
 
-// TypeChecking toggle if fauna.Client enforces type checking
-func TypeChecking(enabled bool) ClientConfigFn {
-	return func(c *Client) {
-		c.typeCheckingEnabled = enabled
-	}
-}
-
-// LastTxnTime toggle if fauna.Client records the last transaction time
+// LastTxnTime toggle if [fauna.Client] records the last transaction time
 func LastTxnTime(enabled bool) ClientConfigFn {
 	return func(c *Client) {
 		c.txnTimeEnabled = enabled
 	}
 }
 
-// Linearized set header on the fauna.Client
+// Linearized set header on the [fauna.Client]
 // A boolean. If true, unconditionally run the query as strictly serialized/linearized.
 // This affects read-only transactions, as transactions which write will be strictly serialized.
 func Linearized(enabled bool) ClientConfigFn {
@@ -52,7 +45,7 @@ func Linearized(enabled bool) ClientConfigFn {
 	}
 }
 
-// MaxContentionRetries set header on the fauna.Client
+// MaxContentionRetries set header on the [fauna.Client]
 // An integer. The maximum number of times a transaction is retried due to OCC failure.
 func MaxContentionRetries(i int) ClientConfigFn {
 	return func(c *Client) {
@@ -60,52 +53,54 @@ func MaxContentionRetries(i int) ClientConfigFn {
 	}
 }
 
-// Timeout set header on the fauna.Client
+// SetHeader update [fauna.Client] header
+func (c *Client) SetHeader(key, val string) {
+	c.headers[key] = val
+}
+
+// Timeout set header on the [fauna.Client]
 func Timeout(d time.Duration) ClientConfigFn {
 	return func(c *Client) {
 		c.SetHeader(HeaderTimeoutMs, fmt.Sprintf("%v", d.Milliseconds()))
 	}
 }
 
-// Context specify the context to be used for fauna.Client
-func Context(ctx context.Context) ClientConfigFn {
-	return func(c *Client) { c.ctx = ctx }
+// TypeChecking toggle if [fauna.Client] enforces type checking
+func TypeChecking(enabled bool) ClientConfigFn {
+	return func(c *Client) {
+		c.typeCheckingEnabled = enabled
+	}
 }
 
-// SetHeader update fauna.Client header
-func (c *Client) SetHeader(key, val string) {
-	c.headers[key] = val
-}
-
-// SetTypeChecking update fauna.Client type checking setting
-func (c *Client) SetTypeChecking(enabled bool) {
-	c.typeCheckingEnabled = enabled
+// URL set the [fauna.Client] URL
+func URL(url string) ClientConfigFn {
+	return func(c *Client) { c.url = url }
 }
 
 type QueryOptFn func(req *fqlRequest)
 
-// QueryContext set the context.Context for the Query
+// QueryContext set the [context.Context] for a single [Client.Query]
 func QueryContext(ctx context.Context) QueryOptFn {
 	return func(req *fqlRequest) {
 		req.Context = ctx
 	}
 }
 
-// QueryTxnTime toggle if fauna.Client records the last transaction for the Query
+// QueryTxnTime toggle if [fauna.Client] records the last transaction for a single [Client.Query]
 func QueryTxnTime(enabled bool) QueryOptFn {
 	return func(req *fqlRequest) {
 		req.TxnTimeEnabled = enabled
 	}
 }
 
-// QueryTypeChecking toggle if fauna.Client uses type checking
+// QueryTypeChecking toggle if [fauna.Client] uses type checking for a single [Client.Query]
 func QueryTypeChecking(enabled bool) QueryOptFn {
 	return func(req *fqlRequest) {
 		req.Headers[HeaderTypeChecking] = fmt.Sprintf("%v", enabled)
 	}
 }
 
-// QueryTimeout set the query timeout
+// QueryTimeout set the query timeout on a single [Client.Query]
 func QueryTimeout(dur time.Duration) QueryOptFn {
 	return func(req *fqlRequest) {
 		req.Headers[HeaderTypeChecking] = fmt.Sprintf("%f", dur.Seconds())

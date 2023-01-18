@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Stats represents the metrics returned in a Response
+// Stats represents the metrics returned in a [Response]
 type Stats struct {
 	ReadOps    int           `json:"read_ops"`
 	WriteOps   int           `json:"write_ops"`
@@ -14,7 +14,7 @@ type Stats struct {
 	QueryTime  time.Duration `json:"query_time"`
 }
 
-// Response represent a standard response from Fauna request
+// The Response from a [Client.Query]
 type Response struct {
 	Bytes      []byte
 	Data       json.RawMessage `json:"data"`

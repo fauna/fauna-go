@@ -17,7 +17,7 @@ type QueryArgItem struct {
 	Value interface{}
 }
 
-// QueryArg create a QueryArgItem
+// QueryArg create an [QueryArgItem]
 func QueryArg(key string, value interface{}) QueryArgItem {
 	return QueryArgItem{
 		Key:   key,
@@ -25,10 +25,10 @@ func QueryArg(key string, value interface{}) QueryArgItem {
 	}
 }
 
-// QueryArgs list of QueryArg items
+// QueryArgs map from [QueryArgItem]
 type QueryArgs map[string]interface{}
 
-// QueryArguments convenience method to structure QueryArgs
+// QueryArguments convenience method to structure [QueryArgs]
 func QueryArguments(args ...QueryArgItem) QueryArgs {
 	out := map[string]interface{}{}
 	for n := range args {
