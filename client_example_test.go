@@ -12,7 +12,7 @@ import (
 //
 //	docker run --rm -p 8443:8443 fauna/faunadb:latest
 func ExampleNewClient() {
-	// TRICKY: don't actually hardcode secret, just for the purpose of example
+	// IMPORTANT: just for the purpose of example, don't actually hardcode secret
 	_ = os.Setenv(fauna.EnvFaunaSecret, "secret")
 	_ = os.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
