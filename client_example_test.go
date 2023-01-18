@@ -24,7 +24,7 @@ func ExampleNewClient() {
 	var result float32
 	_, queryErr := client.Query(`Math.abs(12e5)`, nil, &result)
 	if queryErr != nil {
-		log.Fatalf(queryErr.Error())
+		log.Fatalf("query failed: %s", queryErr.Error())
 	}
 
 	fmt.Printf("%0.f", result)
