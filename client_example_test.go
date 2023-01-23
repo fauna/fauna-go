@@ -44,7 +44,7 @@ func ExampleNewClient() {
 		fauna.HTTPClient(http.DefaultClient),
 		fauna.URL(fauna.EndpointLocal),
 		fauna.Context(context.Background()),
-		fauna.Timeout(time.Minute*3),
+		fauna.QueryTimeout(time.Minute*3),
 	)
 
 	var result float32
