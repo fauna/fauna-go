@@ -1,180 +1,195 @@
+// Package fauna HTTP client for fqlx
 package fauna
 
 import (
-	"bytes"
+	"context"
+	"crypto/tls"
+	_ "embed"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"math"
 	"net"
 	"net/http"
 	"os"
-	"strconv"
-	"sync/atomic"
+	"strings"
 	"time"
+
+	"github.com/fauna/fauna-go/internal/fingerprinting"
+	"golang.org/x/net/http2"
 )
+
+// DriverVersion semantic version of the driver
+//
+//go:embed version
+var DriverVersion string
 
 const (
-	authorizationHeader = "Authorization"
-	txnTimeHeader       = "X-Txn-Time"
-	lastSeenTxnHeader   = "X-Last-Seen-Txn"
+	// EndpointProduction constant for Fauna Production endpoint
+	EndpointProduction = "https://db.fauna.com/query/1"
+	// EndpointPreview constant for Fauna Preview endpoint
+	EndpointPreview = "https://db.fauna-preview.com/query/1"
+	// EndpointLocal constant for local (Docker) endpoint
+	EndpointLocal = "http://localhost:8443/query/1"
+
+	// EnvFaunaEndpoint environment variable for Fauna Client HTTP endpoint
+	EnvFaunaEndpoint = "FAUNA_ENDPOINT"
+	// EnvFaunaSecret environment variable for Fauna Client authentication
+	EnvFaunaSecret = "FAUNA_SECRET"
+	// EnvFaunaTimeout environment variable for Fauna Client Read-Idle Timeout
+	EnvFaunaTimeout = "FAUNA_TIMEOUT"
+	// EnvFaunaTypeCheckEnabled environment variable for Fauna Client TypeChecking
+	EnvFaunaTypeCheckEnabled = "FAUNA_TYPE_CHECK_ENABLED"
+	// EnvFaunaTrackTxnTimeEnabled environment variable for Fauna Client tracks Transaction time
+	EnvFaunaTrackTxnTimeEnabled = "FAUNA_TRACK_TXN_TIME_ENABLED"
+
+	// DefaultHttpReadIdleTimeout Fauna Client default HTTP read idle timeout
+	DefaultHttpReadIdleTimeout = time.Minute * 3
+
+	HeaderAuthorization        = "Authorization"
+	HeaderContentType          = "Content-Type"
+	HeaderTxnTime              = "X-Txn-Time"
+	HeaderLastSeenTxn          = "X-Last-Seen-Txn"
+	HeaderLinearized           = "X-Linearized"
+	HeaderMaxContentionRetries = "X-Max-Contention-Retries"
+	HeaderTimeoutMs            = "X-Timeout-Ms"
+	HeaderTypeChecking         = "X-Fauna-Type-Checking"
 )
 
+// Client is the Fauna Client.
 type Client struct {
 	url                 string
 	secret              string
-	maxConnections      int
-	timeoutMilliseconds int
 	headers             map[string]string
 	txnTimeEnabled      bool
 	lastTxnTime         int64
-	forceTypeCheck      bool
+	typeCheckingEnabled bool
 
-	tcp      *http.Transport
-	http     *http.Client
-	endpoint *net.Addr
+	http *http.Client
+	ctx  context.Context
 
-	// maxRetries?
-	// linearized?
 	// tags?
 	// traceParent?
 }
 
+// DefaultClient initialize a [fauna.Client] with recommend default settings
 func DefaultClient() (*Client, error) {
-	secret := os.Getenv(secretKey)
-	if secret == "" {
-		err := errors.New(fmt.Sprintf("unable to load key from environment variable '%v'", secretKey))
-		return nil, err
+	var secret string
+	if val, found := os.LookupEnv(EnvFaunaSecret); !found {
+		return nil, fmt.Errorf("unable to load key from environment variable '%s'", EnvFaunaSecret)
+	} else {
+		secret = val
 	}
-	return NewClient(secret, URL(productionUrl), MaxConnections(defaultMaxConnections), TimeoutMilliseconds(defaultTimeoutMilliseconds)), nil
+
+	url, urlFound := os.LookupEnv(EnvFaunaEndpoint)
+	if !urlFound {
+		url = EndpointProduction
+	}
+
+	readIdleTimeout := DefaultHttpReadIdleTimeout
+	if val, found := os.LookupEnv(EnvFaunaTimeout); found {
+		timeoutFromEnv, err := time.ParseDuration(val)
+		if err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "failed to parse timeout, using default\n")
+		} else {
+			if timeoutFromEnv.Seconds() <= 0 {
+				_, _ = fmt.Fprintf(os.Stderr, "timeout must be greater than 0, using default\n")
+			} else {
+				readIdleTimeout = timeoutFromEnv
+			}
+		}
+	}
+
+	return NewClient(
+		secret,
+		URL(url),
+		HTTPClient(&http.Client{
+			Transport: &http2.Transport{
+				DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+					return net.Dial(network, addr)
+				},
+				AllowHTTP:        url == EndpointLocal,
+				ReadIdleTimeout:  readIdleTimeout,
+				PingTimeout:      time.Second * 3,
+				WriteByteTimeout: time.Second * 5,
+			},
+		}),
+		Headers(map[string]string{
+			HeaderAuthorization:        fmt.Sprintf("Bearer %s", secret),
+			HeaderContentType:          "application/json; charset=utf-8",
+			"X-Fauna-Driver":           DriverVersion,
+			"X-Runtime-Environment-OS": fingerprinting.EnvironmentOS(),
+			"X-Runtime-Environment":    fingerprinting.Environment(),
+			"X-Go-Version":             fingerprinting.Version(),
+		}),
+		Context(context.TODO()),
+	), nil
 }
 
-func NewClient(secret string, configs ...ClientConfig) *Client {
-	client := &Client{secret: secret}
-
-	for _, config := range configs {
-		config(client)
+// NewClient initialize a new [fauna.Client] with custom settings
+func NewClient(secret string, configFns ...ClientConfigFn) *Client {
+	// sensible default
+	typeCheckEnabled := true
+	if typeCheckEnabledVal, found := os.LookupEnv(EnvFaunaTypeCheckEnabled); found {
+		// TRICKY: invert boolean check, we only want to disable if explicitly set to false
+		typeCheckEnabled = !(strings.ToLower(typeCheckEnabledVal) == "false")
 	}
 
-	client.tcp = &http.Transport{
-		MaxConnsPerHost:       client.maxConnections,
-		ResponseHeaderTimeout: time.Duration(client.timeoutMilliseconds) * time.Millisecond,
+	txnTimeEnabled := true
+	if val, found := os.LookupEnv(EnvFaunaTrackTxnTimeEnabled); found {
+		// TRICKY: invert boolean check, we only want to disable if explicitly set to false
+		txnTimeEnabled = strings.ToLower(val) != "false"
 	}
 
-	client.http = &http.Client{
-		Transport: client.tcp,
+	client := &Client{
+		ctx:                 context.TODO(),
+		secret:              secret,
+		http:                http.DefaultClient,
+		url:                 EndpointProduction,
+		headers:             map[string]string{},
+		typeCheckingEnabled: typeCheckEnabled,
+		txnTimeEnabled:      txnTimeEnabled,
+	}
+
+	// set options to override defaults
+	for _, configFn := range configFns {
+		configFn(client)
 	}
 
 	return client
 }
 
-func (c *Client) Query(fql string, args map[string]string, obj any) error {
-	req := NewRequest(fql, args)
-	res := c.Do(req)
-	if res.err != nil {
-		return res.err
+// Query invoke fql with args and map to the provided obj, optionally set [QueryOptFn]
+func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...QueryOptFn) (*Response, error) {
+	req := &fqlRequest{
+		Context:        c.ctx,
+		Query:          fql,
+		Arguments:      args,
+		Headers:        c.headers,
+		TxnTimeEnabled: c.txnTimeEnabled,
+	}
+
+	for _, o := range opts {
+		o(req)
+	}
+	res, err := c.do(req)
+	if err != nil {
+		return res, err
 	}
 
 	if obj != nil {
-		if res.Data != nil {
-			err := json.Unmarshal(res.Data, &obj)
-			if err != nil {
-				return err
-			}
-		} else {
-			obj = nil
+		unmarshalErr := json.Unmarshal(res.Data, obj)
+		if unmarshalErr != nil {
+			return res, unmarshalErr
 		}
 	}
 
-	return GetServiceError(res.raw.StatusCode, res.Error)
+	return res, nil
 }
 
-func (c *Client) Do(request *Request) *Response {
-	bout, err := json.Marshal(request)
-	if err != nil {
-		return ErrorResponse(err)
-	}
-
-	request.raw, err = http.NewRequest(http.MethodPost, c.url, bytes.NewReader(bout))
-	if err != nil {
-		return ErrorResponse(err)
-	}
-
-	request.raw.Header.Add(authorizationHeader, c.token())
-	for k, v := range c.headers {
-		request.raw.Header.Add(k, v)
-	}
-
+// GetLastTxnTime gets the freshest timestamp reported to this client.
+func (c *Client) GetLastTxnTime() int64 {
 	if c.txnTimeEnabled {
-		if lastSeen := atomic.LoadInt64(&c.lastTxnTime); lastSeen != 0 {
-			request.raw.Header.Add(lastSeenTxnHeader, strconv.FormatInt(lastSeen, 10))
-		}
+		return c.lastTxnTime
 	}
 
-	if c.forceTypeCheck {
-		request.Typecheck = true
-	}
-
-	r, err := c.http.Do(request.raw)
-	if err != nil {
-		return ErrorResponse(err)
-	}
-
-	bin, err := io.ReadAll(r.Body)
-	if err != nil {
-		return ErrorResponse(err)
-	}
-
-	var response *Response
-	err = json.Unmarshal(bin, &response)
-	if err != nil {
-		return ErrorResponse(err)
-	}
-	response.raw = r
-
-	err = c.storeLastTxnTime(response.raw.Header)
-	if err != nil {
-		return ErrorResponse(err)
-	}
-
-	response.raw = r
-	return response
-}
-
-func (c *Client) storeLastTxnTime(header http.Header) (err error) {
-	if c.txnTimeEnabled {
-		t, err := parseTxnTimeHeader(header)
-		if err != nil {
-			return err
-		}
-		c.syncLastTxnTime(t)
-	}
-
-	return nil
-}
-
-func (c *Client) syncLastTxnTime(newTxnTime int64) {
-	if c.txnTimeEnabled {
-		for {
-			oldTxnTime := atomic.LoadInt64(&c.lastTxnTime)
-			if oldTxnTime >= newTxnTime ||
-				atomic.CompareAndSwapInt64(&c.lastTxnTime, oldTxnTime, newTxnTime) {
-				break
-			}
-		}
-	}
-}
-
-func parseTxnTimeHeader(header http.Header) (txnTime int64, err error) {
-	h := header.Get(txnTimeHeader)
-	if h != "" {
-		return strconv.ParseInt(h, 10, 64)
-	} else {
-		return math.MinInt, nil
-	}
-}
-
-func (c *Client) token() string {
-	return fmt.Sprintf("Bearer %s", c.secret)
+	return 0
 }

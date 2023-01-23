@@ -1,11 +1,15 @@
 package fauna
 
-var queryCheckFailureCodes = []string{
-	"invalid_function_definition",
-	"invalid_identifier",
-	"invalid_query",
-	"invalid_syntax",
-	"invalid_type",
+import (
+	"net/http"
+)
+
+var queryCheckFailureCodes = map[string]struct{}{
+	"invalid_function_definition": {},
+	"invalid_identifier":          {},
+	"invalid_query":               {},
+	"invalid_syntax":              {},
+	"invalid_type":                {},
 }
 
 type ServiceError struct {
@@ -17,30 +21,28 @@ func (e ServiceError) Error() string {
 	return e.Message
 }
 
-func GetServiceError(httpStatus int, e ServiceError) error {
+// GetServiceError return a typed error based on the http status code
+// and ServiceError response from fauna
+func GetServiceError(httpStatus int, e *ServiceError) error {
 	switch httpStatus {
-	case 400:
-		if arrayContains(queryCheckFailureCodes, e.Code) {
+	case http.StatusBadRequest:
+		if _, found := queryCheckFailureCodes[e.Code]; found {
 			return NewQueryCheckError(e)
 		} else {
 			return NewQueryRuntimeError(e)
 		}
-	case 401:
+	case http.StatusUnauthorized:
 		return NewAuthenticationError(e)
-	case 403:
+	case http.StatusForbidden:
 		return NewAuthorizationError(e)
-	case 429:
+	case http.StatusTooManyRequests:
 		return NewThrottlingError(e)
 	case 440:
 		return NewQueryTimeoutError(e)
-	case 500:
+	case http.StatusInternalServerError:
 		return NewServiceInternalError(e)
-	case 503:
+	case http.StatusServiceUnavailable:
 		return NewServiceTimeoutError(e)
-	}
-
-	if e.Code != "" {
-		return e
 	}
 
 	return nil
@@ -50,9 +52,9 @@ type QueryRuntimeError struct {
 	ServiceError
 }
 
-func NewQueryRuntimeError(e ServiceError) QueryRuntimeError {
+func NewQueryRuntimeError(e *ServiceError) QueryRuntimeError {
 	return QueryRuntimeError{
-		ServiceError: e,
+		ServiceError: *e,
 	}
 }
 
@@ -60,9 +62,9 @@ type QueryCheckError struct {
 	ServiceError
 }
 
-func NewQueryCheckError(e ServiceError) QueryCheckError {
+func NewQueryCheckError(e *ServiceError) QueryCheckError {
 	return QueryCheckError{
-		ServiceError: e,
+		ServiceError: *e,
 	}
 }
 
@@ -70,9 +72,9 @@ type QueryTimeoutError struct {
 	ServiceError
 }
 
-func NewQueryTimeoutError(e ServiceError) QueryTimeoutError {
+func NewQueryTimeoutError(e *ServiceError) QueryTimeoutError {
 	return QueryTimeoutError{
-		ServiceError: e,
+		ServiceError: *e,
 	}
 }
 
@@ -80,9 +82,9 @@ type AuthenticationError struct {
 	ServiceError
 }
 
-func NewAuthenticationError(e ServiceError) AuthenticationError {
+func NewAuthenticationError(e *ServiceError) AuthenticationError {
 	return AuthenticationError{
-		ServiceError: e,
+		ServiceError: *e,
 	}
 }
 
@@ -90,9 +92,9 @@ type AuthorizationError struct {
 	ServiceError
 }
 
-func NewAuthorizationError(e ServiceError) AuthorizationError {
+func NewAuthorizationError(e *ServiceError) AuthorizationError {
 	return AuthorizationError{
-		ServiceError: e,
+		ServiceError: *e,
 	}
 }
 
@@ -100,9 +102,9 @@ type ThrottlingError struct {
 	ServiceError
 }
 
-func NewThrottlingError(e ServiceError) ThrottlingError {
+func NewThrottlingError(e *ServiceError) ThrottlingError {
 	return ThrottlingError{
-		ServiceError: e,
+		ServiceError: *e,
 	}
 }
 
@@ -110,9 +112,9 @@ type ServiceInternalError struct {
 	ServiceError
 }
 
-func NewServiceInternalError(e ServiceError) ServiceInternalError {
+func NewServiceInternalError(e *ServiceError) ServiceInternalError {
 	return ServiceInternalError{
-		ServiceError: e,
+		ServiceError: *e,
 	}
 }
 
@@ -120,8 +122,10 @@ type ServiceTimeoutError struct {
 	ServiceError
 }
 
-func NewServiceTimeoutError(e ServiceError) ServiceTimeoutError {
+func NewServiceTimeoutError(e *ServiceError) ServiceTimeoutError {
 	return ServiceTimeoutError{
-		ServiceError: e,
+		ServiceError: *e,
 	}
 }
+
+type NetworkError error

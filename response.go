@@ -6,32 +6,23 @@ import (
 	"time"
 )
 
+// Stats represents the metrics returned in a [Response]
+type Stats struct {
+	ReadOps    int           `json:"read_ops"`
+	WriteOps   int           `json:"write_ops"`
+	ComputeOps int           `json:"compute_ops"`
+	QueryTime  time.Duration `json:"query_time"`
+}
+
+// The Response from a [Client.Query]
 type Response struct {
-	raw        *http.Response
-	err        error
+	Bytes      []byte
 	Data       json.RawMessage `json:"data"`
-	Error      ServiceError    `json:"error"`
-	Summary    string          `json:"summary"`
-	StaticType string          `json:"static_type"`
-	TxnTime    time.Time       `json:"txn_time"`
-}
-
-func NewResponse() *Response {
-	return &Response{
-		TxnTime: time.Time{},
-	}
-}
-
-func (r *Response) String() string {
-	j, e := json.Marshal(r)
-	if e != nil {
-		return ""
-	}
-	return string(j)
-}
-
-func ErrorResponse(err error) *Response {
-	return &Response{
-		err: err,
-	}
+	Error      *ServiceError   `json:"error,omitempty"`
+	Logging    []string        `json:"logging,omitempty"`
+	Raw        *http.Response
+	StaticType string    `json:"static_type"`
+	Stats      *Stats    `json:"stats,omitempty"`
+	Summary    string    `json:"summary"`
+	TxnTime    time.Time `json:"txn_time"`
 }

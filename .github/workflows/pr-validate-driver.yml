@@ -1,0 +1,46 @@
+name: Validate Driver
+
+on:
+  pull_request:
+    paths:
+      - "**.go"
+      - "go.mod"
+      - "go.sum"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      core:
+        image: fauna/faunadb:latest
+        ports:
+          - 8443:8443
+    strategy:
+      matrix:
+        go: [ '1.19', '1.18', '1.17' ]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Install tools
+        run: |
+          go install golang.org/x/tools/cmd/goimports@latest
+
+      - name: Fmt
+        run: |
+          LINE_COUNT=$(goimports -l . | wc -l)
+          if [ "$LINE_COUNT" -gt 0 ]; then
+            goimports -d .
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -v ./...
