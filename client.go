@@ -90,7 +90,11 @@ func DefaultClient() (*Client, error) {
 		if err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "failed to parse timeout, using default\n")
 		} else {
-			readIdleTimeout = timeoutFromEnv
+			if timeoutFromEnv.Seconds() <= 0 {
+				_, _ = fmt.Fprintf(os.Stderr, "timeout must be greater than 0, using default\n")
+			} else {
+				readIdleTimeout = timeoutFromEnv
+			}
 		}
 	}
 
