@@ -125,7 +125,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	txnTimeEnabled := true
 	if val, found := os.LookupEnv(EnvFaunaTrackTxnTimeEnabled); found {
 		// TRICKY: invert boolean check, we only want to disable if explicitly set to false
-		txnTimeEnabled = !(strings.ToLower(val) == "false")
+		txnTimeEnabled = strings.ToLower(val) != "false"
 	}
 
 	client := &Client{
