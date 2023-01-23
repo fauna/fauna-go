@@ -58,8 +58,8 @@ func (c *Client) SetHeader(key, val string) {
 	c.headers[key] = val
 }
 
-// Timeout set header on the [fauna.Client]
-func Timeout(d time.Duration) ClientConfigFn {
+// QueryTimeout set header on the [fauna.Client]
+func QueryTimeout(d time.Duration) ClientConfigFn {
 	return func(c *Client) {
 		c.SetHeader(HeaderTimeoutMs, fmt.Sprintf("%v", d.Milliseconds()))
 	}
@@ -100,8 +100,8 @@ func QueryTypeChecking(enabled bool) QueryOptFn {
 	}
 }
 
-// QueryTimeout set the query timeout on a single [Client.Query]
-func QueryTimeout(dur time.Duration) QueryOptFn {
+// Timeout set the query timeout on a single [Client.Query]
+func Timeout(dur time.Duration) QueryOptFn {
 	return func(req *fqlRequest) {
 		req.Headers[HeaderTypeChecking] = fmt.Sprintf("%f", dur.Seconds())
 	}

@@ -23,18 +23,26 @@ import (
 var DriverVersion string
 
 const (
+	// EndpointProduction constant for Fauna Production endpoint
 	EndpointProduction = "https://db.fauna.com/query/1"
-	EndpointPreview    = "https://db.fauna-preview.com/query/1"
-	EndpointLocal      = "http://localhost:8443/query/1"
+	// EndpointPreview constant for Fauna Preview endpoint
+	EndpointPreview = "https://db.fauna-preview.com/query/1"
+	// EndpointLocal constant for local (Docker) endpoint
+	EndpointLocal = "http://localhost:8443/query/1"
 
-	EnvFaunaEndpoint            = "FAUNA_ENDPOINT"
-	EnvFaunaSecret              = "FAUNA_SECRET"
-	EnvFaunaTimeout             = "FAUNA_TIMEOUT"
-	EnvFaunaTypeCheckEnabled    = "FAUNA_TYPE_CHECK_ENABLED"
+	// EnvFaunaEndpoint environment variable for Fauna Client HTTP endpoint
+	EnvFaunaEndpoint = "FAUNA_ENDPOINT"
+	// EnvFaunaSecret environment variable for Fauna Client authentication
+	EnvFaunaSecret = "FAUNA_SECRET"
+	// EnvFaunaTimeout environment variable for Fauna Client Read-Idle Timeout
+	EnvFaunaTimeout = "FAUNA_TIMEOUT"
+	// EnvFaunaTypeCheckEnabled environment variable for Fauna Client TypeChecking
+	EnvFaunaTypeCheckEnabled = "FAUNA_TYPE_CHECK_ENABLED"
+	// EnvFaunaTrackTxnTimeEnabled environment variable for Fauna Client tracks Transaction time
 	EnvFaunaTrackTxnTimeEnabled = "FAUNA_TRACK_TXN_TIME_ENABLED"
 
-	// DefaultTimeout for both the http.Request and the HeaderTimeoutMs
-	DefaultTimeout = time.Minute
+	// DefaultHttpReadIdleTimeout Fauna Client default HTTP read idle timeout
+	DefaultHttpReadIdleTimeout = time.Minute * 3
 
 	HeaderAuthorization        = "Authorization"
 	HeaderContentType          = "Content-Type"
@@ -76,13 +84,13 @@ func DefaultClient() (*Client, error) {
 		url = EndpointProduction
 	}
 
-	clientTimeout := DefaultTimeout
+	readIdleTimeout := DefaultHttpReadIdleTimeout
 	if val, found := os.LookupEnv(EnvFaunaTimeout); found {
 		timeoutFromEnv, err := time.ParseDuration(val)
 		if err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "failed to parse timeout, using default\n")
 		} else {
-			clientTimeout = timeoutFromEnv
+			readIdleTimeout = timeoutFromEnv
 		}
 	}
 
@@ -95,7 +103,7 @@ func DefaultClient() (*Client, error) {
 					return net.Dial(network, addr)
 				},
 				AllowHTTP:        url == EndpointLocal,
-				ReadIdleTimeout:  DefaultTimeout,
+				ReadIdleTimeout:  readIdleTimeout,
 				PingTimeout:      time.Second * 3,
 				WriteByteTimeout: time.Second * 5,
 			},
@@ -109,7 +117,6 @@ func DefaultClient() (*Client, error) {
 			"X-Go-Version":             fingerprinting.Version(),
 		}),
 		Context(context.TODO()),
-		Timeout(clientTimeout),
 	), nil
 }
 

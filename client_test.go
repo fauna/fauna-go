@@ -76,7 +76,7 @@ func TestDefaultClient(t *testing.T) {
 		})
 
 		t.Run("Query with options", func(t *testing.T) {
-			res, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTimeout(time.Second))
+			res, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.Timeout(time.Second))
 			if queryErr != nil {
 				t.Errorf("query failed: %s", queryErr.Error())
 			}
@@ -347,7 +347,7 @@ func TestHeaders(t *testing.T) {
 				name: "timeout should be 1m",
 				args: args{
 					header:    fauna.HeaderTimeoutMs,
-					headerOpt: fauna.Timeout(time.Minute),
+					headerOpt: fauna.QueryTimeout(time.Minute),
 				},
 				want: fmt.Sprintf("%d", time.Minute.Milliseconds()),
 			},
@@ -389,7 +389,7 @@ func TestHeaders(t *testing.T) {
 			"secret", fauna.URL(fauna.EndpointLocal),
 			fauna.HTTPClient(testingClient),
 			fauna.Linearized(true),
-			fauna.Timeout(time.Second*3),
+			fauna.QueryTimeout(time.Second*3),
 			fauna.MaxContentionRetries(5),
 			fauna.Context(context.Background()),
 			fauna.TypeChecking(true),
