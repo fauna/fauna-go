@@ -41,6 +41,8 @@ const (
 	// EnvFaunaTrackTxnTimeEnabled environment variable for Fauna Client tracks Transaction time
 	EnvFaunaTrackTxnTimeEnabled = "FAUNA_TRACK_TXN_TIME_ENABLED"
 
+	EnvFaunaVerboseDebugEnabled = "FAUNA_VERBOSE_DEBUG_ENABLED"
+
 	// DefaultHttpReadIdleTimeout Fauna Client default HTTP read idle timeout
 	DefaultHttpReadIdleTimeout = time.Minute * 3
 
@@ -62,6 +64,7 @@ type Client struct {
 	txnTimeEnabled      bool
 	lastTxnTime         int64
 	typeCheckingEnabled bool
+	verboseDebugEnabled bool
 
 	http *http.Client
 	ctx  context.Context
@@ -139,6 +142,12 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 		txnTimeEnabled = strings.ToLower(val) != "false"
 	}
 
+	verboseDebugEnabled := false
+	if val, found := os.LookupEnv(EnvFaunaVerboseDebugEnabled); found {
+		// TRICKY: invert boolean check, we only want to disable if explicitly set to false
+		verboseDebugEnabled = strings.ToLower(val) != "false"
+	}
+
 	client := &Client{
 		ctx:                 context.TODO(),
 		secret:              secret,
@@ -147,6 +156,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 		headers:             map[string]string{},
 		typeCheckingEnabled: typeCheckEnabled,
 		txnTimeEnabled:      txnTimeEnabled,
+		verboseDebugEnabled: verboseDebugEnabled,
 	}
 
 	// set options to override defaults
@@ -160,11 +170,12 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 // Query invoke fql with args and map to the provided obj, optionally set [QueryOptFn]
 func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...QueryOptFn) (*Response, error) {
 	req := &fqlRequest{
-		Context:        c.ctx,
-		Query:          fql,
-		Arguments:      args,
-		Headers:        c.headers,
-		TxnTimeEnabled: c.txnTimeEnabled,
+		Context:             c.ctx,
+		Query:               fql,
+		Arguments:           args,
+		Headers:             c.headers,
+		TxnTimeEnabled:      c.txnTimeEnabled,
+		VerboseDebugEnabled: c.verboseDebugEnabled,
 	}
 
 	for _, o := range opts {

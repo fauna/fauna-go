@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"net/http/httputil"
 	"strconv"
 	"sync/atomic"
 )
@@ -40,12 +42,13 @@ func QueryArguments(args ...QueryArgItem) QueryArgs {
 }
 
 type fqlRequest struct {
-	Context        context.Context        `json:"-"`
-	Headers        map[string]string      `json:"-"`
-	TxnTimeEnabled bool                   `json:"-"`
-	Query          string                 `json:"query"`
-	Arguments      map[string]interface{} `json:"arguments,omitempty"`
-	TypeCheck      bool                   `json:"typecheck"`
+	Context             context.Context        `json:"-"`
+	Headers             map[string]string      `json:"-"`
+	TxnTimeEnabled      bool                   `json:"-"`
+	VerboseDebugEnabled bool                   `json:"-"`
+	Query               string                 `json:"query"`
+	Arguments           map[string]interface{} `json:"arguments,omitempty"`
+	TypeCheck           bool                   `json:"typecheck"`
 }
 
 func (c *Client) do(request *fqlRequest) (*Response, error) {
@@ -70,7 +73,26 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 		}
 	}
 
+	if request.VerboseDebugEnabled {
+		reqDump, err := httputil.DumpRequestOut(req, true)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("\nREQUEST:\n%s", string(reqDump))
+	}
+
 	r, doErr := c.http.Do(req)
+
+	if request.VerboseDebugEnabled {
+		respDump, err := httputil.DumpResponse(r, true)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("\nRESPONSE:\n%s", string(respDump))
+	}
+
 	if doErr != nil {
 		return nil, NetworkError(fmt.Errorf("request failed: %w", doErr))
 	}
