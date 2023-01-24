@@ -44,14 +44,32 @@ const (
 	// DefaultHttpReadIdleTimeout Fauna Client default HTTP read idle timeout
 	DefaultHttpReadIdleTimeout = time.Minute * 3
 
+	// Reuest/response Headers
+	HeaderContentType = "Content-Type"
+	HeaderTxnTime     = "X-Txn-Time"
+
+	// Request Headers
 	HeaderAuthorization        = "Authorization"
-	HeaderContentType          = "Content-Type"
-	HeaderTxnTime              = "X-Txn-Time"
 	HeaderLastSeenTxn          = "X-Last-Seen-Txn"
 	HeaderLinearized           = "X-Linearized"
 	HeaderMaxContentionRetries = "X-Max-Contention-Retries"
 	HeaderTimeoutMs            = "X-Timeout-Ms"
 	HeaderTypeChecking         = "X-Fauna-Type-Checking"
+
+	// Response Headers
+	HeaderTraceparent       = "Traceparent"
+	HeaderByteReadOps       = "X-Byte-Read-Ops"
+	HeaderByteWriteOps      = "X-Byte-Write-Ops"
+	HeaderComputeOps        = "X-Compute-Ops"
+	HeaderFaunaBuild        = "X-Faunadb-Build"
+	HeaderQueryBytesIn      = "X-Query-Bytes-In"
+	HeaderQueryBytesOut     = "X-Query-Bytes-Out"
+	HeaderQueryTime         = "X-Query-Time"
+	HeaderReadOps           = "X-Read-Ops"
+	HeaderStorageBytesRead  = "X-Storage-Bytes-Read"
+	HeaderStorageBytesWrite = "X-Storage-Bytes-Write"
+	HeaderTxnRetries        = "X-Txn-Retries"
+	HeaderWriteOps          = "X-Write-Ops"
 )
 
 // Client is the Fauna Client.
