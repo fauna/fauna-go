@@ -1,14 +1,17 @@
 package fauna_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -123,7 +126,6 @@ func TestDefaultClient(t *testing.T) {
 		if invalidErr != nil {
 			t.Errorf("invalid: %s", invalidErr.Error())
 		}
-
 	})
 }
 
@@ -171,6 +173,39 @@ func TestNewClient(t *testing.T) {
 			_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTypeChecking(false))
 			if queryErr != nil {
 				t.Fatalf("should be able to query without type checking: %s", queryErr)
+			}
+		})
+	})
+
+	t.Run("verbose enabled", func(t *testing.T) {
+		t.Setenv(fauna.EnvFaunaSecret, "secret")
+		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+
+		t.Run("at client", func(t *testing.T) {
+			t.Setenv(fauna.EnvFaunaVerboseDebugEnabled, "true")
+
+			b := bytes.NewBuffer(nil)
+			log.SetOutput(b)
+
+			client, clientErr := fauna.DefaultClient()
+			if clientErr != nil {
+				t.Fatalf("should be able to init client: %s", clientErr.Error())
+			}
+
+			res, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
+			if queryErr != nil {
+				t.Fatalf("should be able to query without type checking: %s", queryErr)
+			}
+
+			logBuf := b.String()
+			t.Logf("response: %s", res.Bytes)
+
+			if !strings.Contains(logBuf, "REQUEST:") {
+				t.Errorf("Expected request output\nbuffer: %s\n", logBuf)
+			}
+
+			if !strings.Contains(logBuf, "RESPONSE:") {
+				t.Errorf("Expected response output\nbuffer: %s\n", logBuf)
 			}
 		})
 	})
