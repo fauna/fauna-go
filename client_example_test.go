@@ -19,7 +19,7 @@ func ExampleDefaultClient() {
 	_ = os.Setenv(fauna.EnvFaunaSecret, "secret")
 	_ = os.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
-	client, clientErr := fauna.DefaultClient()
+	client, clientErr := fauna.NewDefaultClient()
 	if clientErr != nil {
 		log.Fatalf("client should have been initialized: %s", clientErr.Error())
 	}

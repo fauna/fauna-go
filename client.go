@@ -91,8 +91,8 @@ type Client struct {
 	// traceParent?
 }
 
-// DefaultClient initialize a [fauna.Client] with recommend default settings
-func DefaultClient() (*Client, error) {
+// NewDefaultClient initialize a [fauna.Client] with recommend default settings
+func NewDefaultClient() (*Client, error) {
 	var secret string
 	if val, found := os.LookupEnv(EnvFaunaSecret); !found {
 		return nil, fmt.Errorf("unable to load key from environment variable '%s'", EnvFaunaSecret)
