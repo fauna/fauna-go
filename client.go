@@ -160,7 +160,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 
 	verboseDebugEnabled := false
 	if val, found := os.LookupEnv(EnvFaunaVerboseDebugEnabled); found {
-		verboseDebugEnabled = strings.ToLower(val) != "false"
+		verboseDebugEnabled = strings.ToLower(val) == "true"
 	}
 
 	client := &Client{
