@@ -159,11 +159,11 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	}
 
 	client := &Client{
-		ctx:                 context.TODO(),
-		secret:              secret,
-		http:                http.DefaultClient,
-		url:                 EndpointProduction,
-		headers:             map[string]string{
+		ctx:    context.TODO(),
+		secret: secret,
+		http:   http.DefaultClient,
+		url:    EndpointProduction,
+		headers: map[string]string{
 			HeaderAuthorization:        fmt.Sprintf("Bearer %s", secret),
 			HeaderContentType:          "application/json; charset=utf-8",
 			"X-Fauna-Driver":           DriverVersion,
