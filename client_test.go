@@ -187,7 +187,7 @@ func TestNewClient(t *testing.T) {
 			b := bytes.NewBuffer(nil)
 			log.SetOutput(b)
 
-			client, clientErr := fauna.DefaultClient()
+			client, clientErr := fauna.NewDefaultClient()
 			if clientErr != nil {
 				t.Fatalf("should be able to init client: %s", clientErr.Error())
 			}
