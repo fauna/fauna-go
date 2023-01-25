@@ -155,7 +155,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	verboseDebugEnabled := false
 	if val, found := os.LookupEnv(EnvFaunaVerboseDebugEnabled); found {
 		// TRICKY: invert boolean check, we only want to disable if explicitly set to false
-		verboseDebugEnabled = strings.ToLower(val) != "false"
+		verboseDebugEnabled = strings.ToLower(val) == "true"
 	}
 
 	client := &Client{
