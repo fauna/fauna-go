@@ -23,11 +23,11 @@ func (e ServiceError) Error() string {
 
 // GetServiceError return a typed error based on the http status code
 // and ServiceError response from fauna
-func GetServiceError(httpStatus int, e *ServiceError) error {
+func GetServiceError(httpStatus int, e *ServiceError, summary string) error {
 	switch httpStatus {
 	case http.StatusBadRequest:
 		if _, found := queryCheckFailureCodes[e.Code]; found {
-			return NewQueryCheckError(e)
+			return NewQueryCheckError(e, summary)
 		} else {
 			return NewQueryRuntimeError(e)
 		}
@@ -62,10 +62,13 @@ type QueryCheckError struct {
 	ServiceError
 }
 
-func NewQueryCheckError(e *ServiceError) QueryCheckError {
-	return QueryCheckError{
+func NewQueryCheckError(e *ServiceError, summary string) QueryCheckError {
+	q := QueryCheckError{
 		ServiceError: *e,
 	}
+	q.Message += "\n" + summary
+
+	return q
 }
 
 type QueryTimeoutError struct {

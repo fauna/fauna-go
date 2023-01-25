@@ -103,7 +103,7 @@ func TestGetServiceError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := fauna.GetServiceError(tt.args.httpStatus, tt.args.serviceError)
+			err := fauna.GetServiceError(tt.args.httpStatus, tt.args.serviceError, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetServiceError() error = %v, wantErr %v", err, tt.wantErr)
 			} else if tt.wantErr && fmt.Sprintf("%T", err) != fmt.Sprintf("%T", tt.args.errType) {
