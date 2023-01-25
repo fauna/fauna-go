@@ -19,7 +19,7 @@ func TestDefaultClient(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 	t.Setenv(fauna.EnvFaunaSecret, "secret")
 
-	client, clientErr := fauna.DefaultClient()
+	client, clientErr := fauna.NewDefaultClient()
 	if clientErr != nil {
 		t.Fatalf("should be able to init default client: %s", clientErr.Error())
 	}
@@ -94,7 +94,7 @@ func TestDefaultClient(t *testing.T) {
 			t.Setenv("FAUNA_SECRET", val)
 			t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointPreview)
 
-			previewClient, clientErr := fauna.DefaultClient()
+			previewClient, clientErr := fauna.NewDefaultClient()
 			if clientErr != nil {
 				t.Errorf("failed to init preview client: %v", clientErr.Error())
 				t.Fail()
@@ -119,7 +119,7 @@ func TestDefaultClient(t *testing.T) {
 	t.Run("invalid timeout", func(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaTimeout, "invalidTime")
 
-		_, invalidErr := fauna.DefaultClient()
+		_, invalidErr := fauna.NewDefaultClient()
 		if invalidErr != nil {
 			t.Errorf("invalid: %s", invalidErr.Error())
 		}
@@ -130,14 +130,14 @@ func TestDefaultClient(t *testing.T) {
 func TestNewClient(t *testing.T) {
 	t.Run("default client", func(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
-		_, clientErr := fauna.DefaultClient()
+		_, clientErr := fauna.NewDefaultClient()
 		if clientErr != nil {
 			t.Errorf("should be able to init default client: %s", clientErr.Error())
 		}
 	})
 
 	t.Run("missing secret", func(t *testing.T) {
-		_, clientErr := fauna.DefaultClient()
+		_, clientErr := fauna.NewDefaultClient()
 		if clientErr == nil {
 			t.Errorf("should have failed due to missing secret")
 		}
@@ -147,7 +147,7 @@ func TestNewClient(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
 		t.Setenv(fauna.EnvFaunaTimeout, "3s")
 
-		_, clientErr := fauna.DefaultClient()
+		_, clientErr := fauna.NewDefaultClient()
 		if clientErr != nil {
 			t.Errorf("should be able to init a client with a custom timeout: %s", clientErr.Error())
 		}
@@ -163,7 +163,7 @@ func TestNewClient(t *testing.T) {
 		})
 
 		t.Run("at request", func(t *testing.T) {
-			client, clientErr := fauna.DefaultClient()
+			client, clientErr := fauna.NewDefaultClient()
 			if clientErr != nil {
 				t.Fatalf("should be able to init client: %s", clientErr.Error())
 			}
@@ -182,7 +182,7 @@ func TestNewClient(t *testing.T) {
 		t.Run("at client", func(t *testing.T) {
 			t.Setenv(fauna.EnvFaunaTrackTxnTimeEnabled, "false")
 
-			client, clientErr := fauna.DefaultClient()
+			client, clientErr := fauna.NewDefaultClient()
 			if clientErr != nil {
 				t.Errorf("should be able to init a client without type checking: %s", clientErr.Error())
 			}
@@ -203,7 +203,7 @@ func TestNewClient(t *testing.T) {
 		})
 
 		t.Run("at request", func(t *testing.T) {
-			client, clientErr := fauna.DefaultClient()
+			client, clientErr := fauna.NewDefaultClient()
 			if clientErr != nil {
 				t.Fatalf("should be able to init a client: %s", clientErr.Error())
 			}
@@ -239,7 +239,7 @@ func TestNewClient(t *testing.T) {
 func TestBasicCRUDRequests(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaSecret, "secret")
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
-	client, err := fauna.DefaultClient()
+	client, err := fauna.NewDefaultClient()
 	if err != nil {
 		t.Fatalf("%s", err.Error())
 	}
@@ -411,7 +411,7 @@ func TestErrorHandling(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "I'm a little teapot")
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
-		client, clientErr := fauna.DefaultClient()
+		client, clientErr := fauna.NewDefaultClient()
 		if clientErr != nil {
 			t.Fatalf("failed to init fauna.Client")
 		}
@@ -434,7 +434,7 @@ func TestErrorHandling(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
-		client, clientErr := fauna.DefaultClient()
+		client, clientErr := fauna.NewDefaultClient()
 		if clientErr != nil {
 			t.Fatalf("failed to init fauna.Client")
 		}
@@ -453,7 +453,7 @@ func TestErrorHandling(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
-		client, clientErr := fauna.DefaultClient()
+		client, clientErr := fauna.NewDefaultClient()
 		if clientErr != nil {
 			t.Fatalf("failed to init fauna.Client")
 		}
