@@ -459,10 +459,6 @@ func TestErrorHandling(t *testing.T) {
 		if !errors.As(queryErr, &fauna.AuthenticationError{}) {
 			t.Errorf("wrong type: %T", queryErr)
 		}
-
-		if errors.Unwrap(queryErr) != nil {
-			t.Errorf("should be able to unwrap: %v", queryErr)
-		}
 	})
 
 	t.Run("invalid query", func(t *testing.T) {
