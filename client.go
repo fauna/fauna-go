@@ -133,14 +133,6 @@ func DefaultClient() (*Client, error) {
 				WriteByteTimeout: time.Second * 5,
 			},
 		}),
-		Headers(map[string]string{
-			HeaderAuthorization:        fmt.Sprintf("Bearer %s", secret),
-			HeaderContentType:          "application/json; charset=utf-8",
-			"X-Fauna-Driver":           DriverVersion,
-			"X-Runtime-Environment-OS": fingerprinting.EnvironmentOS(),
-			"X-Runtime-Environment":    fingerprinting.Environment(),
-			"X-Go-Version":             fingerprinting.Version(),
-		}),
 		Context(context.TODO()),
 	), nil
 }
@@ -167,11 +159,18 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	}
 
 	client := &Client{
-		ctx:                 context.TODO(),
-		secret:              secret,
-		http:                http.DefaultClient,
-		url:                 EndpointProduction,
-		headers:             map[string]string{},
+		ctx:    context.TODO(),
+		secret: secret,
+		http:   http.DefaultClient,
+		url:    EndpointProduction,
+		headers: map[string]string{
+			HeaderAuthorization:        fmt.Sprintf("Bearer %s", secret),
+			HeaderContentType:          "application/json; charset=utf-8",
+			"X-Fauna-Driver":           DriverVersion,
+			"X-Runtime-Environment-OS": fingerprinting.EnvironmentOS(),
+			"X-Runtime-Environment":    fingerprinting.Environment(),
+			"X-Go-Version":             fingerprinting.Version(),
+		},
 		typeCheckingEnabled: typeCheckEnabled,
 		txnTimeEnabled:      txnTimeEnabled,
 		verboseDebugEnabled: verboseDebugEnabled,
