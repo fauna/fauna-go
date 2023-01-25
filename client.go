@@ -201,6 +201,17 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 	return res, nil
 }
 
+func (c *Client) SetLastTxnTime(txnTime time.Time) error {
+	val := txnTime.UnixMicro()
+	if val < c.lastTxnTime {
+		return fmt.Errorf("unable to set last transaction time less than previously known value:\n\tcurrent value: %d\n\tattempted value: %d", c.lastTxnTime, val)
+	}
+
+	c.lastTxnTime = val
+
+	return nil
+}
+
 // GetLastTxnTime gets the freshest timestamp reported to this client.
 func (c *Client) GetLastTxnTime() int64 {
 	if c.txnTimeEnabled {
