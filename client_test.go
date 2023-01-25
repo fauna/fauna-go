@@ -97,8 +97,8 @@ func TestDefaultClient(t *testing.T) {
 			t.Setenv("FAUNA_SECRET", val)
 			t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointPreview)
 
-			previewClient, clientErr := fauna.NewDefaultClient()
-			if clientErr != nil {
+			previewClient, previewClientErr := fauna.NewDefaultClient()
+			if previewClientErr != nil {
 				t.Errorf("failed to init preview client: %v", clientErr.Error())
 				t.Fail()
 			}
