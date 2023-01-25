@@ -155,6 +155,24 @@ func TestNewClient(t *testing.T) {
 		}
 	})
 
+	t.Run("custom logger", func(t *testing.T) {
+		t.Setenv(fauna.EnvFaunaVerboseDebugEnabled, "true")
+		b := bytes.NewBuffer(nil)
+
+		client := fauna.NewClient("secret",
+			fauna.URL(fauna.EndpointLocal),
+			fauna.Logger(log.New(b, t.Name(), 0)),
+		)
+		_, queryErr := client.Query(`dbg("sup")`, nil, nil)
+		if queryErr != nil {
+			t.Fatalf("query error: %s", queryErr.Error())
+		}
+
+		if b.String() == "" {
+			t.Errorf("expected logger to have contents")
+		}
+	})
+
 	t.Run("disable type checking", func(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
