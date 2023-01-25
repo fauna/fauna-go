@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"strconv"
@@ -74,23 +73,23 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	if request.VerboseDebugEnabled {
-		reqDump, err := httputil.DumpRequestOut(req, true)
-		if err != nil {
-			log.Fatal(err)
+		reqDump, dumpErr := httputil.DumpRequestOut(req, true)
+		if dumpErr != nil {
+			c.log.Printf("Failed to dump request: %s", dumpErr.Error())
+		} else {
+			c.log.Printf("REQUEST:\n%s\n-------\n", string(reqDump))
 		}
-
-		fmt.Printf("\nREQUEST:\n%s", string(reqDump))
 	}
 
 	r, doErr := c.http.Do(req)
 
 	if request.VerboseDebugEnabled {
-		respDump, err := httputil.DumpResponse(r, true)
-		if err != nil {
-			log.Fatal(err)
+		respDump, dumpErr := httputil.DumpResponse(r, true)
+		if dumpErr != nil {
+			c.log.Printf("Failed to dump response: %s", dumpErr.Error())
+		} else {
+			c.log.Printf("RESPONSE:\n%s\n-------\n", string(respDump))
 		}
-
-		fmt.Printf("\nRESPONSE:\n%s", string(respDump))
 	}
 
 	if doErr != nil {
