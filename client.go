@@ -150,19 +150,16 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	// sensible default
 	typeCheckEnabled := true
 	if typeCheckEnabledVal, found := os.LookupEnv(EnvFaunaTypeCheckEnabled); found {
-		// TRICKY: invert boolean check, we only want to disable if explicitly set to false
-		typeCheckEnabled = !(strings.ToLower(typeCheckEnabledVal) == "false")
+		typeCheckEnabled = strings.ToLower(typeCheckEnabledVal) != "false"
 	}
 
 	txnTimeEnabled := true
 	if val, found := os.LookupEnv(EnvFaunaTrackTxnTimeEnabled); found {
-		// TRICKY: invert boolean check, we only want to disable if explicitly set to false
 		txnTimeEnabled = strings.ToLower(val) != "false"
 	}
 
 	verboseDebugEnabled := false
 	if val, found := os.LookupEnv(EnvFaunaVerboseDebugEnabled); found {
-		// TRICKY: invert boolean check, we only want to disable if explicitly set to false
 		verboseDebugEnabled = strings.ToLower(val) != "false"
 	}
 
