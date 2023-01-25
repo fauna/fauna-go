@@ -136,6 +136,7 @@ func NewDefaultClient() (*Client, error) {
 			},
 		}),
 		Context(context.TODO()),
+		Logger(log.Default()),
 	), nil
 }
 
