@@ -8,7 +8,7 @@ on:
       - "go.sum"
 
 jobs:
-  build:
+  validate:
     runs-on: ubuntu-latest
     services:
       core:
