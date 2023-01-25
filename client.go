@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -85,6 +86,7 @@ type Client struct {
 	verboseDebugEnabled bool
 
 	http *http.Client
+	log  *log.Logger
 	ctx  context.Context
 
 	// tags?
@@ -160,6 +162,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 
 	client := &Client{
 		ctx:    context.TODO(),
+		log:    log.Default(),
 		secret: secret,
 		http:   http.DefaultClient,
 		url:    EndpointProduction,
