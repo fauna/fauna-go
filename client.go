@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -85,14 +86,15 @@ type Client struct {
 	verboseDebugEnabled bool
 
 	http *http.Client
+	log  *log.Logger
 	ctx  context.Context
 
 	// tags?
 	// traceParent?
 }
 
-// DefaultClient initialize a [fauna.Client] with recommend default settings
-func DefaultClient() (*Client, error) {
+// NewDefaultClient initialize a [fauna.Client] with recommend default settings
+func NewDefaultClient() (*Client, error) {
 	var secret string
 	if val, found := os.LookupEnv(EnvFaunaSecret); !found {
 		return nil, fmt.Errorf("unable to load key from environment variable '%s'", EnvFaunaSecret)
@@ -133,14 +135,6 @@ func DefaultClient() (*Client, error) {
 				WriteByteTimeout: time.Second * 5,
 			},
 		}),
-		Headers(map[string]string{
-			HeaderAuthorization:        fmt.Sprintf("Bearer %s", secret),
-			HeaderContentType:          "application/json; charset=utf-8",
-			"X-Fauna-Driver":           DriverVersion,
-			"X-Runtime-Environment-OS": fingerprinting.EnvironmentOS(),
-			"X-Runtime-Environment":    fingerprinting.Environment(),
-			"X-Go-Version":             fingerprinting.Version(),
-		}),
 		Context(context.TODO()),
 	), nil
 }
@@ -164,11 +158,19 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	}
 
 	client := &Client{
-		ctx:                 context.TODO(),
-		secret:              secret,
-		http:                http.DefaultClient,
-		url:                 EndpointProduction,
-		headers:             map[string]string{},
+		ctx:    context.TODO(),
+		log:    log.Default(),
+		secret: secret,
+		http:   http.DefaultClient,
+		url:    EndpointProduction,
+		headers: map[string]string{
+			HeaderAuthorization:        fmt.Sprintf("Bearer %s", secret),
+			HeaderContentType:          "application/json; charset=utf-8",
+			"X-Fauna-Driver":           DriverVersion,
+			"X-Runtime-Environment-OS": fingerprinting.EnvironmentOS(),
+			"X-Runtime-Environment":    fingerprinting.Environment(),
+			"X-Go-Version":             fingerprinting.Version(),
+		},
 		typeCheckingEnabled: typeCheckEnabled,
 		txnTimeEnabled:      txnTimeEnabled,
 		verboseDebugEnabled: verboseDebugEnabled,
