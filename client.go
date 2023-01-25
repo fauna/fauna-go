@@ -48,6 +48,10 @@ const (
 	// DefaultHttpReadIdleTimeout Fauna Client default HTTP read idle timeout
 	DefaultHttpReadIdleTimeout = time.Minute * 3
 
+	FormatDecorated Format = "decorated"
+	FormatTyped     Format = "typed"
+	FormatSimple    Format = "simple"
+
 	// Request/response Headers
 
 	HeaderContentType = "Content-Type"
@@ -93,6 +97,7 @@ type Client struct {
 	secret              string
 	headers             map[string]string
 	lastTxnTime         txnTime
+	requestFormat       Format
 	typeCheckingEnabled bool
 	verboseDebugEnabled bool
 
@@ -172,6 +177,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 		},
 		typeCheckingEnabled: typeCheckEnabled,
 		verboseDebugEnabled: verboseDebugEnabled,
+		requestFormat:       FormatSimple,
 	}
 
 	// set options to override defaults
@@ -190,6 +196,7 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 		Arguments:           args,
 		Headers:             c.headers,
 		TxnTimeEnabled:      c.lastTxnTime.Enabled,
+		Format:              c.requestFormat,
 		VerboseDebugEnabled: c.verboseDebugEnabled,
 	}
 

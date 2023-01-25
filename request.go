@@ -12,6 +12,9 @@ import (
 	"sync/atomic"
 )
 
+// Format type cast the fauna format constants
+type Format string
+
 // QueryArgItem query args structure
 type QueryArgItem struct {
 	Key   string
@@ -48,6 +51,7 @@ type fqlRequest struct {
 	Query               string                 `json:"query"`
 	Arguments           map[string]interface{} `json:"arguments,omitempty"`
 	TypeCheck           bool                   `json:"typecheck"`
+	Format              Format                 `json:"format"`
 }
 
 func (c *Client) do(request *fqlRequest) (*Response, error) {
