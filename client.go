@@ -82,6 +82,13 @@ const (
 	HeaderStorageBytesWrite = "X-Storage-Bytes-Write"
 	HeaderTxnRetries        = "X-Txn-Retries"
 	HeaderWriteOps          = "X-Write-Ops"
+
+	TypeSimple = "@simple"
+	TypeModule = "@module"
+	TypeInt    = "@int"
+	TypeLong   = "@long"
+	TypeTime   = "@time"
+	TypeDate   = "@date"
 )
 
 type txnTime struct {

@@ -2,6 +2,7 @@ package fauna
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -99,4 +100,102 @@ func intFromResponseHeader(r *http.Response, key string) int {
 	}
 
 	return 0
+}
+
+func Now() Time {
+	return Time{Time: time.Now()}
+}
+
+type Object interface{}
+
+type Time struct {
+	time.Time
+}
+
+func (t Time) MarshalJSON() ([]byte, error) {
+	return []byte(`{"@time": "` + t.Format(time.RFC3339) + `"}`), nil
+}
+
+func (t Time) UnmarshalJSON(b []byte) error {
+	var internalType struct {
+		Value time.Time `json:"@time"`
+	}
+	if err := json.Unmarshal(b, &internalType); err != nil {
+		return err
+	} else {
+		t.Time = internalType.Value
+	}
+
+	return nil
+}
+
+type Date struct {
+	time.Time
+}
+
+func (d Date) MarshalJSON() ([]byte, error) {
+	return []byte(`{"@date": "` + d.Format(`2006-01-02`) + `"}`), nil
+}
+
+func (d Date) UnmarshalJSON(b []byte) error {
+	var internalType struct {
+		Value time.Time `json:"@date"`
+	}
+	if err := json.Unmarshal(b, &internalType); err != nil {
+		return err
+	} else {
+		d.Time = internalType.Value
+	}
+
+	return nil
+}
+
+type Int struct {
+	Value int32
+}
+
+func IntValue(i int32) Int {
+	return Int{Value: i}
+}
+
+func (i Int) MarshalJSON() ([]byte, error) {
+	return []byte(`{"@int": ` + fmt.Sprintf("%d", i.Value) + `}`), nil
+}
+
+func (i Int) UnmarshalJSON(b []byte) error {
+	var internalType struct {
+		Value int32 `json:"@int"`
+	}
+	if err := json.Unmarshal(b, &internalType); err != nil {
+		return err
+	} else {
+		i.Value = internalType.Value
+	}
+
+	return nil
+}
+
+func (i Int) String() string {
+	return fmt.Sprintf("%d", i.Value)
+}
+
+type Long struct {
+	Value int64
+}
+
+func (l Long) MarshalJSON() ([]byte, error) {
+	return []byte(`{"@long": "` + fmt.Sprintf("%d", l) + `"}`), nil
+}
+
+func (l Long) UnmarshalJSON(b []byte) error {
+	var internalType struct {
+		Value int64 `json:"@long"`
+	}
+	if err := json.Unmarshal(b, &internalType); err != nil {
+		return err
+	} else {
+		l.Value = internalType.Value
+	}
+
+	return nil
 }
