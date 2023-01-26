@@ -394,6 +394,14 @@ func TestHeaders(t *testing.T) {
 				},
 				want: "1",
 			},
+			{
+				name: "should have tags",
+				args: args{
+					header:    fauna.HeaderTags,
+					headerOpt: fauna.Tags(map[string]string{"hello": "world"}),
+				},
+				want: "hello=world",
+			},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {

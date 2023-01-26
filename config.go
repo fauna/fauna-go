@@ -1,9 +1,11 @@
 package fauna
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -65,6 +67,13 @@ func QueryTimeout(d time.Duration) ClientConfigFn {
 	}
 }
 
+// Tags sets header on the [fauna.Client]
+func Tags(tags map[string]string) ClientConfigFn {
+	return func(c *Client) {
+		c.SetHeader(HeaderTags, argsStringFromMap(tags))
+	}
+}
+
 // TypeChecking toggle if [fauna.Client] enforces type checking
 func TypeChecking(enabled bool) ClientConfigFn {
 	return func(c *Client) {
@@ -100,9 +109,25 @@ func QueryTypeChecking(enabled bool) QueryOptFn {
 	}
 }
 
+// QueryTags set the tags header on a single [Client.Query]
+func QueryTags(tags map[string]string) QueryOptFn {
+	return func(req *fqlRequest) {
+		req.Headers[HeaderTags] = argsStringFromMap(tags)
+	}
+}
+
 // Timeout set the query timeout on a single [Client.Query]
 func Timeout(dur time.Duration) QueryOptFn {
 	return func(req *fqlRequest) {
 		req.Headers[HeaderTypeChecking] = fmt.Sprintf("%f", dur.Seconds())
 	}
+}
+
+func argsStringFromMap(input map[string]string) string {
+	b := bytes.NewBuffer(nil)
+	for k, v := range input {
+		b.WriteString(fmt.Sprintf("%s=%s,", k, v))
+	}
+
+	return strings.TrimSuffix(b.String(), ",")
 }
