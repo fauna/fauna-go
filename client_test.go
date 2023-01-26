@@ -97,8 +97,8 @@ func TestDefaultClient(t *testing.T) {
 			t.Setenv("FAUNA_SECRET", val)
 			t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointPreview)
 
-			previewClient, clientErr := fauna.NewDefaultClient()
-			if clientErr != nil {
+			previewClient, previewClientErr := fauna.NewDefaultClient()
+			if previewClientErr != nil {
 				t.Errorf("failed to init preview client: %v", clientErr.Error())
 				t.Fail()
 			}
@@ -187,7 +187,7 @@ func TestNewClient(t *testing.T) {
 			b := bytes.NewBuffer(nil)
 			log.SetOutput(b)
 
-			client, clientErr := fauna.DefaultClient()
+			client, clientErr := fauna.NewDefaultClient()
 			if clientErr != nil {
 				t.Fatalf("should be able to init client: %s", clientErr.Error())
 			}
@@ -458,10 +458,6 @@ func TestErrorHandling(t *testing.T) {
 
 		if !errors.As(queryErr, &fauna.AuthenticationError{}) {
 			t.Errorf("wrong type: %T", queryErr)
-		}
-
-		if errors.Unwrap(queryErr) != nil {
-			t.Errorf("should be able to unwrap: %v", queryErr)
 		}
 	})
 

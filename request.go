@@ -53,7 +53,7 @@ type fqlRequest struct {
 func (c *Client) do(request *fqlRequest) (*Response, error) {
 	bytesOut, bytesErr := json.Marshal(request)
 	if bytesErr != nil {
-		return nil, bytesErr
+		return nil, fmt.Errorf("marshal request failed: %w", bytesErr)
 	}
 
 	req, reqErr := http.NewRequestWithContext(request.Context, http.MethodPost, c.url, bytes.NewReader(bytesOut))
@@ -93,7 +93,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	if doErr != nil {
-		return nil, NetworkError(fmt.Errorf("request failed: %w", doErr))
+		return nil, NetworkError(fmt.Errorf("network error: %w", doErr))
 	}
 
 	defer func() {
@@ -105,7 +105,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 
 	bin, readErr := io.ReadAll(r.Body)
 	if readErr != nil {
-		return nil, readErr
+		return nil, fmt.Errorf("failed to read response body: %w", readErr)
 	}
 
 	response.Bytes = bin
@@ -120,7 +120,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 		}
 	}
 
-	if serviceErr := GetServiceError(r.StatusCode, response.Error); serviceErr != nil {
+	if serviceErr := GetServiceError(r.StatusCode, response.Error, response.Summary); serviceErr != nil {
 		return &response, serviceErr
 	}
 

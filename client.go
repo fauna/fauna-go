@@ -200,13 +200,13 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 	}
 	res, err := c.do(req)
 	if err != nil {
-		return res, err
+		return res, fmt.Errorf("request error: %w", err)
 	}
 
 	if obj != nil {
 		unmarshalErr := json.Unmarshal(res.Data, obj)
 		if unmarshalErr != nil {
-			return res, unmarshalErr
+			return res, fmt.Errorf("failed to unmarshal object [%v] from result: %v\nerror: %w", obj, res.Data, unmarshalErr)
 		}
 	}
 
