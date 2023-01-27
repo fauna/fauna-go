@@ -47,7 +47,7 @@ const (
 	// DefaultHttpReadIdleTimeout Fauna Client default HTTP read idle timeout
 	DefaultHttpReadIdleTimeout = time.Minute * 3
 
-	// Reuest/response Headers
+	// Request/response Headers
 	HeaderContentType = "Content-Type"
 	HeaderTxnTime     = "X-Txn-Time"
 
