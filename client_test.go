@@ -241,11 +241,17 @@ func TestNewClient(t *testing.T) {
 				t.Fatalf("failed to query: %s", queryErr.Error())
 			}
 
+			txtTimeBeforeBump := client.GetLastTxnTime()
+
 			time.Sleep(time.Millisecond * 250)
 
 			bumpTxnTimeErr := client.SetLastTxnTime(time.Now())
 			if bumpTxnTimeErr != nil {
 				t.Fatalf("failed to bump txn time: %s", bumpTxnTimeErr.Error())
+			}
+
+			if txtTimeBeforeBump == client.GetLastTxnTime() {
+				t.Errorf("last txn time has not changed")
 			}
 
 			_, secondQueryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
