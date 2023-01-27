@@ -226,6 +226,44 @@ func TestNewClient(t *testing.T) {
 				t.Errorf("Expected response output\nbuffer: %s\n", logBuf)
 			}
 		})
+
+		t.Run("can bump last txn time", func(t *testing.T) {
+			t.Setenv(fauna.EnvFaunaSecret, "secret")
+			t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+
+			client, clientErr := fauna.NewDefaultClient()
+			if clientErr != nil {
+				t.Fatalf("failed to init client: %s", clientErr.Error())
+			}
+
+			_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
+			if queryErr != nil {
+				t.Fatalf("failed to query: %s", queryErr.Error())
+			}
+
+			txtTimeBeforeBump := client.GetLastTxnTime()
+
+			time.Sleep(time.Millisecond * 250)
+
+			bumpTxnTimeErr := client.SetLastTxnTime(time.Now())
+			if bumpTxnTimeErr != nil {
+				t.Fatalf("failed to bump txn time: %s", bumpTxnTimeErr.Error())
+			}
+
+			if txtTimeBeforeBump == client.GetLastTxnTime() {
+				t.Errorf("last txn time has not changed")
+			}
+
+			_, secondQueryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
+			if secondQueryErr != nil {
+				t.Fatalf("second query failed: %s", secondQueryErr.Error())
+			}
+
+			badTxnTimeErr := client.SetLastTxnTime(time.Now().Add(-(time.Hour * 1)))
+			if badTxnTimeErr == nil {
+				t.Errorf("setting the txn time backwards should have failed")
+			}
+		})
 	})
 
 	t.Run("disable last transaction time", func(t *testing.T) {
