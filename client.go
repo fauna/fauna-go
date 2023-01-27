@@ -185,9 +185,10 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 		VerboseDebugEnabled: c.verboseDebugEnabled,
 	}
 
-	for _, o := range opts {
-		o(req)
+	for _, queryOptionFn := range opts {
+		queryOptionFn(req)
 	}
+
 	res, err := c.do(req)
 	if err != nil {
 		return res, fmt.Errorf("request error: %w", err)
