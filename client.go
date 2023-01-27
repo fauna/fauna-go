@@ -11,7 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/fauna/fauna-go/internal/fingerprinting"
@@ -141,21 +141,9 @@ func NewDefaultClient() (*Client, error) {
 
 // NewClient initialize a new [fauna.Client] with custom settings
 func NewClient(secret string, configFns ...ClientConfigFn) *Client {
-	// sensible default
-	typeCheckEnabled := true
-	if typeCheckEnabledVal, found := os.LookupEnv(EnvFaunaTypeCheckEnabled); found {
-		typeCheckEnabled = strings.ToLower(typeCheckEnabledVal) != "false"
-	}
-
-	txnTimeEnabled := true
-	if val, found := os.LookupEnv(EnvFaunaTrackTxnTimeEnabled); found {
-		txnTimeEnabled = strings.ToLower(val) != "false"
-	}
-
-	verboseDebugEnabled := false
-	if val, found := os.LookupEnv(EnvFaunaVerboseDebugEnabled); found {
-		verboseDebugEnabled = strings.ToLower(val) == "true"
-	}
+	typeCheckEnabled := isEnabled(EnvFaunaTypeCheckEnabled, true)
+	txnTimeEnabled := isEnabled(EnvFaunaTrackTxnTimeEnabled, true)
+	verboseDebugEnabled := isEnabled(EnvFaunaVerboseDebugEnabled, false)
 
 	client := &Client{
 		ctx:    context.TODO(),
@@ -220,4 +208,14 @@ func (c *Client) GetLastTxnTime() int64 {
 	}
 
 	return 0
+}
+
+func isEnabled(envVar string, defaultValue bool) bool {
+	if val, found := os.LookupEnv(envVar); found {
+		if boolVal, err := strconv.ParseBool(val); err == nil {
+			return boolVal
+		}
+	}
+
+	return defaultValue
 }
