@@ -77,7 +77,7 @@ const (
 )
 
 type txnTime struct {
-	sync.Mutex
+	sync.RWMutex
 
 	Enabled bool
 	Value   int64
