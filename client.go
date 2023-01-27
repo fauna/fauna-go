@@ -48,10 +48,12 @@ const (
 	DefaultHttpReadIdleTimeout = time.Minute * 3
 
 	// Request/response Headers
+
 	HeaderContentType = "Content-Type"
 	HeaderTxnTime     = "X-Txn-Time"
 
 	// Request Headers
+
 	HeaderAuthorization        = "Authorization"
 	HeaderLastSeenTxn          = "X-Last-Seen-Txn"
 	HeaderLinearized           = "X-Linearized"
@@ -60,6 +62,7 @@ const (
 	HeaderTypeChecking         = "X-Fauna-Type-Checking"
 
 	// Response Headers
+
 	HeaderTraceparent       = "Traceparent"
 	HeaderByteReadOps       = "X-Byte-Read-Ops"
 	HeaderByteWriteOps      = "X-Byte-Write-Ops"
