@@ -77,7 +77,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 		if dumpErr != nil {
 			c.log.Printf("Failed to dump request: %s", dumpErr.Error())
 		} else {
-			c.log.Printf("REQUEST:\n%s\n-------\n", string(reqDump))
+			c.log.Printf("REQUEST:\n%s\n-------", string(reqDump))
 		}
 	}
 
@@ -88,7 +88,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 		if dumpErr != nil {
 			c.log.Printf("Failed to dump response: %s", dumpErr.Error())
 		} else {
-			c.log.Printf("RESPONSE:\n%s\n-------\n", string(respDump))
+			c.log.Printf("RESPONSE:\n%s\n-------", string(respDump))
 		}
 	}
 
