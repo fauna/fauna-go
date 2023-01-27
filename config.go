@@ -3,6 +3,7 @@ package fauna
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 )
@@ -13,6 +14,10 @@ type ClientConfigFn func(*Client)
 // Context specify the context to be used for the [fauna.Client]
 func Context(ctx context.Context) ClientConfigFn {
 	return func(c *Client) { c.ctx = ctx }
+}
+
+func Logger(log *log.Logger) ClientConfigFn {
+	return func(c *Client) { c.log = log }
 }
 
 // HTTPClient set the http.Client for the [fauna.Client]
