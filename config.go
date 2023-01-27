@@ -37,7 +37,7 @@ func Headers(headers map[string]string) ClientConfigFn {
 // LastTxnTime toggle if [fauna.Client] records the last transaction time
 func LastTxnTime(enabled bool) ClientConfigFn {
 	return func(c *Client) {
-		c.txnTimeEnabled = enabled
+		c.lastTxnTime.Enabled = enabled
 	}
 }
 

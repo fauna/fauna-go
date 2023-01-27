@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/fauna/fauna-go/internal/fingerprinting"
@@ -75,13 +76,19 @@ const (
 	HeaderWriteOps          = "X-Write-Ops"
 )
 
+type txnTime struct {
+	sync.Mutex
+
+	Enabled bool
+	Value   int64
+}
+
 // Client is the Fauna Client.
 type Client struct {
 	url                 string
 	secret              string
 	headers             map[string]string
-	txnTimeEnabled      bool
-	lastTxnTime         int64
+	lastTxnTime         txnTime
 	typeCheckingEnabled bool
 	verboseDebugEnabled bool
 
@@ -142,7 +149,6 @@ func NewDefaultClient() (*Client, error) {
 // NewClient initialize a new [fauna.Client] with custom settings
 func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	typeCheckEnabled := isEnabled(EnvFaunaTypeCheckEnabled, true)
-	txnTimeEnabled := isEnabled(EnvFaunaTrackTxnTimeEnabled, true)
 	verboseDebugEnabled := isEnabled(EnvFaunaVerboseDebugEnabled, false)
 
 	client := &Client{
@@ -159,8 +165,10 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 			"X-Runtime-Environment":    fingerprinting.Environment(),
 			"X-Go-Version":             fingerprinting.Version(),
 		},
+		lastTxnTime: txnTime{
+			Enabled: isEnabled(EnvFaunaTrackTxnTimeEnabled, true),
+		},
 		typeCheckingEnabled: typeCheckEnabled,
-		txnTimeEnabled:      txnTimeEnabled,
 		verboseDebugEnabled: verboseDebugEnabled,
 	}
 
@@ -179,7 +187,7 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 		Query:               fql,
 		Arguments:           args,
 		Headers:             c.headers,
-		TxnTimeEnabled:      c.txnTimeEnabled,
+		TxnTimeEnabled:      c.lastTxnTime.Enabled,
 		VerboseDebugEnabled: c.verboseDebugEnabled,
 	}
 
@@ -202,20 +210,23 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 }
 
 func (c *Client) SetLastTxnTime(txnTime time.Time) error {
+	c.lastTxnTime.Lock()
+	defer c.lastTxnTime.Unlock()
+
 	val := txnTime.UnixMicro()
-	if val < c.lastTxnTime {
-		return fmt.Errorf("unable to set last transaction time less than previously known value:\n\tcurrent value: %d\n\tattempted value: %d", c.lastTxnTime, val)
+	if val < c.lastTxnTime.Value {
+		return fmt.Errorf("unable to set last transaction time less than previously known value:\n\tcurrent value: %d\n\tattempted value: %d", c.lastTxnTime.Value, val)
 	}
 
-	c.lastTxnTime = val
+	c.lastTxnTime.Value = val
 
 	return nil
 }
 
 // GetLastTxnTime gets the freshest timestamp reported to this client.
 func (c *Client) GetLastTxnTime() int64 {
-	if c.txnTimeEnabled {
-		return c.lastTxnTime
+	if c.lastTxnTime.Enabled {
+		return c.lastTxnTime.Value
 	}
 
 	return 0

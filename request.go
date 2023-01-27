@@ -67,7 +67,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	if request.TxnTimeEnabled {
-		if lastSeen := atomic.LoadInt64(&c.lastTxnTime); lastSeen != 0 {
+		if lastSeen := atomic.LoadInt64(&c.lastTxnTime.Value); lastSeen != 0 {
 			req.Header.Set(HeaderLastSeenTxn, strconv.FormatInt(lastSeen, 10))
 		}
 	}
@@ -138,14 +138,17 @@ func (c *Client) storeLastTxnTime(header http.Header) error {
 }
 
 func (c *Client) syncLastTxnTime(newTxnTime int64) {
-	if !c.txnTimeEnabled {
+	if !c.lastTxnTime.Enabled {
 		return
 	}
 
+	c.lastTxnTime.Lock()
+	defer c.lastTxnTime.Unlock()
+
 	for {
-		oldTxnTime := atomic.LoadInt64(&c.lastTxnTime)
+		oldTxnTime := atomic.LoadInt64(&c.lastTxnTime.Value)
 		if oldTxnTime >= newTxnTime ||
-			atomic.CompareAndSwapInt64(&c.lastTxnTime, oldTxnTime, newTxnTime) {
+			atomic.CompareAndSwapInt64(&c.lastTxnTime.Value, oldTxnTime, newTxnTime) {
 			break
 		}
 	}
