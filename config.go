@@ -1,10 +1,10 @@
 package fauna
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -124,10 +124,10 @@ func Timeout(dur time.Duration) QueryOptFn {
 }
 
 func argsStringFromMap(input map[string]string) string {
-	b := bytes.NewBuffer(nil)
+	params := url.Values{}
 	for k, v := range input {
-		b.WriteString(fmt.Sprintf("%s=%s,", k, v))
+		params.Add(k, v)
 	}
 
-	return strings.TrimSuffix(b.String(), ",")
+	return strings.ReplaceAll(params.Encode(), "&", ",")
 }
