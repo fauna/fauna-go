@@ -67,9 +67,11 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	if request.TxnTimeEnabled {
+		c.lastTxnTime.RLock()
 		if lastSeen := atomic.LoadInt64(&c.lastTxnTime.Value); lastSeen != 0 {
 			req.Header.Set(HeaderLastSeenTxn, strconv.FormatInt(lastSeen, 10))
 		}
+		c.lastTxnTime.RUnlock()
 	}
 
 	if request.VerboseDebugEnabled {
