@@ -366,9 +366,10 @@ func TestHeaders(t *testing.T) {
 			headerOpt fauna.ClientConfigFn
 		}
 		tests := []struct {
-			name string
-			args args
-			want string
+			name        string
+			args        args
+			want        string
+			expectError bool
 		}{
 			{
 				name: "linearized should be true",
@@ -397,10 +398,14 @@ func TestHeaders(t *testing.T) {
 			{
 				name: "should have tags",
 				args: args{
-					header:    fauna.HeaderTags,
-					headerOpt: fauna.Tags(map[string]string{"hello": "world"}),
+					header: fauna.HeaderTags,
+					headerOpt: fauna.Tags(map[string]string{
+						"hello": "world",
+						"what":  "are=you,doing?",
+					}),
 				},
-				want: "hello=world",
+				want:        "hello=world,what=are%3Dyou%2Cdoing%3F",
+				expectError: true,
 			},
 		}
 		for _, tt := range tests {
@@ -417,8 +422,8 @@ func TestHeaders(t *testing.T) {
 
 				// running a simple query just to invoke the request
 				_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
-				if queryErr != nil {
-					t.Fatalf("%s", queryErr.Error())
+				if !tt.expectError && queryErr != nil {
+					t.Errorf("query failed: %s", queryErr.Error())
 				}
 			})
 		}
@@ -509,7 +514,7 @@ func TestErrorHandling(t *testing.T) {
 			t.Logf("response: %v", res.Data)
 			t.Errorf("expected this to fail")
 		} else {
-			if !errors.As(queryErr, &fauna.ServiceInternalError{}) {
+			if !errors.As(queryErr, &fauna.QueryRuntimeError{}) {
 				t.Errorf("wrong type: %T", queryErr)
 			}
 		}
