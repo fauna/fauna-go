@@ -681,8 +681,8 @@ func TestErrorHandling(t *testing.T) {
 				t.Fatalf("failed to unmarshal struct: %s", unmarshalErr.Error())
 			}
 
-			if val, found := plain[fauna.TypeInt]; !found {
-				t.Fatalf("should have a %s key", fauna.TypeInt)
+			if val, found := plain[fauna.TagInt]; !found {
+				t.Fatalf("should have a %s key", fauna.TagInt)
 			} else {
 				if fmt.Sprintf("%v", expected) != fmt.Sprintf("%v", val) {
 					t.Errorf("expected [%T: %v] got [%T: %v]", expected, expected, val, val)
@@ -702,8 +702,8 @@ func TestErrorHandling(t *testing.T) {
 				t.Fatalf("failed to unmarshal struct: %s", unmarshalErr.Error())
 			}
 
-			if val, found := plain[fauna.TypeTime]; !found {
-				t.Fatalf("should have an %s key", fauna.TypeTime)
+			if val, found := plain[fauna.TagTime]; !found {
+				t.Fatalf("should have an %s key", fauna.TagTime)
 			} else {
 				expected := now.Time.Format(time.RFC3339)
 
