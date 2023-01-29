@@ -100,6 +100,11 @@ func QueryContext(ctx context.Context) QueryOptFn {
 	}
 }
 
+// QueryFormat set the [Format] for a single [Client.Query]
+func QueryFormat(format Format) QueryOptFn {
+	return func(req *fqlRequest) { req.Format = format }
+}
+
 // QueryTxnTime toggle if [fauna.Client] records the last transaction for a single [Client.Query]
 func QueryTxnTime(enabled bool) QueryOptFn {
 	return func(req *fqlRequest) {
