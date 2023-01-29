@@ -83,12 +83,12 @@ const (
 	HeaderTxnRetries        = "X-Txn-Retries"
 	HeaderWriteOps          = "X-Write-Ops"
 
-	TypeSimple = "@simple"
-	TypeModule = "@module"
-	TypeInt    = "@int"
-	TypeLong   = "@long"
-	TypeTime   = "@time"
-	TypeDate   = "@date"
+	TagSimple = "@simple"
+	TagModule = "@module"
+	TagInt    = "@int"
+	TagLong   = "@long"
+	TagTime   = "@time"
+	TagDate   = "@date"
 )
 
 type txnTime struct {
