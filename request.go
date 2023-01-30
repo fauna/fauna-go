@@ -116,8 +116,14 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 
 	response.Bytes = bin
 
-	if unmarshalErr := json.Unmarshal(bin, &response); unmarshalErr != nil {
-		return &response, fmt.Errorf("failed to umarmshal response: %w", unmarshalErr)
+	if request.Format == FormatSimple {
+		if unmarshalErr := json.Unmarshal(bin, &response); unmarshalErr != nil {
+			return &response, fmt.Errorf("failed to umarmshal response: %w", unmarshalErr)
+		}
+	} else {
+		if faunaUnmarshalErr := Unmarshal(bin, &response); faunaUnmarshalErr != nil {
+			return &response, fmt.Errorf("failed to unmarshal tagged response: %s", faunaUnmarshalErr.Error())
+		}
 	}
 
 	if request.TxnTimeEnabled {

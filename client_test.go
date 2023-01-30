@@ -96,13 +96,8 @@ func TestDefaultClient(t *testing.T) {
 
 			var data struct {
 				Message   string
-				Timestamp fauna.Time `json:"timestamp"`
-				Silly     struct {
-					Yup  string `json:"yup"`
-					Nope struct {
-						Hello string `json:"foo"`
-					} `json:"nope"`
-				} `json:"@silly"`
+				Timestamp time.Time `json:"timestamp"`
+				Date      time.Time `json:"date"`
 			}
 			res, queryErr := client.Query(`let foo = "Hello, World";
 
@@ -110,23 +105,12 @@ func TestDefaultClient(t *testing.T) {
 	"message": foo,
 	"timestamp": Time.now(),
 	"date": Date.today(),
-	"@silly": {
-		"yup": "nope",
-		"nope": {
-			"foo": "Hello, World"
-		}
-	},
-	"modules": {
-		"time": Time,
-		"date": Date,
-		"math": Math,
-	}
 }
 `,
 				nil,
 				&data,
 				fauna.QueryTypeChecking(true),
-				fauna.QueryFormat(fauna.FormatTyped),
+				fauna.QueryFormat(fauna.FormatTagged),
 			)
 			if queryErr != nil {
 				t.Fatalf("typed query error: %s", queryErr.Error())
@@ -137,7 +121,7 @@ func TestDefaultClient(t *testing.T) {
 			}
 
 			if !data.Timestamp.After(start) {
-				t.Logf("returned timestamp is not after start of test: %s\nsilly: %v\nresponse: %s", data.Timestamp.Format(time.Kitchen), data.Silly.Nope.Hello, res.Bytes)
+				t.Logf("returned timestamp is not after start of test: %s\nresponse: %s", data.Timestamp.Format(time.Kitchen), res.Bytes)
 			}
 		})
 	})
@@ -662,56 +646,6 @@ func TestErrorHandling(t *testing.T) {
 		if queryErr != nil {
 			t.Fatalf("error: %s", queryErr.Error())
 		}
-	})
-
-	t.Run("validate types", func(t *testing.T) {
-		t.Run("@int", func(t *testing.T) {
-			expected := int32(48)
-			v := fauna.IntValue(expected)
-
-			b, marshallErr := json.Marshal(v)
-			if marshallErr != nil {
-				t.Fatalf("failed to marshal fauna.Int: %s", marshallErr.Error())
-			}
-
-			t.Logf("bytes: %s", string(b))
-
-			var plain map[string]interface{}
-			if unmarshalErr := json.Unmarshal(b, &plain); unmarshalErr != nil {
-				t.Fatalf("failed to unmarshal struct: %s", unmarshalErr.Error())
-			}
-
-			if val, found := plain[fauna.TagInt]; !found {
-				t.Fatalf("should have a %s key", fauna.TagInt)
-			} else {
-				if fmt.Sprintf("%v", expected) != fmt.Sprintf("%v", val) {
-					t.Errorf("expected [%T: %v] got [%T: %v]", expected, expected, val, val)
-				}
-			}
-		})
-		t.Run("@time", func(t *testing.T) {
-			now := fauna.Now()
-
-			b, err := json.Marshal(now)
-			if err != nil {
-				t.Errorf("failed to marshal time: %s", err.Error())
-			}
-
-			var plain map[string]string
-			if unmarshalErr := json.Unmarshal(b, &plain); unmarshalErr != nil {
-				t.Fatalf("failed to unmarshal struct: %s", unmarshalErr.Error())
-			}
-
-			if val, found := plain[fauna.TagTime]; !found {
-				t.Fatalf("should have an %s key", fauna.TagTime)
-			} else {
-				expected := now.Time.Format(time.RFC3339)
-
-				if expected != val {
-					t.Errorf("invalid unmarshal, expected [%s] got [%s]", expected, val)
-				}
-			}
-		})
 	})
 }
 

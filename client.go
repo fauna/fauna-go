@@ -49,7 +49,7 @@ const (
 	DefaultHttpReadIdleTimeout = time.Minute * 3
 
 	FormatDecorated Format = "decorated"
-	FormatTyped     Format = "typed"
+	FormatTagged    Format = "tagged"
 	FormatSimple    Format = "simple"
 
 	// Request/response Headers
@@ -83,8 +83,9 @@ const (
 	HeaderTxnRetries        = "X-Txn-Retries"
 	HeaderWriteOps          = "X-Write-Ops"
 
-	TagSimple = "@simple"
 	TagModule = "@module"
+	TagObj    = "@object"
+	TagDouble = "@double"
 	TagInt    = "@int"
 	TagLong   = "@long"
 	TagTime   = "@time"
