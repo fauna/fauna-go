@@ -225,6 +225,9 @@ func (c *Client) SetLastTxnTime(txnTime time.Time) error {
 
 // GetLastTxnTime gets the freshest timestamp reported to this client.
 func (c *Client) GetLastTxnTime() int64 {
+	c.lastTxnTime.RLock()
+	defer c.lastTxnTime.RUnlock()
+
 	if c.lastTxnTime.Enabled {
 		return c.lastTxnTime.Value
 	}
