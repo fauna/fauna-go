@@ -234,6 +234,10 @@ func (c *Client) GetLastTxnTime() int64 {
 	return 0
 }
 
+func (c *Client) String() string {
+	return fmt.Sprintf("%s", c.url)
+}
+
 func isEnabled(envVar string, defaultValue bool) bool {
 	if val, found := os.LookupEnv(envVar); found {
 		if boolVal, err := strconv.ParseBool(val); err == nil {

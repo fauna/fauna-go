@@ -140,6 +140,13 @@ func TestNewClient(t *testing.T) {
 		}
 	})
 
+	t.Run("stringify", func(t *testing.T) {
+		client := fauna.NewClient("secret", fauna.URL(fauna.EndpointLocal))
+		if client.String() != fauna.EndpointLocal {
+			t.Errorf("client toString should be equal to the endpoint to ensure we don't expose secrets")
+		}
+	})
+
 	t.Run("missing secret", func(t *testing.T) {
 		_, clientErr := fauna.NewDefaultClient()
 		if clientErr == nil {
