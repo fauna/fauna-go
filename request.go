@@ -10,6 +10,7 @@ import (
 	"net/http/httputil"
 	"strconv"
 	"sync/atomic"
+	"time"
 )
 
 // QueryArgItem query args structure
@@ -51,14 +52,36 @@ type fqlRequest struct {
 }
 
 func (c *Client) do(request *fqlRequest) (*Response, error) {
+	var (
+		res       *http.Response
+		response  Response
+		err       error
+		startTime = time.Now()
+	)
+
+	defer func() {
+		if c.observer != nil {
+			c.observer(&ObserverResult{
+				Client:        c,
+				HttpResponse:  res,
+				FaunaResponse: &response,
+				Error:         err,
+				TimeStart:     startTime,
+				TimeEnd:       time.Now(),
+			})
+		}
+	}()
+
 	bytesOut, bytesErr := json.Marshal(request)
 	if bytesErr != nil {
-		return nil, fmt.Errorf("marshal request failed: %w", bytesErr)
+		err = fmt.Errorf("marshal request failed: %w", bytesErr)
+		return nil, err
 	}
 
 	req, reqErr := http.NewRequestWithContext(request.Context, http.MethodPost, c.url, bytes.NewReader(bytesOut))
 	if reqErr != nil {
-		return nil, fmt.Errorf("failed to init request: %w", reqErr)
+		err = fmt.Errorf("failed to init request: %w", reqErr)
+		return nil, err
 	}
 
 	req.Header.Set(HeaderAuthorization, `Bearer `+c.secret)
@@ -83,10 +106,10 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 		}
 	}
 
-	r, doErr := c.http.Do(req)
+	res, doErr := c.http.Do(req)
 
 	if request.VerboseDebugEnabled {
-		respDump, dumpErr := httputil.DumpResponse(r, true)
+		respDump, dumpErr := httputil.DumpResponse(res, true)
 		if dumpErr != nil {
 			c.log.Printf("Failed to dump response: %s", dumpErr.Error())
 		} else {
@@ -95,35 +118,39 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	if doErr != nil {
-		return nil, NetworkError(fmt.Errorf("network error: %w", doErr))
+		err = NetworkError(fmt.Errorf("network error: %w", doErr))
+		return nil, err
 	}
 
 	defer func() {
 		_ = req.Body.Close()
 	}()
 
-	var response Response
-	response.Raw = r
+	response.Raw = res
 
-	bin, readErr := io.ReadAll(r.Body)
+	bin, readErr := io.ReadAll(res.Body)
 	if readErr != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", readErr)
+		err = fmt.Errorf("failed to read response body: %w", readErr)
+		return nil, err
 	}
 
 	response.Bytes = bin
 
 	if unmarshalErr := json.Unmarshal(bin, &response); unmarshalErr != nil {
-		return &response, fmt.Errorf("failed to umarmshal response: %w", unmarshalErr)
+		err = fmt.Errorf("failed to umarmshal response: %w", unmarshalErr)
+		return &response, err
 	}
 
 	if request.TxnTimeEnabled {
-		if txnTimeErr := c.storeLastTxnTime(r.Header); txnTimeErr != nil {
-			return &response, fmt.Errorf("failed to parse transaction time: %w", txnTimeErr)
+		if txnTimeErr := c.storeLastTxnTime(res.Header); txnTimeErr != nil {
+			err = fmt.Errorf("failed to parse transaction time: %w", txnTimeErr)
+			return &response, err
 		}
 	}
 
-	if serviceErr := GetServiceError(r.StatusCode, response.Error, response.Summary); serviceErr != nil {
-		return &response, serviceErr
+	if serviceErr := GetServiceError(res.StatusCode, response.Error, response.Summary); serviceErr != nil {
+		err = serviceErr
+		return &response, err
 	}
 
 	return &response, nil

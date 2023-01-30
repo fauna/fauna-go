@@ -129,6 +129,54 @@ func TestDefaultClient(t *testing.T) {
 			t.Errorf("invalid: %s", invalidErr.Error())
 		}
 	})
+
+	t.Run("with observer", func(t *testing.T) {
+		var observerResult fauna.ObserverResult
+
+		beforeQuery := time.Now()
+
+		observer := func(result *fauna.ObserverResult) {
+			observerResult = *result
+		}
+
+		client.SetObserver(observer)
+		_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
+
+		afterQuery := time.Now()
+
+		if queryErr != nil {
+			t.Fatalf("failed to invoke query: %s", queryErr.Error())
+		}
+
+		if observerResult.HttpResponse == nil {
+			t.Errorf("should have an HTTP Response")
+		}
+
+		if observerResult.FaunaResponse == nil {
+			t.Errorf("should have a Fauna Response")
+		}
+
+		if observerResult.Error != nil {
+			t.Errorf("fauna error should be nil")
+		}
+
+		if !observerResult.TimeStart.After(beforeQuery) || !observerResult.TimeStart.Before(afterQuery) {
+			t.Errorf("start time is wrong: got [%s] expected after [%s] and before [%s]",
+				observerResult.TimeStart.Format(time.RFC3339Nano),
+				beforeQuery.Format(time.RFC3339Nano),
+				afterQuery.Format(time.RFC3339Nano),
+			)
+		}
+
+		if !afterQuery.After(observerResult.TimeEnd) {
+			t.Errorf(
+				"end time is wrong: got [%s] expected after [%s]\ndiff: %s",
+				observerResult.TimeEnd.Format(time.RFC3339Nano),
+				afterQuery.Format(time.RFC3339Nano),
+				afterQuery.Sub(observerResult.TimeEnd),
+			)
+		}
+	})
 }
 
 func TestNewClient(t *testing.T) {
@@ -326,6 +374,17 @@ func TestNewClient(t *testing.T) {
 				t.Errorf("transaction time not have changed, before [%d] after [%d]", before, after)
 			}
 		})
+	})
+
+	t.Run("with observer", func(t *testing.T) {
+		client := fauna.NewClient(
+			"secret",
+			fauna.URL(fauna.EndpointLocal),
+			fauna.Observer(func(result *fauna.ObserverResult) {}),
+		)
+		if client == nil {
+			t.Fatalf("failed to init client with observer")
+		}
 	})
 }
 

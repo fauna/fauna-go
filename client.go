@@ -94,11 +94,26 @@ type Client struct {
 
 	http *http.Client
 	log  *log.Logger
-	ctx  context.Context
+
+	ctx      context.Context
+	observer ObserverCallback
 
 	// tags?
 	// traceParent?
 }
+
+// ObserverResult result format to be sent to the [fauna.ObserverCallback]
+type ObserverResult struct {
+	Client        *Client
+	HttpResponse  *http.Response
+	FaunaResponse *Response
+	TimeStart     time.Time
+	TimeEnd       time.Time
+	Error         error
+}
+
+// ObserverCallback function for observing [fauna.Query] results
+type ObserverCallback func(result *ObserverResult)
 
 // NewDefaultClient initialize a [fauna.Client] with recommend default settings
 func NewDefaultClient() (*Client, error) {
@@ -209,6 +224,11 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 	return res, nil
 }
 
+func (c *Client) SetObserver(observer ObserverCallback) {
+	c.observer = observer
+}
+
+// SetLastTxnTime sets the [fauna.Client] txn time
 func (c *Client) SetLastTxnTime(txnTime time.Time) error {
 	c.lastTxnTime.Lock()
 	defer c.lastTxnTime.Unlock()
