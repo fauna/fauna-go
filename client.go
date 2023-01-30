@@ -235,7 +235,7 @@ func (c *Client) GetLastTxnTime() int64 {
 }
 
 func (c *Client) String() string {
-	return fmt.Sprintf("%s", c.url)
+	return c.url
 }
 
 func isEnabled(envVar string, defaultValue bool) bool {
