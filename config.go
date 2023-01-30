@@ -58,7 +58,7 @@ func MaxContentionRetries(i int) ClientConfigFn {
 	}
 }
 
-// Observer [fauna.Client] option to specify the [fauna.ObserverCallback] for the [fauna.Client]
+// Observer option to specify the [fauna.ObserverCallback] for the [fauna.Client]
 func Observer(callback ObserverCallback) ClientConfigFn {
 	return func(c *Client) {
 		c.observer = callback
