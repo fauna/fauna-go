@@ -428,6 +428,22 @@ func TestHeaders(t *testing.T) {
 		}
 	})
 
+	t.Run("can set headers on Query", func(t *testing.T) {
+		client := fauna.NewClient(
+			"secret",
+			fauna.URL(fauna.EndpointLocal),
+			fauna.HTTPClient(testingClient),
+		)
+
+		currentHeader = fauna.HeaderTags
+		expectedValue = "hello=world"
+
+		_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTags(map[string]string{"hello": "world"}))
+		if queryErr != nil {
+			t.Errorf("query failed: %s", queryErr.Error())
+		}
+	})
+
 	t.Run("can use convenience methods", func(t *testing.T) {
 		currentHeader = fauna.HeaderLinearized
 		expectedValue = "true"
