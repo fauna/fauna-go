@@ -112,7 +112,11 @@ func QueryTypeChecking(enabled bool) QueryOptFn {
 // QueryTags set the tags header on a single [Client.Query]
 func QueryTags(tags map[string]string) QueryOptFn {
 	return func(req *fqlRequest) {
-		req.Headers[HeaderTags] = argsStringFromMap(tags)
+		if val, exists := req.Headers[HeaderTags]; exists {
+			req.Headers[HeaderTags] = argsStringFromMap(tags, strings.Split(val, ",")...)
+		} else {
+			req.Headers[HeaderTags] = argsStringFromMap(tags)
+		}
 	}
 }
 
@@ -123,10 +127,16 @@ func Timeout(dur time.Duration) QueryOptFn {
 	}
 }
 
-func argsStringFromMap(input map[string]string) string {
+func argsStringFromMap(input map[string]string, currentArgs ...string) string {
 	params := url.Values{}
+
+	for _, c := range currentArgs {
+		s := strings.Split(c, "=")
+		params.Set(s[0], s[1])
+	}
+
 	for k, v := range input {
-		params.Add(k, v)
+		params.Set(k, v)
 	}
 
 	return strings.ReplaceAll(params.Encode(), "&", ",")
