@@ -12,21 +12,21 @@ import (
 func TestMarshal(t *testing.T) {
 	t.Run("validate all types", func(t *testing.T) {
 		type foobar struct {
-			Name           string    `json:"name"`
-			Date           time.Time `json:"date" tagged:"@date"`
-			Time           time.Time `json:"time"`
-			Long           int64     `json:"long"`
-			TaggedLong     int64     `json:"taggedLong" tagged:"@long"`
-			Number         int32     `json:"number"`
-			UntaggedDouble float32   `json:"decimal"`
-			TaggedDouble   int       `json:"taggedDouble" tagged:"@double"`
-			OmitMe         int32     `json:"notUsed" tagged:"-"`
-			AtPlace        string    `json:"@place"`
+			Name           string    `fauna:"name"`
+			Date           time.Time `fauna:"date" faunaType:"@date"`
+			Time           time.Time `fauna:"time"`
+			Long           int64     `fauna:"long"`
+			TaggedLong     int64     `fauna:"taggedLong" faunaType:"@long"`
+			Number         int32     `fauna:"number"`
+			UntaggedDouble float32   `fauna:"decimal"`
+			TaggedDouble   int       `fauna:"taggedDouble" faunaType:"@double"`
+			OmitMe         int32     `fauna:"-"`
+			AtPlace        string    `fauna:"@place"`
 			Child          struct {
 				More struct {
-					Silly time.Time `json:"working"`
-				} `json:"more" tagged:"@object"`
-			} `json:"child" tagged:"@object"`
+					Silly time.Time `fauna:"working"`
+				} `fauna:"more" faunaType:"@object"`
+			} `fauna:"child" faunaType:"@object"`
 		}
 
 		d, _ := time.Parse("2006-01-02", "1923-05-13")
@@ -46,6 +46,8 @@ func TestMarshal(t *testing.T) {
 		if err != nil {
 			t.Errorf("should not have errored: %s", err.Error())
 		}
+
+		t.Logf("result: %s", result)
 
 		resultMap := map[string]interface{}{}
 		_ = json.Unmarshal(result, &resultMap)

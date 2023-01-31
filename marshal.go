@@ -26,31 +26,31 @@ func faunaMap(v interface{}) (map[string]interface{}, error) {
 		indexField := val.Type().Field(i)
 
 		key := indexField.Name
-		if jsonTag, hasTag := indexField.Tag.Lookup("json"); hasTag {
-			key = jsonTag
+		if faunaKey, hasFaunaKey := indexField.Tag.Lookup("fauna"); hasFaunaKey {
+			key = faunaKey
 		}
 
 		fieldInterface := val.Field(i).Interface()
 
-		faunaTag, foundFaunaTag := indexField.Tag.Lookup("tagged")
-		if foundFaunaTag {
-			switch faunaTag {
+		faunaType, hasFaunaTypeTag := indexField.Tag.Lookup("faunaType")
+		if hasFaunaTypeTag {
+			switch faunaType {
 			case TagDate, TagInt, TagLong, TagModule, TagObj, TagTime, TagDouble:
 				// valid tags
 			case "-":
 				continue
 			default:
-				return nil, fmt.Errorf("unsupported fauna tag [%s] on struct field [%s]", faunaTag, indexField.Name)
+				return nil, fmt.Errorf("unsupported fauna tag [%s] on struct field [%s]", faunaType, indexField.Name)
 			}
 		}
 
 		setFaunaTag := func(val string) {
 			// allow users to override
-			if faunaTag != "" {
+			if faunaType != "" {
 				return
 			}
 
-			faunaTag = val
+			faunaType = val
 		}
 
 		switch f.Kind() {
@@ -67,7 +67,7 @@ func faunaMap(v interface{}) (map[string]interface{}, error) {
 				if childErr != nil {
 					return nil, childErr
 				}
-				result[key] = tagged(childMap, faunaTag)
+				result[key] = tagged(childMap, faunaType)
 			}
 		case reflect.Int64:
 			setFaunaTag(TagLong)
@@ -81,7 +81,7 @@ func faunaMap(v interface{}) (map[string]interface{}, error) {
 
 		// don't overwrite structs
 		if _, exists := result[key]; !exists {
-			result[key] = tagged(fieldInterface, faunaTag)
+			result[key] = tagged(fieldInterface, faunaType)
 		}
 
 	}
