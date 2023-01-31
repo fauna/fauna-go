@@ -116,7 +116,7 @@ func TestMarshal(t *testing.T) {
 		}{Name: "Steve"}); err == nil {
 			t.Errorf("should not have been able to marshal")
 			t.Logf("result: %s", b)
-		} else if fmt.Sprintf("%s", err.Error()) != expectedError {
+		} else if err.Error() != expectedError {
 			t.Errorf("unexpected error format: %s\nexpected: %s\n", err.Error(), expectedError)
 		}
 	})

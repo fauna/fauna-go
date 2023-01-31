@@ -2,7 +2,6 @@ package fauna
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -136,37 +135,7 @@ func (p *jsonParser) parseInt64() (value int64, err error) {
 func (p *jsonParser) parseDouble() (value float64, err error) {
 	var str string
 	if str, err = p.readSingleString(); err == nil {
-		value, err = strconv.ParseFloat(str, 16)
-	}
-
-	return
-}
-
-func (p *jsonParser) parseBytes() (value []byte, err error) {
-	var encoded string
-
-	if encoded, err = p.readSingleString(); err == nil {
-		bytesV, bytesErr := base64.StdEncoding.DecodeString(encoded)
-		if bytesErr == nil {
-			value = bytesV
-		}
-	}
-
-	return
-}
-
-func (p *jsonParser) parseQuery() (value json.RawMessage, err error) {
-	var lambda json.RawMessage
-
-	if err = p.decoder.Decode(&lambda); err == nil {
-		value = lambda
-	}
-
-	var token json.Token
-	if token, err = p.decoder.Token(); err == nil {
-		if token != json.Delim('}') {
-			err = fmt.Errorf("end of object: %v", token)
-		}
+		value, err = strconv.ParseFloat(str, 32)
 	}
 
 	return
