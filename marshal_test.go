@@ -112,7 +112,7 @@ func TestMarshal(t *testing.T) {
 		expectedError := "unsupported fauna tag [@cowbell] on struct field [Name]"
 
 		if b, err := fauna.Marshal(struct {
-			Name string `tagged:"@cowbell"`
+			Name string `faunaType:"@cowbell"`
 		}{Name: "Steve"}); err == nil {
 			t.Errorf("should not have been able to marshal")
 			t.Logf("result: %s", b)
