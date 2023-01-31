@@ -26,10 +26,14 @@ func (e ServiceError) Error() string {
 func GetServiceError(httpStatus int, e *ServiceError, summary string) error {
 	switch httpStatus {
 	case http.StatusBadRequest:
+		if e == nil {
+			return NewQueryRuntimeError(&ServiceError{Code: "", Message: ""}, summary)
+		}
+
 		if _, found := queryCheckFailureCodes[e.Code]; found {
 			return NewQueryCheckError(e, summary)
 		} else {
-			return NewQueryRuntimeError(e)
+			return NewQueryRuntimeError(e, summary)
 		}
 	case http.StatusUnauthorized:
 		return NewAuthenticationError(e)
@@ -52,10 +56,13 @@ type QueryRuntimeError struct {
 	ServiceError
 }
 
-func NewQueryRuntimeError(e *ServiceError) QueryRuntimeError {
-	return QueryRuntimeError{
+func NewQueryRuntimeError(e *ServiceError, summary string) QueryRuntimeError {
+	q := QueryRuntimeError{
 		ServiceError: *e,
 	}
+	q.Message = "\n" + summary
+
+	return q
 }
 
 type QueryCheckError struct {

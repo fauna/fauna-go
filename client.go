@@ -59,6 +59,7 @@ const (
 	HeaderLastSeenTxn          = "X-Last-Seen-Txn"
 	HeaderLinearized           = "X-Linearized"
 	HeaderMaxContentionRetries = "X-Max-Contention-Retries"
+	HeaderTags                 = "X-Fauna-Tags"
 	HeaderTimeoutMs            = "X-Timeout-Ms"
 	HeaderTypeChecking         = "X-Fauna-Type-Checking"
 

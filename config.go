@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -70,6 +72,13 @@ func QueryTimeout(d time.Duration) ClientConfigFn {
 	}
 }
 
+// Tags sets header on the [fauna.Client]
+func Tags(tags map[string]string) ClientConfigFn {
+	return func(c *Client) {
+		c.SetHeader(HeaderTags, argsStringFromMap(tags))
+	}
+}
+
 // TypeChecking toggle if [fauna.Client] enforces type checking
 func TypeChecking(enabled bool) ClientConfigFn {
 	return func(c *Client) {
@@ -105,9 +114,35 @@ func QueryTypeChecking(enabled bool) QueryOptFn {
 	}
 }
 
+// QueryTags set the tags header on a single [Client.Query]
+func QueryTags(tags map[string]string) QueryOptFn {
+	return func(req *fqlRequest) {
+		if val, exists := req.Headers[HeaderTags]; exists {
+			req.Headers[HeaderTags] = argsStringFromMap(tags, strings.Split(val, ",")...)
+		} else {
+			req.Headers[HeaderTags] = argsStringFromMap(tags)
+		}
+	}
+}
+
 // Timeout set the query timeout on a single [Client.Query]
 func Timeout(dur time.Duration) QueryOptFn {
 	return func(req *fqlRequest) {
 		req.Headers[HeaderTypeChecking] = fmt.Sprintf("%f", dur.Seconds())
 	}
+}
+
+func argsStringFromMap(input map[string]string, currentArgs ...string) string {
+	params := url.Values{}
+
+	for _, c := range currentArgs {
+		s := strings.Split(c, "=")
+		params.Set(s[0], s[1])
+	}
+
+	for k, v := range input {
+		params.Set(k, v)
+	}
+
+	return strings.ReplaceAll(params.Encode(), "&", ",")
 }

@@ -414,6 +414,7 @@ func TestHeaders(t *testing.T) {
 		expectedValue string
 	)
 
+	// use a test client to validate the headers are being set as expected below
 	testingClient := &http.Client{Transport: &http.Transport{
 		Proxy: func(request *http.Request) (*url.URL, error) {
 			if val := request.Header.Get(currentHeader); val != expectedValue {
@@ -425,15 +426,15 @@ func TestHeaders(t *testing.T) {
 	}}
 
 	t.Run("can set headers directly", func(t *testing.T) {
-
 		type args struct {
 			header    string
 			headerOpt fauna.ClientConfigFn
 		}
 		tests := []struct {
-			name string
-			args args
-			want string
+			name        string
+			args        args
+			want        string
+			expectError bool
 		}{
 			{
 				name: "linearized should be true",
@@ -459,6 +460,18 @@ func TestHeaders(t *testing.T) {
 				},
 				want: "1",
 			},
+			{
+				name: "should have tags",
+				args: args{
+					header: fauna.HeaderTags,
+					headerOpt: fauna.Tags(map[string]string{
+						"hello": "world",
+						"what":  "are=you,doing?",
+					}),
+				},
+				want:        "hello=world,what=are%3Dyou%2Cdoing%3F",
+				expectError: true,
+			},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
@@ -474,11 +487,33 @@ func TestHeaders(t *testing.T) {
 
 				// running a simple query just to invoke the request
 				_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
-				if queryErr != nil {
-					t.Fatalf("%s", queryErr.Error())
+				if !tt.expectError && queryErr != nil {
+					t.Errorf("query failed: %s", queryErr.Error())
 				}
 			})
 		}
+	})
+
+	t.Run("can set headers on Query", func(t *testing.T) {
+		client := fauna.NewClient(
+			"secret",
+			fauna.URL(fauna.EndpointLocal),
+			fauna.HTTPClient(testingClient),
+			fauna.Tags(map[string]string{
+				"team": "X_Men",
+				"hero": "Cyclops",
+			}),
+		)
+
+		currentHeader = fauna.HeaderTags
+		expectedValue = "hero=Wolverine,team=X_Men"
+
+		_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTags(map[string]string{"hero": "Wolverine"}))
+		if queryErr != nil {
+			t.Errorf("query failed: %s", queryErr.Error())
+		}
+
+		// assertion in testingClient above
 	})
 
 	t.Run("can use convenience methods", func(t *testing.T) {
@@ -502,7 +537,7 @@ func TestHeaders(t *testing.T) {
 
 	t.Run("supports empty headers", func(t *testing.T) {
 		client := fauna.NewClient("secret", fauna.URL(fauna.EndpointLocal))
-		client.SetHeader("steve", "empty")
+		client.SetHeader("steve", "")
 	})
 }
 
