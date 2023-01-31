@@ -433,12 +433,16 @@ func TestHeaders(t *testing.T) {
 			"secret",
 			fauna.URL(fauna.EndpointLocal),
 			fauna.HTTPClient(testingClient),
+			fauna.Tags(map[string]string{
+				"team": "X_Men",
+				"hero": "Cyclops",
+			}),
 		)
 
 		currentHeader = fauna.HeaderTags
-		expectedValue = "hello=world"
+		expectedValue = "hero=Wolverine,team=X_Men"
 
-		_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTags(map[string]string{"hello": "world"}))
+		_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTags(map[string]string{"hero": "Wolverine"}))
 		if queryErr != nil {
 			t.Errorf("query failed: %s", queryErr.Error())
 		}
