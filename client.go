@@ -48,11 +48,13 @@ const (
 	// DefaultHttpReadIdleTimeout Fauna Client default HTTP read idle timeout
 	DefaultHttpReadIdleTimeout = time.Minute * 3
 
-	// Reuest/response Headers
+	// Request/response Headers
+
 	HeaderContentType = "Content-Type"
 	HeaderTxnTime     = "X-Txn-Time"
 
 	// Request Headers
+
 	HeaderAuthorization        = "Authorization"
 	HeaderLastSeenTxn          = "X-Last-Seen-Txn"
 	HeaderLinearized           = "X-Linearized"
@@ -61,6 +63,7 @@ const (
 	HeaderTypeChecking         = "X-Fauna-Type-Checking"
 
 	// Response Headers
+
 	HeaderTraceparent       = "Traceparent"
 	HeaderByteReadOps       = "X-Byte-Read-Ops"
 	HeaderByteWriteOps      = "X-Byte-Write-Ops"
@@ -116,12 +119,11 @@ func NewDefaultClient() (*Client, error) {
 
 	readIdleTimeout := DefaultHttpReadIdleTimeout
 	if val, found := os.LookupEnv(EnvFaunaTimeout); found {
-		timeoutFromEnv, err := time.ParseDuration(val)
-		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "failed to parse timeout, using default\n")
+		if timeoutFromEnv, err := time.ParseDuration(val); err != nil {
+			log.Default().Printf("[WARNING] using default timeout - failed to parse timeout: %s", err.Error())
 		} else {
 			if timeoutFromEnv.Seconds() <= 0 {
-				_, _ = fmt.Fprintf(os.Stderr, "timeout must be greater than 0, using default\n")
+				log.Default().Printf("[WARNING] using default timeout - value must be greater than 0")
 			} else {
 				readIdleTimeout = timeoutFromEnv
 			}
@@ -190,9 +192,10 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 		VerboseDebugEnabled: c.verboseDebugEnabled,
 	}
 
-	for _, o := range opts {
-		o(req)
+	for _, queryOptionFn := range opts {
+		queryOptionFn(req)
 	}
+
 	res, err := c.do(req)
 	if err != nil {
 		return res, fmt.Errorf("request error: %w", err)
