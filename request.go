@@ -121,6 +121,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	if serviceErr := GetServiceError(r.StatusCode, response.Error, response.Summary); serviceErr != nil {
+		c.log.Printf("[ERROR] %d - %v - %v\n%s", r.StatusCode, response.Error, response.Summary, response.Bytes)
 		return &response, serviceErr
 	}
 
