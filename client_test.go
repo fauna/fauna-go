@@ -349,6 +349,7 @@ func TestHeaders(t *testing.T) {
 		expectedValue string
 	)
 
+	// use a test client to validate the headers are being set as expected below
 	testingClient := &http.Client{Transport: &http.Transport{
 		Proxy: func(request *http.Request) (*url.URL, error) {
 			if val := request.Header.Get(currentHeader); val != expectedValue {
@@ -446,6 +447,8 @@ func TestHeaders(t *testing.T) {
 		if queryErr != nil {
 			t.Errorf("query failed: %s", queryErr.Error())
 		}
+
+		// assertion in testingClient above
 	})
 
 	t.Run("can use convenience methods", func(t *testing.T) {
