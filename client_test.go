@@ -360,7 +360,6 @@ func TestHeaders(t *testing.T) {
 	}}
 
 	t.Run("can set headers directly", func(t *testing.T) {
-
 		type args struct {
 			header    string
 			headerOpt fauna.ClientConfigFn
@@ -450,7 +449,7 @@ func TestHeaders(t *testing.T) {
 
 	t.Run("supports empty headers", func(t *testing.T) {
 		client := fauna.NewClient("secret", fauna.URL(fauna.EndpointLocal))
-		client.SetHeader("steve", "empty")
+		client.SetHeader("steve", "")
 	})
 }
 
