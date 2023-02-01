@@ -601,7 +601,7 @@ func TestErrorHandling(t *testing.T) {
 			t.Logf("response: %v", res.Data)
 			t.Errorf("expected this to fail")
 		} else {
-			if !errors.As(queryErr, &fauna.ServiceInternalError{}) {
+			if !errors.As(queryErr, &fauna.QueryRuntimeError{}) {
 				t.Errorf("wrong type: %T", queryErr)
 			}
 		}
