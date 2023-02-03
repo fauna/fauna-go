@@ -59,9 +59,9 @@ const (
 	HeaderLastSeenTxn          = "X-Last-Seen-Txn"
 	HeaderLinearized           = "X-Linearized"
 	HeaderMaxContentionRetries = "X-Max-Contention-Retries"
-	HeaderTags                 = "X-Fauna-Tags"
+	HeaderTags                 = "X-Tags"
 	HeaderTimeoutMs            = "X-Timeout-Ms"
-	HeaderTypeChecking         = "X-Fauna-Type-Checking"
+	HeaderTypeChecking         = "X-Type-Checking"
 
 	// Response Headers
 
