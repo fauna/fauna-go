@@ -18,6 +18,7 @@ func Context(ctx context.Context) ClientConfigFn {
 	return func(c *Client) { c.ctx = ctx }
 }
 
+// Logger specify the [log.Logger] for the [fauna.Client]
 func Logger(log *log.Logger) ClientConfigFn {
 	return func(c *Client) { c.log = log }
 }
@@ -91,6 +92,7 @@ func URL(url string) ClientConfigFn {
 	return func(c *Client) { c.url = url }
 }
 
+// QueryOptFn function to set options on the [Client.Query]
 type QueryOptFn func(req *fqlRequest)
 
 // QueryContext set the [context.Context] for a single [Client.Query]

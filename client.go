@@ -99,9 +99,6 @@ type Client struct {
 	http *http.Client
 	log  *log.Logger
 	ctx  context.Context
-
-	// tags?
-	// traceParent?
 }
 
 // NewDefaultClient initialize a [fauna.Client] with recommend default settings
@@ -212,6 +209,7 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 	return res, nil
 }
 
+// SetLastTxnTime update the last txn time for the [fauna.Client]
 func (c *Client) SetLastTxnTime(txnTime time.Time) error {
 	c.lastTxnTime.Lock()
 	defer c.lastTxnTime.Unlock()
@@ -238,6 +236,8 @@ func (c *Client) GetLastTxnTime() int64 {
 	return 0
 }
 
+// String fulfil Stringify interface for the [fauna.Client]
+// only returns the URL to prevent logging potentially sensitive Headers.
 func (c *Client) String() string {
 	return c.url
 }
