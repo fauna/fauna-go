@@ -341,8 +341,14 @@ func TestNewClient(t *testing.T) {
 			fauna.URL(fauna.EndpointLocal),
 			fauna.HTTPClient(http.DefaultClient),
 		)
-		if _, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil); queryErr != nil {
+		res, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
+		if queryErr != nil {
 			t.Errorf("failed to query: %s", queryErr.Error())
+		}
+
+		expectedProto := "HTTP/1.1"
+		if res.Raw.Proto != expectedProto {
+			t.Errorf("expected protocol: %s got %s", expectedProto, res.Raw.Proto)
 		}
 	})
 }
