@@ -99,9 +99,6 @@ type Client struct {
 	http *http.Client
 	log  *log.Logger
 	ctx  context.Context
-
-	// tags?
-	// traceParent?
 }
 
 // NewDefaultClient initialize a [fauna.Client] with recommend default settings
