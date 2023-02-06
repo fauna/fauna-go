@@ -334,6 +334,17 @@ func TestNewClient(t *testing.T) {
 			}
 		})
 	})
+
+	t.Run("custom HTTP client", func(t *testing.T) {
+		client := fauna.NewClient(
+			"secret",
+			fauna.URL(fauna.EndpointLocal),
+			fauna.HTTPClient(http.DefaultClient),
+		)
+		if _, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil); queryErr != nil {
+			t.Errorf("failed to query: %s", queryErr.Error())
+		}
+	})
 }
 
 func TestBasicCRUDRequests(t *testing.T) {
