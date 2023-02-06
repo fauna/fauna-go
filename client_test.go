@@ -54,6 +54,52 @@ func TestDefaultClient(t *testing.T) {
 			if n != i {
 				t.Errorf("expected [%d] got [%d]", n, i)
 			}
+
+			t.Run("response has expected stats headers", func(t *testing.T) {
+				if res.ByteReadOps() != 0 {
+					t.Errorf("expected no bytes read")
+				}
+
+				if res.ByteWriteOps() != 0 {
+					t.Errorf("expected no bytes written")
+				}
+
+				if res.ComputeOps() == 0 {
+					t.Errorf("should have some compute ops")
+				}
+
+				if res.FaunaBuild() == "" {
+					t.Errorf("expected a fauna build")
+				}
+
+				if res.QueryTime() == 0 {
+					t.Errorf("should have a query time")
+				}
+
+				if res.QueryBytesIn() == 0 {
+					t.Errorf("should have read query bytes")
+				}
+
+				if res.QueryBytesOut() == 0 {
+					t.Errorf("should have some query bytes out")
+				}
+
+				if res.ReadOps() > 0 || res.WriteOps() > 0 {
+					t.Errorf("should not have read/written any bytes")
+				}
+
+				if res.StorageBytesRead() > 0 || res.StorageBytesWrite() > 0 {
+					t.Errorf("should not have accessed storage")
+				}
+
+				if res.Traceparent() == "" {
+					t.Errorf("should have a traceparent")
+				}
+
+				if res.TxnRetries() > 0 {
+					t.Errorf("should not need to retry")
+				}
+			})
 		})
 
 		t.Run("Argument Request", func(t *testing.T) {
