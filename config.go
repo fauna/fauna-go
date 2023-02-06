@@ -80,6 +80,13 @@ func Tags(tags map[string]string) ClientConfigFn {
 	}
 }
 
+// Traceparent sets header on the [fauna.Client]
+func Traceparent(id string) ClientConfigFn {
+	return func(c *Client) {
+		c.SetHeader(HeaderTraceparent, id)
+	}
+}
+
 // TypeChecking toggle if [fauna.Client] enforces type checking
 func TypeChecking(enabled bool) ClientConfigFn {
 	return func(c *Client) {
@@ -125,6 +132,11 @@ func QueryTags(tags map[string]string) QueryOptFn {
 			req.Headers[HeaderTags] = argsStringFromMap(tags)
 		}
 	}
+}
+
+// QueryTraceparent sets the header on a single [Client.Query]
+func QueryTraceparent(id string) QueryOptFn {
+	return func(req *fqlRequest) { req.Headers[HeaderTraceparent] = id }
 }
 
 // Timeout set the query timeout on a single [Client.Query]
