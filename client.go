@@ -118,7 +118,7 @@ func NewDefaultClient() (*Client, error) {
 	readIdleTimeout := DefaultHttpReadIdleTimeout
 	if val, found := os.LookupEnv(EnvFaunaTimeout); found {
 		if timeoutFromEnv, err := time.ParseDuration(val); err != nil {
-			log.Default().Printf("[WARNING] using default timeout - failed to parse timeout: %s", err.Error())
+			log.Default().Printf("[WARNING] using default timeout - failed to parse timeout [%s]", err.Error())
 		} else {
 			if timeoutFromEnv.Seconds() <= 0 {
 				log.Default().Printf("[WARNING] using default timeout - value must be greater than 0")
