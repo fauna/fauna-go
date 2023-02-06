@@ -40,7 +40,7 @@ func TestDefaultClient(t *testing.T) {
 			s := "foo"
 
 			var i int
-			res, queryErr := client.Query(fmt.Sprintf(`"%v".length`, s), nil, &i)
+			res, queryErr := client.Query(`arg0.length`, fauna.QueryArguments(fauna.QueryArg("arg0", s)), &i)
 			if queryErr != nil {
 				t.Errorf("%s", queryErr.Error())
 			}
