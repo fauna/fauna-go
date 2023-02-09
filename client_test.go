@@ -380,6 +380,23 @@ func TestNewClient(t *testing.T) {
 			}
 		})
 	})
+
+	t.Run("custom HTTP client", func(t *testing.T) {
+		client := fauna.NewClient(
+			"secret",
+			fauna.URL(fauna.EndpointLocal),
+			fauna.HTTPClient(http.DefaultClient),
+		)
+		res, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
+		if queryErr != nil {
+			t.Errorf("failed to query: %s", queryErr.Error())
+		}
+
+		expectedProto := "HTTP/1.1"
+		if res.Raw.Proto != expectedProto {
+			t.Errorf("expected protocol: %s got %s", expectedProto, res.Raw.Proto)
+		}
+	})
 }
 
 func TestBasicCRUDRequests(t *testing.T) {
