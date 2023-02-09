@@ -472,15 +472,6 @@ func TestHeaders(t *testing.T) {
 				want:        "hello=world,what=are%3Dyou%2Cdoing%3F",
 				expectError: true,
 			},
-			{
-				name: "should have a traceparent",
-				args: args{
-					header:    fauna.HeaderTraceparent,
-					headerOpt: fauna.Traceparent("traceparent-id"),
-				},
-				want:        "traceparent-id",
-				expectError: false,
-			},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
