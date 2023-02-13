@@ -127,6 +127,11 @@ func QueryTags(tags map[string]string) QueryOptFn {
 	}
 }
 
+// QueryTraceparent sets the header on a single [Client.Query]
+func QueryTraceparent(id string) QueryOptFn {
+	return func(req *fqlRequest) { req.Headers[HeaderTraceparent] = id }
+}
+
 // Timeout set the query timeout on a single [Client.Query]
 func Timeout(dur time.Duration) QueryOptFn {
 	return func(req *fqlRequest) {

@@ -571,12 +571,18 @@ func TestHeaders(t *testing.T) {
 		currentHeader = fauna.HeaderTags
 		expectedValue = "hero=Wolverine,team=X_Men"
 
-		_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTags(map[string]string{"hero": "Wolverine"}))
-		if queryErr != nil {
+		if _, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTags(map[string]string{"hero": "Wolverine"})); queryErr != nil {
 			t.Errorf("query failed: %s", queryErr.Error())
 		}
 
 		// assertion in testingClient above
+
+		currentHeader = fauna.HeaderTraceparent
+		expectedValue = "query-traceparent-id"
+
+		if _, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTraceparent(expectedValue)); queryErr != nil {
+			t.Fatalf("failed to query with traceparent: %s", queryErr.Error())
+		}
 	})
 
 	t.Run("can use convenience methods", func(t *testing.T) {
