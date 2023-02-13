@@ -3,6 +3,7 @@ name: Validate Driver
 on:
   pull_request:
     paths:
+      - ".github/workflows/pr-validate-driver.yml"
       - "**.go"
       - "go.mod"
       - "go.sum"
