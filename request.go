@@ -43,11 +43,9 @@ func QueryArguments(args ...QueryArgItem) QueryArgs {
 type fqlRequest struct {
 	Context             context.Context        `json:"-"`
 	Headers             map[string]string      `json:"-"`
-	TxnTimeEnabled      bool                   `json:"-"`
 	VerboseDebugEnabled bool                   `json:"-"`
 	Query               string                 `json:"query"`
 	Arguments           map[string]interface{} `json:"arguments,omitempty"`
-	TypeCheck           bool                   `json:"typecheck"`
 }
 
 func (c *Client) do(request *fqlRequest) (*Response, error) {
@@ -62,11 +60,12 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	req.Header.Set(HeaderAuthorization, `Bearer `+c.secret)
+	req.Header.Set(HeaderFormat, "simple")
 	for k, v := range request.Headers {
 		req.Header.Set(k, v)
 	}
 
-	if request.TxnTimeEnabled {
+	if c.lastTxnTime.Enabled {
 		c.lastTxnTime.RLock()
 		if lastSeen := atomic.LoadInt64(&c.lastTxnTime.Value); lastSeen != 0 {
 			req.Header.Set(HeaderLastSeenTxn, strconv.FormatInt(lastSeen, 10))
@@ -116,11 +115,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 		return &response, fmt.Errorf("failed to umarmshal response: %w", unmarshalErr)
 	}
 
-	if request.TxnTimeEnabled {
-		if txnTimeErr := c.storeLastTxnTime(r.Header); txnTimeErr != nil {
-			return &response, fmt.Errorf("failed to parse transaction time: %w", txnTimeErr)
-		}
-	}
+	c.syncLastTxnTime(response.TxnTime)
 
 	if serviceErr := GetServiceError(r.StatusCode, response.Error, response.Summary); serviceErr != nil {
 		c.log.Printf("[ERROR] %d - %v - %v\n%s", r.StatusCode, response.Error, response.Summary, response.Bytes)
@@ -128,16 +123,6 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	return &response, nil
-}
-
-func (c *Client) storeLastTxnTime(header http.Header) error {
-	t, err := parseTxnTimeHeader(header)
-	if err != nil {
-		return fmt.Errorf("failed to parse tranaction time: %w", err)
-	}
-	c.syncLastTxnTime(t)
-
-	return nil
 }
 
 func (c *Client) syncLastTxnTime(newTxnTime int64) {
@@ -155,12 +140,4 @@ func (c *Client) syncLastTxnTime(newTxnTime int64) {
 			break
 		}
 	}
-}
-
-func parseTxnTimeHeader(header http.Header) (int64, error) {
-	if h := header.Get(HeaderTxnTime); h != "" {
-		return strconv.ParseInt(h, 10, 64)
-	}
-
-	return 0, nil
 }

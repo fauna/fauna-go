@@ -51,11 +51,12 @@ const (
 	// Request/response Headers
 
 	HeaderContentType = "Content-Type"
-	HeaderTxnTime     = "X-Txn-Time"
+	HeaderTxnTime     = "X-Last-Txn-Time"
 
 	// Request Headers
 
 	HeaderAuthorization        = "Authorization"
+	HeaderFormat               = "X-Format"
 	HeaderLastSeenTxn          = "X-Last-Seen-Txn"
 	HeaderLinearized           = "X-Linearized"
 	HeaderMaxContentionRetries = "X-Max-Contention-Retries"
@@ -65,19 +66,8 @@ const (
 
 	// Response Headers
 
-	HeaderTraceparent       = "Traceparent"
-	HeaderByteReadOps       = "X-Byte-Read-Ops"
-	HeaderByteWriteOps      = "X-Byte-Write-Ops"
-	HeaderComputeOps        = "X-Compute-Ops"
-	HeaderFaunaBuild        = "X-Faunadb-Build"
-	HeaderQueryBytesIn      = "X-Query-Bytes-In"
-	HeaderQueryBytesOut     = "X-Query-Bytes-Out"
-	HeaderQueryTime         = "X-Query-Time"
-	HeaderReadOps           = "X-Read-Ops"
-	HeaderStorageBytesRead  = "X-Storage-Bytes-Read"
-	HeaderStorageBytesWrite = "X-Storage-Bytes-Write"
-	HeaderTxnRetries        = "X-Txn-Retries"
-	HeaderWriteOps          = "X-Write-Ops"
+	HeaderTraceparent = "Traceparent"
+	HeaderFaunaBuild  = "X-Faunadb-Build"
 )
 
 type txnTime struct {
@@ -150,6 +140,7 @@ func NewDefaultClient() (*Client, error) {
 func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	typeCheckEnabled := isEnabled(EnvFaunaTypeCheckEnabled, true)
 	verboseDebugEnabled := isEnabled(EnvFaunaVerboseDebugEnabled, false)
+	trackLastTxnTime := isEnabled(EnvFaunaTrackTxnTimeEnabled, true)
 
 	client := &Client{
 		ctx:    context.TODO(),
@@ -165,7 +156,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 			"X-Go-Version":             fingerprinting.Version(),
 		},
 		lastTxnTime: txnTime{
-			Enabled: isEnabled(EnvFaunaTrackTxnTimeEnabled, true),
+			Enabled: trackLastTxnTime,
 		},
 		typeCheckingEnabled: typeCheckEnabled,
 		verboseDebugEnabled: verboseDebugEnabled,
@@ -186,7 +177,6 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 		Query:               fql,
 		Arguments:           args,
 		Headers:             c.headers,
-		TxnTimeEnabled:      c.lastTxnTime.Enabled,
 		VerboseDebugEnabled: c.verboseDebugEnabled,
 	}
 
@@ -196,12 +186,12 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 
 	res, err := c.do(req)
 	if err != nil {
-		return res, fmt.Errorf("request error: %w", err)
+		return res, err
 	}
 
+	// we only need to unmarshal if the consumer provided an object
 	if obj != nil {
-		unmarshalErr := json.Unmarshal(res.Data, obj)
-		if unmarshalErr != nil {
+		if unmarshalErr := json.Unmarshal(res.Data, obj); unmarshalErr != nil {
 			return res, fmt.Errorf("failed to unmarshal object [%v] from result: %v\nerror: %w", obj, res.Data, unmarshalErr)
 		}
 	}

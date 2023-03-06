@@ -102,13 +102,6 @@ func QueryContext(ctx context.Context) QueryOptFn {
 	}
 }
 
-// QueryTxnTime toggle if [fauna.Client] records the last transaction for a single [Client.Query]
-func QueryTxnTime(enabled bool) QueryOptFn {
-	return func(req *fqlRequest) {
-		req.TxnTimeEnabled = enabled
-	}
-}
-
 // QueryTypeChecking toggle if [fauna.Client] uses type checking for a single [Client.Query]
 func QueryTypeChecking(enabled bool) QueryOptFn {
 	return func(req *fqlRequest) {
