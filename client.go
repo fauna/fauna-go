@@ -27,11 +27,11 @@ var DriverVersion string
 
 const (
 	// EndpointProduction constant for Fauna Production endpoint
-	EndpointProduction = "https://db.fauna.com/query/1"
+	EndpointProduction = "https://db.fauna.com"
 	// EndpointPreview constant for Fauna Preview endpoint
-	EndpointPreview = "https://db.fauna-preview.com/query/1"
+	EndpointPreview = "https://db.fauna-preview.com"
 	// EndpointLocal constant for local (Docker) endpoint
-	EndpointLocal = "http://localhost:8443/query/1"
+	EndpointLocal = "http://localhost:8443"
 
 	// EnvFaunaEndpoint environment variable for Fauna Client HTTP endpoint
 	EnvFaunaEndpoint = "FAUNA_ENDPOINT"
