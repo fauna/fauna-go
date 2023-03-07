@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httputil"
 )
 
 // QueryArgItem query args structure
@@ -39,11 +38,10 @@ func QueryArguments(args ...QueryArgItem) QueryArgs {
 }
 
 type fqlRequest struct {
-	Context             context.Context        `json:"-"`
-	Headers             map[string]string      `json:"-"`
-	VerboseDebugEnabled bool                   `json:"-"`
-	Query               string                 `json:"query"`
-	Arguments           map[string]interface{} `json:"arguments,omitempty"`
+	Context   context.Context        `json:"-"`
+	Headers   map[string]string      `json:"-"`
+	Query     string                 `json:"query"`
+	Arguments map[string]interface{} `json:"arguments,omitempty"`
 }
 
 func (c *Client) do(request *fqlRequest) (*Response, error) {
@@ -67,25 +65,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 		req.Header.Set(k, v)
 	}
 
-	if request.VerboseDebugEnabled {
-		reqDump, dumpErr := httputil.DumpRequestOut(req, true)
-		if dumpErr != nil {
-			c.log.Printf("Failed to dump request: %s", dumpErr.Error())
-		} else {
-			c.log.Printf("REQUEST:\n%s\n-------", string(reqDump))
-		}
-	}
-
 	r, doErr := c.http.Do(req)
-
-	if request.VerboseDebugEnabled {
-		respDump, dumpErr := httputil.DumpResponse(r, true)
-		if dumpErr != nil {
-			c.log.Printf("Failed to dump response: %s", dumpErr.Error())
-		} else {
-			c.log.Printf("RESPONSE:\n%s\n-------", string(respDump))
-		}
-	}
 
 	if doErr != nil {
 		return nil, NetworkError(fmt.Errorf("network error: %w", doErr))
@@ -112,7 +92,6 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	c.lastTxnTime.sync(response.TxnTime)
 
 	if serviceErr := GetServiceError(r.StatusCode, response.Error, response.Summary); serviceErr != nil {
-		c.log.Printf("[ERROR] %d - %v - %v\n%s", r.StatusCode, response.Error, response.Summary, response.Bytes)
 		return &response, serviceErr
 	}
 
