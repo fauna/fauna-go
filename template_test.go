@@ -108,7 +108,7 @@ func TestTemplate_ParseFail(t *testing.T) {
 	testCases := []TemplateErrorCase{
 		{
 			"let x = ${かわいい}",
-			"Invalid placeholder in template: position 9",
+			"invalid placeholder in template: position 9",
 		},
 	}
 

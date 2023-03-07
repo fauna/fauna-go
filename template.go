@@ -1,7 +1,6 @@
 package fauna
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 )
@@ -48,7 +47,7 @@ func (t *Template) Parse() ([]TemplatePart, error) {
 		invalidStartPos := matchIndex[invalidIndex*2]
 		if invalidStartPos >= 0 {
 			// TODO: Improve with line/column num
-			return nil, errors.New(fmt.Sprintf("Invalid placeholder in template: position %d", invalidStartPos))
+			return nil, fmt.Errorf("invalid placeholder in template: position %d", invalidStartPos)
 		}
 
 		matchStartPos := matchIndex[0]
