@@ -5,32 +5,32 @@ import (
 	"regexp"
 )
 
-type Category string
+type templateCategory string
 
 const (
-	TemplateVariable Category = "variable"
-	TemplateLiteral  Category = "literal"
+	TemplateVariable templateCategory = "variable"
+	TemplateLiteral  templateCategory = "literal"
 )
 
 type TemplatePart struct {
 	Text     string
-	Category Category
+	Category templateCategory
 }
 
-type Template struct {
+type template struct {
 	text string
 	re   *regexp.Regexp
 }
 
-func NewTemplate(text string) *Template {
-	return &Template{
+func NewTemplate(text string) *template {
+	return &template{
 		text: text,
 		re:   regexp.MustCompile(`\$(?:(?P<escaped>\$)|{(?P<braced>[_a-zA-Z0-9]*)}|(?P<invalid>))`),
 	}
 }
 
 // Parse parses Text and returns a slice of template parts.
-func (t *Template) Parse() ([]TemplatePart, error) {
+func (t *template) Parse() ([]TemplatePart, error) {
 	escapedIndex := t.re.SubexpIndex("escaped")
 	bracedIndex := t.re.SubexpIndex("braced")
 	invalidIndex := t.re.SubexpIndex("invalid")
