@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+func (c *Client) setHeader(key, val string) {
+	c.headers[key] = val
+}
+
 // ClientConfigFn configuration options for the [fauna.Client]
 type ClientConfigFn func(*Client)
 
@@ -22,8 +26,8 @@ func HTTPClient(client *http.Client) ClientConfigFn {
 	return func(c *Client) { c.http = client }
 }
 
-// Headers specify headers for the [fauna.Client]
-func Headers(headers map[string]string) ClientConfigFn {
+// AdditionalHeaders specify headers for the [fauna.Client]
+func AdditionalHeaders(headers map[string]string) ClientConfigFn {
 	return func(c *Client) {
 		for k, v := range headers {
 			c.headers[k] = v
@@ -32,38 +36,36 @@ func Headers(headers map[string]string) ClientConfigFn {
 }
 
 // Linearized set header on the [fauna.Client]
-// A boolean. If true, unconditionally run the query as strictly serialized/linearized.
-// This affects read-only transactions, as transactions which write will be strictly serialized.
+// If true, unconditionally run the query as strictly serialized.
+// This affects read-only transactions. Transactions which write will always be strictly serialized.
 func Linearized(enabled bool) ClientConfigFn {
 	return func(c *Client) {
-		c.SetHeader(HeaderLinearized, fmt.Sprintf("%v", enabled))
+		c.setHeader(HeaderLinearized, fmt.Sprintf("%v", enabled))
 	}
 }
 
 // MaxContentionRetries set header on the [fauna.Client]
-// An integer. The maximum number of times a transaction is retried due to OCC failure.
+// The max number of times to retry the query if contention is encountered.
 func MaxContentionRetries(i int) ClientConfigFn {
 	return func(c *Client) {
-		c.SetHeader(HeaderMaxContentionRetries, fmt.Sprintf("%v", i))
+		c.setHeader(HeaderMaxContentionRetries, fmt.Sprintf("%v", i))
 	}
-}
-
-// SetHeader update [fauna.Client] header
-func (c *Client) SetHeader(key, val string) {
-	c.headers[key] = val
 }
 
 // QueryTimeout set header on the [fauna.Client]
 func QueryTimeout(d time.Duration) ClientConfigFn {
 	return func(c *Client) {
-		c.SetHeader(HeaderTimeoutMs, fmt.Sprintf("%v", d.Milliseconds()))
+		c.setHeader(HeaderTimeoutMs, fmt.Sprintf("%v", d.Milliseconds()))
 	}
 }
 
 // Tags sets header on the [fauna.Client]
+// Set tags to associate with the query. See [logging]
+//
+// [logging]: https://docs.fauna.com/fauna/current/build/logs/query_log/
 func Tags(tags map[string]string) ClientConfigFn {
 	return func(c *Client) {
-		c.SetHeader(HeaderTags, argsStringFromMap(tags))
+		c.setHeader(HeaderTags, argsStringFromMap(tags))
 	}
 }
 
