@@ -56,48 +56,32 @@ func TestDefaultClient(t *testing.T) {
 			}
 
 			t.Run("response has expected stats headers", func(t *testing.T) {
-				if res.ByteReadOps() != 0 {
-					t.Errorf("expected no bytes read")
+				if res.Stats[fauna.StatsComputeOps] == 0 {
+					t.Errorf("expected some compute ops")
 				}
 
-				if res.ByteWriteOps() != 0 {
-					t.Errorf("expected no bytes written")
+				if res.Stats[fauna.StatsQueryTimeMs] == 0 {
+					t.Errorf("should have some query time")
 				}
 
-				if res.ComputeOps() == 0 {
-					t.Errorf("should have some compute ops")
+				if res.Stats[fauna.StatsContentionRetries] > 0 {
+					t.Errorf("should not have any retries")
+				}
+
+				if res.Stats[fauna.StatsReadOps] > 0 || res.Stats[fauna.StatsWriteOps] > 0 {
+					t.Errorf("should not have read/written any bytes")
+				}
+
+				if res.Stats[fauna.StatsStorageBytesRead] > 0 || res.Stats[fauna.StatsStorageBytesWrite] > 0 {
+					t.Errorf("should not have accessed storage")
 				}
 
 				if res.FaunaBuild() == "" {
 					t.Errorf("expected a fauna build")
 				}
 
-				if res.QueryTime() == 0 {
-					t.Errorf("should have a query time")
-				}
-
-				if res.QueryBytesIn() == 0 {
-					t.Errorf("should have read query bytes")
-				}
-
-				if res.QueryBytesOut() == 0 {
-					t.Errorf("should have some query bytes out")
-				}
-
-				if res.ReadOps() > 0 || res.WriteOps() > 0 {
-					t.Errorf("should not have read/written any bytes")
-				}
-
-				if res.StorageBytesRead() > 0 || res.StorageBytesWrite() > 0 {
-					t.Errorf("should not have accessed storage")
-				}
-
 				if res.Traceparent() == "" {
 					t.Errorf("should have a traceparent")
-				}
-
-				if res.TxnRetries() > 0 {
-					t.Errorf("should not need to retry")
 				}
 			})
 		})
@@ -321,64 +305,34 @@ func TestNewClient(t *testing.T) {
 		})
 	})
 
-	t.Run("disable last transaction time", func(t *testing.T) {
+	t.Run("has transaction time", func(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
-		t.Run("at client", func(t *testing.T) {
-			t.Setenv(fauna.EnvFaunaTrackTxnTimeEnabled, "false")
+		client, clientErr := fauna.NewDefaultClient()
+		if clientErr != nil {
+			t.Fatalf("should be able to init a client: %s", clientErr.Error())
+		}
 
-			client, clientErr := fauna.NewDefaultClient()
-			if clientErr != nil {
-				t.Errorf("should be able to init a client without type checking: %s", clientErr.Error())
-			}
+		before := client.GetLastTxnTime()
+		if before != 0 {
+			t.Fatalf("shouldn't have a transaction time")
+		}
 
-			first := client.GetLastTxnTime()
-			if first != 0 {
-				t.Errorf("shouldn't have a transaction time")
-			}
+		_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
+		if queryErr != nil {
+			t.Fatalf("query shouldn't error: %s", queryErr.Error())
+		}
 
-			_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
-			if queryErr != nil {
-				t.Fatalf("query shouldn't error: %s", queryErr.Error())
-			}
+		first := client.GetLastTxnTime()
+		if first == 0 {
+			t.Errorf("should have a last transaction time greater than 0, got: %d", first)
+		}
 
-			if after := client.GetLastTxnTime(); after != 0 {
-				t.Errorf("last transaction time should still be 0, got: %d", after)
-			}
-		})
-
-		t.Run("at request", func(t *testing.T) {
-			client, clientErr := fauna.NewDefaultClient()
-			if clientErr != nil {
-				t.Fatalf("should be able to init a client: %s", clientErr.Error())
-			}
-
-			first := client.GetLastTxnTime()
-			if first != 0 {
-				t.Fatalf("shouldn't have a transaction time")
-			}
-
-			_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
-			if queryErr != nil {
-				t.Fatalf("query shouldn't error: %s", queryErr.Error())
-			}
-
-			before := client.GetLastTxnTime()
-			if before == 0 {
-				t.Errorf("should have a last transaction time greater than 0, got: %d", before)
-			}
-
-			_, queryErr = client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTxnTime(false))
-			if queryErr != nil {
-				t.Fatalf("query shouldn't error: %s", queryErr.Error())
-			}
-
-			after := client.GetLastTxnTime()
-			if before != after {
-				t.Errorf("transaction time not have changed, before [%d] after [%d]", before, after)
-			}
-		})
+		second := client.GetLastTxnTime()
+		if first != second {
+			t.Errorf("transaction time not have changed, first [%d] second [%d]", before, second)
+		}
 	})
 
 	t.Run("custom HTTP client", func(t *testing.T) {
@@ -644,7 +598,7 @@ func TestErrorHandling(t *testing.T) {
 			t.Fatalf("expected an error")
 		}
 
-		if !errors.As(queryErr, &fauna.QueryCheckError{}) {
+		if !errors.As(queryErr, &fauna.QueryRuntimeError{}) {
 			t.Errorf("wrong type: %T", queryErr)
 		}
 	})
@@ -712,7 +666,7 @@ func TestConcurrentRequests(t *testing.T) {
 		txnTime := time.Now()
 
 		w.Header().Set(fauna.HeaderContentType, "application/json")
-		w.Header().Set(fauna.HeaderTxnTime, fmt.Sprintf("%d", txnTime.UnixMicro()))
+		w.Header().Set(fauna.HeaderLastTxnTs, fmt.Sprintf("%d", txnTime.UnixMicro()))
 
 		_, _ = fmt.Fprintf(w, `{"data": { "hello": "world" }, "error": {"code": "", "message": ""}, "summary": "", "txn_time": "%s"}`, txnTime.Format("2006-01-02T15:04:05.000Z"))
 	}))

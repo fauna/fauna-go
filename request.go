@@ -8,8 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
-	"strconv"
-	"sync/atomic"
 )
 
 // QueryArgItem query args structure
@@ -43,11 +41,9 @@ func QueryArguments(args ...QueryArgItem) QueryArgs {
 type fqlRequest struct {
 	Context             context.Context        `json:"-"`
 	Headers             map[string]string      `json:"-"`
-	TxnTimeEnabled      bool                   `json:"-"`
 	VerboseDebugEnabled bool                   `json:"-"`
 	Query               string                 `json:"query"`
 	Arguments           map[string]interface{} `json:"arguments,omitempty"`
-	TypeCheck           bool                   `json:"typecheck"`
 }
 
 func (c *Client) do(request *fqlRequest) (*Response, error) {
@@ -62,16 +58,13 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	req.Header.Set(HeaderAuthorization, `Bearer `+c.secret)
-	for k, v := range request.Headers {
-		req.Header.Set(k, v)
+	req.Header.Set(HeaderFormat, "simple")
+	if lastTxnTs := c.lastTxnTime.string(); lastTxnTs != "" {
+		req.Header.Set(HeaderLastTxnTs, lastTxnTs)
 	}
 
-	if request.TxnTimeEnabled {
-		c.lastTxnTime.RLock()
-		if lastSeen := atomic.LoadInt64(&c.lastTxnTime.Value); lastSeen != 0 {
-			req.Header.Set(HeaderLastSeenTxn, strconv.FormatInt(lastSeen, 10))
-		}
-		c.lastTxnTime.RUnlock()
+	for k, v := range request.Headers {
+		req.Header.Set(k, v)
 	}
 
 	if request.VerboseDebugEnabled {
@@ -116,11 +109,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 		return &response, fmt.Errorf("failed to umarmshal response: %w", unmarshalErr)
 	}
 
-	if request.TxnTimeEnabled {
-		if txnTimeErr := c.storeLastTxnTime(r.Header); txnTimeErr != nil {
-			return &response, fmt.Errorf("failed to parse transaction time: %w", txnTimeErr)
-		}
-	}
+	c.lastTxnTime.sync(response.TxnTime)
 
 	if serviceErr := GetServiceError(r.StatusCode, response.Error, response.Summary); serviceErr != nil {
 		c.log.Printf("[ERROR] %d - %v - %v\n%s", r.StatusCode, response.Error, response.Summary, response.Bytes)
@@ -128,39 +117,4 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	return &response, nil
-}
-
-func (c *Client) storeLastTxnTime(header http.Header) error {
-	t, err := parseTxnTimeHeader(header)
-	if err != nil {
-		return fmt.Errorf("failed to parse tranaction time: %w", err)
-	}
-	c.syncLastTxnTime(t)
-
-	return nil
-}
-
-func (c *Client) syncLastTxnTime(newTxnTime int64) {
-	if !c.lastTxnTime.Enabled {
-		return
-	}
-
-	c.lastTxnTime.Lock()
-	defer c.lastTxnTime.Unlock()
-
-	for {
-		oldTxnTime := atomic.LoadInt64(&c.lastTxnTime.Value)
-		if oldTxnTime >= newTxnTime ||
-			atomic.CompareAndSwapInt64(&c.lastTxnTime.Value, oldTxnTime, newTxnTime) {
-			break
-		}
-	}
-}
-
-func parseTxnTimeHeader(header http.Header) (int64, error) {
-	if h := header.Get(HeaderTxnTime); h != "" {
-		return strconv.ParseInt(h, 10, 64)
-	}
-
-	return 0, nil
 }

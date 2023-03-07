@@ -37,13 +37,6 @@ func Headers(headers map[string]string) ClientConfigFn {
 	}
 }
 
-// LastTxnTime toggle if [fauna.Client] records the last transaction time
-func LastTxnTime(enabled bool) ClientConfigFn {
-	return func(c *Client) {
-		c.lastTxnTime.Enabled = enabled
-	}
-}
-
 // Linearized set header on the [fauna.Client]
 // A boolean. If true, unconditionally run the query as strictly serialized/linearized.
 // This affects read-only transactions, as transactions which write will be strictly serialized.
@@ -99,13 +92,6 @@ type QueryOptFn func(req *fqlRequest)
 func QueryContext(ctx context.Context) QueryOptFn {
 	return func(req *fqlRequest) {
 		req.Context = ctx
-	}
-}
-
-// QueryTxnTime toggle if [fauna.Client] records the last transaction for a single [Client.Query]
-func QueryTxnTime(enabled bool) QueryOptFn {
-	return func(req *fqlRequest) {
-		req.TxnTimeEnabled = enabled
 	}
 }
 

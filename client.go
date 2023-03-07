@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/fauna/fauna-go/internal/fingerprinting"
@@ -40,8 +41,6 @@ const (
 	EnvFaunaTimeout = "FAUNA_TIMEOUT"
 	// EnvFaunaTypeCheckEnabled environment variable for Fauna Client TypeChecking
 	EnvFaunaTypeCheckEnabled = "FAUNA_TYPE_CHECK_ENABLED"
-	// EnvFaunaTrackTxnTimeEnabled environment variable for Fauna Client tracks Transaction time
-	EnvFaunaTrackTxnTimeEnabled = "FAUNA_TRACK_TXN_TIME_ENABLED"
 
 	EnvFaunaVerboseDebugEnabled = "FAUNA_VERBOSE_DEBUG_ENABLED"
 
@@ -51,12 +50,12 @@ const (
 	// Request/response Headers
 
 	HeaderContentType = "Content-Type"
-	HeaderTxnTime     = "X-Txn-Time"
+	HeaderLastTxnTs   = "X-Last-Txn-Ts"
 
 	// Request Headers
 
 	HeaderAuthorization        = "Authorization"
-	HeaderLastSeenTxn          = "X-Last-Seen-Txn"
+	HeaderFormat               = "X-Format"
 	HeaderLinearized           = "X-Linearized"
 	HeaderMaxContentionRetries = "X-Max-Contention-Retries"
 	HeaderTags                 = "X-Tags"
@@ -65,26 +64,38 @@ const (
 
 	// Response Headers
 
-	HeaderTraceparent       = "Traceparent"
-	HeaderByteReadOps       = "X-Byte-Read-Ops"
-	HeaderByteWriteOps      = "X-Byte-Write-Ops"
-	HeaderComputeOps        = "X-Compute-Ops"
-	HeaderFaunaBuild        = "X-Faunadb-Build"
-	HeaderQueryBytesIn      = "X-Query-Bytes-In"
-	HeaderQueryBytesOut     = "X-Query-Bytes-Out"
-	HeaderQueryTime         = "X-Query-Time"
-	HeaderReadOps           = "X-Read-Ops"
-	HeaderStorageBytesRead  = "X-Storage-Bytes-Read"
-	HeaderStorageBytesWrite = "X-Storage-Bytes-Write"
-	HeaderTxnRetries        = "X-Txn-Retries"
-	HeaderWriteOps          = "X-Write-Ops"
+	HeaderTraceparent = "Traceparent"
+	HeaderFaunaBuild  = "X-Faunadb-Build"
 )
 
 type txnTime struct {
 	sync.RWMutex
 
-	Enabled bool
-	Value   int64
+	Value int64
+}
+
+func (t *txnTime) string() string {
+	t.RLock()
+	defer t.RUnlock()
+
+	if lastSeen := atomic.LoadInt64(&t.Value); lastSeen != 0 {
+		return strconv.FormatInt(lastSeen, 10)
+	}
+
+	return ""
+}
+
+func (t *txnTime) sync(newTxnTime int64) {
+	t.Lock()
+	defer t.Unlock()
+
+	for {
+		oldTxnTime := atomic.LoadInt64(&t.Value)
+		if oldTxnTime >= newTxnTime ||
+			atomic.CompareAndSwapInt64(&t.Value, oldTxnTime, newTxnTime) {
+			break
+		}
+	}
 }
 
 // Client is the Fauna Client.
@@ -164,9 +175,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 			"X-Runtime-Environment":    fingerprinting.Environment(),
 			"X-Go-Version":             fingerprinting.Version(),
 		},
-		lastTxnTime: txnTime{
-			Enabled: isEnabled(EnvFaunaTrackTxnTimeEnabled, true),
-		},
+		lastTxnTime:         txnTime{},
 		typeCheckingEnabled: typeCheckEnabled,
 		verboseDebugEnabled: verboseDebugEnabled,
 	}
@@ -186,7 +195,6 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 		Query:               fql,
 		Arguments:           args,
 		Headers:             c.headers,
-		TxnTimeEnabled:      c.lastTxnTime.Enabled,
 		VerboseDebugEnabled: c.verboseDebugEnabled,
 	}
 
@@ -196,12 +204,12 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 
 	res, err := c.do(req)
 	if err != nil {
-		return res, fmt.Errorf("request error: %w", err)
+		return res, err
 	}
 
+	// we only need to unmarshal if the consumer provided an object
 	if obj != nil {
-		unmarshalErr := json.Unmarshal(res.Data, obj)
-		if unmarshalErr != nil {
+		if unmarshalErr := json.Unmarshal(res.Data, obj); unmarshalErr != nil {
 			return res, fmt.Errorf("failed to unmarshal object [%v] from result: %v\nerror: %w", obj, res.Data, unmarshalErr)
 		}
 	}
@@ -229,11 +237,7 @@ func (c *Client) GetLastTxnTime() int64 {
 	c.lastTxnTime.RLock()
 	defer c.lastTxnTime.RUnlock()
 
-	if c.lastTxnTime.Enabled {
-		return c.lastTxnTime.Value
-	}
-
-	return 0
+	return c.lastTxnTime.Value
 }
 
 // String fulfil Stringify interface for the [fauna.Client]
