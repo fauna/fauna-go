@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"path"
 )
 
 // QueryArgItem query args structure
@@ -50,7 +52,14 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 		return nil, fmt.Errorf("marshal request failed: %w", bytesErr)
 	}
 
-	req, reqErr := http.NewRequestWithContext(request.Context, http.MethodPost, c.url, bytes.NewReader(bytesOut))
+	reqURL, urlErr := url.Parse(c.url)
+	if urlErr != nil {
+		return nil, urlErr
+	}
+
+	reqURL.Path = path.Join(reqURL.Path, "/query/1")
+
+	req, reqErr := http.NewRequestWithContext(request.Context, http.MethodPost, reqURL.String(), bytes.NewReader(bytesOut))
 	if reqErr != nil {
 		return nil, fmt.Errorf("failed to init request: %w", reqErr)
 	}
