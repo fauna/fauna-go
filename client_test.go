@@ -452,23 +452,35 @@ func TestHeaders(t *testing.T) {
 		expectedValue = "true"
 
 		client := fauna.NewClient(
-			"secret", fauna.URL(fauna.EndpointLocal),
+			"secret",
+			fauna.URL(fauna.EndpointLocal),
 			fauna.HTTPClient(testingClient),
 			fauna.Linearized(true),
 			fauna.QueryTimeout(time.Second*3),
 			fauna.MaxContentionRetries(5),
 			fauna.Context(context.Background()),
 			fauna.TypeChecking(true),
-			fauna.Headers(map[string]string{
-				"foobar": "steve",
+			fauna.AdditionalHeaders(map[string]string{
+				"foobar":      "steve",
+				currentHeader: expectedValue,
 			}),
 		)
-		client.SetHeader(currentHeader, expectedValue)
+		if client == nil {
+			t.Errorf("failed to init client with header")
+		}
 	})
 
 	t.Run("supports empty headers", func(t *testing.T) {
-		client := fauna.NewClient("secret", fauna.URL(fauna.EndpointLocal))
-		client.SetHeader("steve", "")
+		client := fauna.NewClient(
+			"secret",
+			fauna.URL(fauna.EndpointLocal),
+			fauna.AdditionalHeaders(map[string]string{
+				"shouldBeEmpty": "",
+			}),
+		)
+		if client == nil {
+			t.Errorf("failed to init client with empty header")
+		}
 	})
 }
 
