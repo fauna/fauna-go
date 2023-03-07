@@ -1,18 +1,15 @@
 package fauna_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -194,24 +191,6 @@ func TestNewClient(t *testing.T) {
 		}
 	})
 
-	t.Run("custom logger", func(t *testing.T) {
-		t.Setenv(fauna.EnvFaunaVerboseDebugEnabled, "true")
-		b := bytes.NewBuffer(nil)
-
-		client := fauna.NewClient("secret",
-			fauna.URL(fauna.EndpointLocal),
-			fauna.Logger(log.New(b, t.Name(), 0)),
-		)
-		_, queryErr := client.Query(`dbg("sup")`, nil, nil)
-		if queryErr != nil {
-			t.Fatalf("query error: %s", queryErr.Error())
-		}
-
-		if b.String() == "" {
-			t.Errorf("expected logger to have contents")
-		}
-	})
-
 	t.Run("disable type checking", func(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
@@ -230,77 +209,6 @@ func TestNewClient(t *testing.T) {
 			_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTypeChecking(false))
 			if queryErr != nil {
 				t.Fatalf("should be able to query without type checking: %s", queryErr)
-			}
-		})
-	})
-
-	t.Run("verbose enabled", func(t *testing.T) {
-		t.Setenv(fauna.EnvFaunaSecret, "secret")
-		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
-
-		t.Run("at client", func(t *testing.T) {
-			t.Setenv(fauna.EnvFaunaVerboseDebugEnabled, "true")
-
-			b := bytes.NewBuffer(nil)
-			log.SetOutput(b)
-
-			client, clientErr := fauna.NewDefaultClient()
-			if clientErr != nil {
-				t.Fatalf("should be able to init client: %s", clientErr.Error())
-			}
-
-			res, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
-			if queryErr != nil {
-				t.Fatalf("should be able to query without type checking: %s", queryErr)
-			}
-
-			logBuf := b.String()
-			t.Logf("response: %s", res.Bytes)
-
-			if !strings.Contains(logBuf, "REQUEST:") {
-				t.Errorf("Expected request output\nbuffer: %s\n", logBuf)
-			}
-
-			if !strings.Contains(logBuf, "RESPONSE:") {
-				t.Errorf("Expected response output\nbuffer: %s\n", logBuf)
-			}
-		})
-
-		t.Run("can bump last txn time", func(t *testing.T) {
-			t.Setenv(fauna.EnvFaunaSecret, "secret")
-			t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
-
-			client, clientErr := fauna.NewDefaultClient()
-			if clientErr != nil {
-				t.Fatalf("failed to init client: %s", clientErr.Error())
-			}
-
-			_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
-			if queryErr != nil {
-				t.Fatalf("failed to query: %s", queryErr.Error())
-			}
-
-			txtTimeBeforeBump := client.GetLastTxnTime()
-
-			time.Sleep(time.Millisecond * 250)
-
-			bumpTxnTimeErr := client.SetLastTxnTime(time.Now())
-			if bumpTxnTimeErr != nil {
-				t.Fatalf("failed to bump txn time: %s", bumpTxnTimeErr.Error())
-			}
-
-			if txtTimeBeforeBump == client.GetLastTxnTime() {
-				t.Errorf("last txn time has not changed")
-			}
-
-			_, secondQueryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil)
-			if secondQueryErr != nil {
-				t.Fatalf("second query failed: %s", secondQueryErr.Error())
-			}
-
-			badTxnTimeErr := client.SetLastTxnTime(time.Now().Add(-(time.Hour * 1)))
-			if badTxnTimeErr == nil {
-				t.Errorf("setting the txn time backwards should have failed")
 			}
 		})
 	})

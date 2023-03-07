@@ -42,8 +42,6 @@ const (
 	// EnvFaunaTypeCheckEnabled environment variable for Fauna Client TypeChecking
 	EnvFaunaTypeCheckEnabled = "FAUNA_TYPE_CHECK_ENABLED"
 
-	EnvFaunaVerboseDebugEnabled = "FAUNA_VERBOSE_DEBUG_ENABLED"
-
 	// DefaultHttpReadIdleTimeout Fauna Client default HTTP read idle timeout
 	DefaultHttpReadIdleTimeout = time.Minute * 3
 
@@ -105,10 +103,8 @@ type Client struct {
 	headers             map[string]string
 	lastTxnTime         txnTime
 	typeCheckingEnabled bool
-	verboseDebugEnabled bool
 
 	http *http.Client
-	log  *log.Logger
 	ctx  context.Context
 }
 
@@ -160,11 +156,9 @@ func NewDefaultClient() (*Client, error) {
 // NewClient initialize a new [fauna.Client] with custom settings
 func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	typeCheckEnabled := isEnabled(EnvFaunaTypeCheckEnabled, true)
-	verboseDebugEnabled := isEnabled(EnvFaunaVerboseDebugEnabled, false)
 
 	client := &Client{
 		ctx:    context.TODO(),
-		log:    log.Default(),
 		secret: secret,
 		http:   http.DefaultClient,
 		url:    EndpointProduction,
@@ -177,7 +171,6 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 		},
 		lastTxnTime:         txnTime{},
 		typeCheckingEnabled: typeCheckEnabled,
-		verboseDebugEnabled: verboseDebugEnabled,
 	}
 
 	// set options to override defaults
@@ -191,11 +184,10 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 // Query invoke fql with args and map to the provided obj, optionally set [QueryOptFn]
 func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...QueryOptFn) (*Response, error) {
 	req := &fqlRequest{
-		Context:             c.ctx,
-		Query:               fql,
-		Arguments:           args,
-		Headers:             c.headers,
-		VerboseDebugEnabled: c.verboseDebugEnabled,
+		Context:   c.ctx,
+		Query:     fql,
+		Arguments: args,
+		Headers:   c.headers,
 	}
 
 	for _, queryOptionFn := range opts {
