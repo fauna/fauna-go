@@ -8,8 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
-	"strconv"
-	"sync/atomic"
 )
 
 // QueryArgItem query args structure
@@ -61,16 +59,12 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 
 	req.Header.Set(HeaderAuthorization, `Bearer `+c.secret)
 	req.Header.Set(HeaderFormat, "simple")
-	for k, v := range request.Headers {
-		req.Header.Set(k, v)
+	if lastTxnTs := c.lastTxnTime.string(); lastTxnTs != "" {
+		req.Header.Set(HeaderLastTxnTs, lastTxnTs)
 	}
 
-	if c.lastTxnTime.Enabled {
-		c.lastTxnTime.RLock()
-		if lastSeen := atomic.LoadInt64(&c.lastTxnTime.Value); lastSeen != 0 {
-			req.Header.Set(HeaderLastSeenTxn, strconv.FormatInt(lastSeen, 10))
-		}
-		c.lastTxnTime.RUnlock()
+	for k, v := range request.Headers {
+		req.Header.Set(k, v)
 	}
 
 	if request.VerboseDebugEnabled {
@@ -115,7 +109,7 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 		return &response, fmt.Errorf("failed to umarmshal response: %w", unmarshalErr)
 	}
 
-	c.syncLastTxnTime(response.TxnTime)
+	c.lastTxnTime.sync(response.TxnTime)
 
 	if serviceErr := GetServiceError(r.StatusCode, response.Error, response.Summary); serviceErr != nil {
 		c.log.Printf("[ERROR] %d - %v - %v\n%s", r.StatusCode, response.Error, response.Summary, response.Bytes)
@@ -123,21 +117,4 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	return &response, nil
-}
-
-func (c *Client) syncLastTxnTime(newTxnTime int64) {
-	if !c.lastTxnTime.Enabled {
-		return
-	}
-
-	c.lastTxnTime.Lock()
-	defer c.lastTxnTime.Unlock()
-
-	for {
-		oldTxnTime := atomic.LoadInt64(&c.lastTxnTime.Value)
-		if oldTxnTime >= newTxnTime ||
-			atomic.CompareAndSwapInt64(&c.lastTxnTime.Value, oldTxnTime, newTxnTime) {
-			break
-		}
-	}
 }
