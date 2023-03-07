@@ -51,13 +51,12 @@ const (
 	// Request/response Headers
 
 	HeaderContentType = "Content-Type"
-	HeaderTxnTime     = "X-Last-Txn-Time"
+	HeaderLastTxnTs     = "X-Last-Txn-Ts"
 
 	// Request Headers
 
 	HeaderAuthorization        = "Authorization"
 	HeaderFormat               = "X-Format"
-	HeaderLastSeenTxn          = "X-Last-Seen-Txn"
 	HeaderLinearized           = "X-Linearized"
 	HeaderMaxContentionRetries = "X-Max-Contention-Retries"
 	HeaderTags                 = "X-Tags"
