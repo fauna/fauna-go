@@ -40,14 +40,14 @@ func QueryArguments(args ...QueryArgItem) QueryArgs {
 }
 
 type fqlRequest struct {
-	Context   context.Context        `json:"-"`
-	Headers   map[string]string      `json:"-"`
-	Query     string                 `json:"query"`
-	Arguments map[string]interface{} `json:"arguments,omitempty"`
+	Context   context.Context
+	Headers   map[string]string
+	Query     string                 `fauna:"query"`
+	Arguments map[string]interface{} `fauna:"arguments"`
 }
 
 func (c *Client) do(request *fqlRequest) (*Response, error) {
-	bytesOut, bytesErr := json.Marshal(request)
+	bytesOut, bytesErr := marshal(request)
 	if bytesErr != nil {
 		return nil, fmt.Errorf("marshal request failed: %w", bytesErr)
 	}

@@ -1,7 +1,6 @@
 package fauna
 
 import (
-	"encoding/json"
 	"net/http"
 )
 
@@ -18,9 +17,9 @@ const (
 // The Response from a [Client.Query]
 type Response struct {
 	Bytes      []byte
-	Data       json.RawMessage `json:"data"`
-	Error      *ServiceError   `json:"error,omitempty"`
-	Logging    []string        `json:"logging,omitempty"`
+	Data       interface{}   `json:"data"`
+	Error      *ServiceError `json:"error,omitempty"`
+	Logging    []string      `json:"logging,omitempty"`
 	Raw        *http.Response
 	StaticType string         `json:"static_type"`
 	Stats      map[string]int `json:"stats,omitempty"`
