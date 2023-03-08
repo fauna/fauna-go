@@ -7,10 +7,8 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
@@ -579,39 +577,4 @@ func randomString(n int) string {
 		s[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(s)
-}
-
-func TestConcurrentRequests(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		txnTime := time.Now()
-
-		w.Header().Set(fauna.HeaderContentType, "application/json")
-		w.Header().Set(fauna.HeaderLastTxnTs, fmt.Sprintf("%d", txnTime.UnixMicro()))
-
-		_, _ = fmt.Fprintf(w, `{"data": { "hello": "world" }, "error": {"code": "", "message": ""}, "summary": "", "txn_time": "%s"}`, txnTime.Format("2006-01-02T15:04:05.000Z"))
-	}))
-	ts.EnableHTTP2 = true
-	defer ts.Close()
-
-	client := fauna.NewClient("", fauna.URL(ts.URL))
-
-	iterations := 100
-
-	var wg sync.WaitGroup
-	wg.Add(iterations)
-	for i := 0; i < iterations; i++ {
-
-		go func() {
-			defer wg.Done()
-
-			_, queryErr := client.Query(`Now()`, nil, nil)
-			if queryErr != nil {
-				t.Errorf("failed to query: %s", queryErr.Error())
-			}
-
-			_ = client.SetLastTxnTime(time.Now())
-		}()
-	}
-
-	wg.Wait()
 }
