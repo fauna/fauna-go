@@ -90,23 +90,24 @@ func TestFQL(t *testing.T) {
 				t.Fatalf("error rendering query: %s", err)
 			}
 
-			if buildersAreEqual(tc.wants, *q) {
-				t.Errorf("(%s) expected %v but got %v", tc.testName, tc.wants, *q)
+			if !buildersAreEqual(tc.wants, *q) {
+				t.Errorf("(%s) expected %q but got %q", tc.testName, tc.wants, *q)
 			}
 		})
 	}
 }
 
 func buildersAreEqual(wants fauna.QueryInterpolationBuilder, test fauna.QueryInterpolationBuilder) bool {
+	isEqual := true
 	for i, wantsFrag := range wants.Fragments {
 		testFrag := test.Fragments[i]
 
 		switch typedFrag := wantsFrag.Get().(type) {
 		case fauna.QueryInterpolationBuilder:
-			return buildersAreEqual(typedFrag, testFrag.Get().(fauna.QueryInterpolationBuilder))
+			isEqual = isEqual && buildersAreEqual(typedFrag, testFrag.Get().(fauna.QueryInterpolationBuilder))
 		}
-		return !reflect.DeepEqual(wantsFrag.Get(), testFrag.Get())
+		isEqual = isEqual && reflect.DeepEqual(wantsFrag.Get(), testFrag.Get())
 	}
 
-	return len(wants.Fragments) == len(test.Fragments)
+	return isEqual && len(wants.Fragments) == len(test.Fragments)
 }
