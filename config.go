@@ -59,11 +59,11 @@ func QueryTimeout(d time.Duration) ClientConfigFn {
 	}
 }
 
-// Tags sets header on the [fauna.Client]
+// QueryTags sets header on the [fauna.Client]
 // Set tags to associate with the query. See [logging]
 //
 // [logging]: https://docs.fauna.com/fauna/current/build/logs/query_log/
-func Tags(tags map[string]string) ClientConfigFn {
+func QueryTags(tags map[string]string) ClientConfigFn {
 	return func(c *Client) {
 		c.setHeader(HeaderTags, argsStringFromMap(tags))
 	}
@@ -98,8 +98,8 @@ func QueryTypeChecking(enabled bool) QueryOptFn {
 	}
 }
 
-// QueryTags set the tags header on a single [Client.Query]
-func QueryTags(tags map[string]string) QueryOptFn {
+// Tags set the tags header on a single [Client.Query]
+func Tags(tags map[string]string) QueryOptFn {
 	return func(req *fqlRequest) {
 		if val, exists := req.Headers[HeaderTags]; exists {
 			req.Headers[HeaderTags] = argsStringFromMap(tags, strings.Split(val, ",")...)
