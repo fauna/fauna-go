@@ -9,9 +9,10 @@ import (
 )
 
 type fqlSuccessCase struct {
-	query string
-	args  map[string]interface{}
-	wants map[string][]interface{}
+	testName string
+	query    string
+	args     map[string]interface{}
+	wants    fauna.CompositionQueryBuilder
 }
 
 func TestFQL(t *testing.T) {
@@ -24,68 +25,88 @@ func TestFQL(t *testing.T) {
 	testInnerDino, _ := fauna.FQL("let x = ${my_var}", map[string]interface{}{"my_var": testDino})
 	testCases := []fqlSuccessCase{
 		{
+			"simple literal case",
 			"let x = 11",
 			nil,
-			map[string][]interface{}{
-				"fql": {"let x = 11"},
+			fauna.CompositionQueryBuilder{
+				Fragments: []fauna.Fragment{fauna.NewLiteralFragment("let x = 11")},
 			},
 		},
 		{
+			"simple literal case with brace",
 			"let x = { y: 11 }",
 			nil,
-			map[string][]interface{}{
-				"fql": {"let x = { y: 11 }"},
+			fauna.CompositionQueryBuilder{
+				Fragments: []fauna.Fragment{fauna.NewLiteralFragment("let x = { y: 11 }")},
 			},
 		},
 		{
+			"template variable and fauna variable",
 			"let age = ${n1}\n\"Alice is #{age} years old.\"",
 			map[string]interface{}{"n1": 5},
-			map[string][]interface{}{
-				"fql": {"let age = ", map[string]interface{}{"value": 5}, "\n\"Alice is #{age} years old.\""},
-			},
-		},
-		{
-			"let x = ${my_var}",
-			map[string]interface{}{"my_var": testDino},
-			map[string][]interface{}{
-				"fql": {"let x = ", map[string]interface{}{
-					"value": testDino},
+			fauna.CompositionQueryBuilder{
+				Fragments: []fauna.Fragment{
+					fauna.NewLiteralFragment("let age = "),
+					fauna.NewValueFragment(5),
+					fauna.NewLiteralFragment("\n\"Alice is #{age} years old.\""),
 				},
 			},
 		},
 		{
+			"template variable",
+			"let x = ${my_var}",
+			map[string]interface{}{"my_var": testDino},
+			fauna.CompositionQueryBuilder{
+				Fragments: []fauna.Fragment{
+					fauna.NewLiteralFragment("let x = "),
+					fauna.NewValueFragment(testDino),
+				},
+			},
+		},
+		{
+			"query variable",
 			"${inner}\nx { .name }",
 			map[string]interface{}{
-				"inner": *testInnerDino,
+				"inner": testInnerDino,
 			},
-			map[string][]interface{}{
-				"fql": {
-					map[string][]interface{}{
-						"fql": {"let x = ", map[string]interface{}{
-							"value": testDino},
-						},
-					},
-					"\nx { .name }",
+			fauna.CompositionQueryBuilder{
+				Fragments: []fauna.Fragment{
+					fauna.NewValueFragment(testInnerDino),
+					fauna.NewLiteralFragment("\nx { .name }"),
 				},
 			},
 		},
 	}
 
 	for _, tc := range testCases {
-		q, err := fauna.FQL(tc.query, tc.args)
+		t.Run(tc.testName, func(t *testing.T) {
+			q, err := fauna.FQL(tc.query, tc.args)
 
-		if err != nil {
-			t.Fatalf("error constructing query: %s", err)
-		}
+			if err != nil {
+				t.Fatalf("error constructing query: %s", err)
+			}
 
-		rendered, err := q.ToQuery()
+			if err != nil {
+				t.Fatalf("error rendering query: %s", err)
+			}
 
-		if err != nil {
-			t.Fatalf("error rendering query: %s", err)
-		}
-
-		if !reflect.DeepEqual(tc.wants, rendered) {
-			t.Errorf("expected %q but got %q", tc.wants, rendered)
-		}
+			if queryBuildersAreEqual(tc.wants, *q) {
+				t.Errorf("(%s) expected %v but got %v", tc.testName, tc.wants, *q)
+			}
+		})
 	}
+}
+
+func queryBuildersAreEqual(wants fauna.CompositionQueryBuilder, test fauna.CompositionQueryBuilder) bool {
+	for i, wantsFrag := range wants.Fragments {
+		testFrag := test.Fragments[i]
+
+		switch typedFrag := wantsFrag.Get().(type) {
+		case fauna.CompositionQueryBuilder:
+			return queryBuildersAreEqual(typedFrag, testFrag.Get().(fauna.CompositionQueryBuilder))
+		}
+		return !reflect.DeepEqual(wantsFrag.Get(), testFrag.Get())
+	}
+
+	return len(wants.Fragments) == len(test.Fragments)
 }

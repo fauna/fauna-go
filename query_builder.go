@@ -6,58 +6,38 @@ import (
 )
 
 type Fragment interface {
-	render() (interface{}, error)
+	Get() interface{}
 }
 
 type ValueFragment struct {
-	val interface{}
+	value interface{}
 }
 
-func (vf ValueFragment) render() (interface{}, error) {
-	// TODO: Encode the value into tagged format
-	return map[string]interface{}{
-		"value": vf.val,
-	}, nil
+func (vf *ValueFragment) Get() interface{} {
+	return vf.value
+}
+
+func NewValueFragment(value interface{}) *ValueFragment {
+	return &ValueFragment{value}
 }
 
 type LiteralFragment struct {
-	val string
+	value string
 }
 
-func (lf LiteralFragment) render() (interface{}, error) {
-	return lf.val, nil
+func (lf *LiteralFragment) Get() interface{} {
+	return lf.value
 }
 
-type QueryFragment struct {
-	builder QueryBuilder
+func NewLiteralFragment(value string) *LiteralFragment {
+	return &LiteralFragment{value}
 }
 
-func (qf QueryFragment) render() (interface{}, error) {
-	return qf.builder.ToQuery()
+type CompositionQueryBuilder struct {
+	Fragments []Fragment
 }
 
-type QueryBuilder struct {
-	fragments []Fragment
-}
-
-func (qb *QueryBuilder) ToQuery() (map[string][]interface{}, error) {
-	rendered := make([]interface{}, len(qb.fragments))
-
-	for i, f := range qb.fragments {
-		renderedFrag, err := f.render()
-		if err != nil {
-			return nil, err
-		}
-
-		rendered[i] = renderedFrag
-	}
-
-	return map[string][]interface{}{
-		"fql": rendered,
-	}, nil
-}
-
-func FQL(query string, args map[string]interface{}) (*QueryBuilder, error) {
+func FQL(query string, args map[string]interface{}) (*CompositionQueryBuilder, error) {
 	template := NewTemplate(query)
 	parts, err := template.Parse()
 
@@ -70,7 +50,7 @@ func FQL(query string, args map[string]interface{}) (*QueryBuilder, error) {
 
 		switch category := part.Category; category {
 		case TemplateLiteral:
-			fragments = append(fragments, LiteralFragment{part.Text})
+			fragments = append(fragments, NewLiteralFragment(part.Text))
 
 		case TemplateVariable:
 			if args == nil {
@@ -80,14 +60,7 @@ func FQL(query string, args map[string]interface{}) (*QueryBuilder, error) {
 			arg, ok := args[part.Text]
 
 			if ok {
-				switch typed := arg.(type) {
-				case QueryBuilder:
-					fragments = append(fragments, QueryFragment{builder: typed})
-
-				default:
-					fragments = append(fragments, ValueFragment{val: typed})
-				}
-
+				fragments = append(fragments, NewValueFragment(arg))
 			} else {
 				return nil, fmt.Errorf("template variable %s not found in args", part.Text)
 			}
@@ -95,5 +68,5 @@ func FQL(query string, args map[string]interface{}) (*QueryBuilder, error) {
 		}
 	}
 
-	return &QueryBuilder{fragments: fragments}, nil
+	return &CompositionQueryBuilder{Fragments: fragments}, nil
 }
