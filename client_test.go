@@ -416,7 +416,6 @@ func TestHeaders(t *testing.T) {
 			fauna.QueryTimeout(time.Second*3),
 			fauna.MaxContentionRetries(5),
 			fauna.Context(context.Background()),
-			fauna.TypeChecking(true),
 			fauna.AdditionalHeaders(map[string]string{
 				"foobar":      "steve",
 				currentHeader: expectedValue,
