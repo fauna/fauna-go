@@ -180,18 +180,13 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 }
 
 // SetLastTxnTime update the last txn time for the [fauna.Client]
-func (c *Client) SetLastTxnTime(txnTime time.Time) error {
+func (c *Client) SetLastTxnTime(txnTime time.Time) {
 	c.lastTxnTime.Lock()
 	defer c.lastTxnTime.Unlock()
 
-	val := txnTime.UnixMicro()
-	if val < c.lastTxnTime.Value {
-		return fmt.Errorf("unable to set last transaction time less than previously known value:\n\tcurrent value: %d\n\tattempted value: %d", c.lastTxnTime.Value, val)
+	if val := txnTime.UnixMicro(); val > c.lastTxnTime.Value {
+		c.lastTxnTime.Value = val
 	}
-
-	c.lastTxnTime.Value = val
-
-	return nil
 }
 
 // GetLastTxnTime gets the freshest timestamp reported to this client.
