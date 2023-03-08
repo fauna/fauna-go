@@ -389,7 +389,7 @@ func TestHeaders(t *testing.T) {
 				name: "should have tags",
 				args: args{
 					header: fauna.HeaderTags,
-					headerOpt: fauna.Tags(map[string]string{
+					headerOpt: fauna.QueryTags(map[string]string{
 						"hello": "world",
 						"what":  "are=you,doing?",
 					}),
@@ -424,7 +424,7 @@ func TestHeaders(t *testing.T) {
 			"secret",
 			fauna.URL(fauna.EndpointLocal),
 			fauna.HTTPClient(testingClient),
-			fauna.Tags(map[string]string{
+			fauna.QueryTags(map[string]string{
 				"team": "X_Men",
 				"hero": "Cyclops",
 			}),
@@ -433,7 +433,7 @@ func TestHeaders(t *testing.T) {
 		currentHeader = fauna.HeaderTags
 		expectedValue = "hero=Wolverine,team=X_Men"
 
-		if _, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTags(map[string]string{"hero": "Wolverine"})); queryErr != nil {
+		if _, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.Tags(map[string]string{"hero": "Wolverine"})); queryErr != nil {
 			t.Errorf("query failed: %s", queryErr.Error())
 		}
 

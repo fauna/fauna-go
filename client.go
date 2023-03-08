@@ -66,36 +66,6 @@ const (
 	HeaderFaunaBuild  = "X-Faunadb-Build"
 )
 
-type txnTime struct {
-	sync.RWMutex
-
-	Value int64
-}
-
-func (t *txnTime) string() string {
-	t.RLock()
-	defer t.RUnlock()
-
-	if lastSeen := atomic.LoadInt64(&t.Value); lastSeen != 0 {
-		return strconv.FormatInt(lastSeen, 10)
-	}
-
-	return ""
-}
-
-func (t *txnTime) sync(newTxnTime int64) {
-	t.Lock()
-	defer t.Unlock()
-
-	for {
-		oldTxnTime := atomic.LoadInt64(&t.Value)
-		if oldTxnTime >= newTxnTime ||
-			atomic.CompareAndSwapInt64(&t.Value, oldTxnTime, newTxnTime) {
-			break
-		}
-	}
-}
-
 // Client is the Fauna Client.
 type Client struct {
 	url                 string
@@ -236,6 +206,40 @@ func (c *Client) GetLastTxnTime() int64 {
 // only returns the URL to prevent logging potentially sensitive Headers.
 func (c *Client) String() string {
 	return c.url
+}
+
+func (c *Client) setHeader(key, val string) {
+	c.headers[key] = val
+}
+
+type txnTime struct {
+	sync.RWMutex
+
+	Value int64
+}
+
+func (t *txnTime) string() string {
+	t.RLock()
+	defer t.RUnlock()
+
+	if lastSeen := atomic.LoadInt64(&t.Value); lastSeen != 0 {
+		return strconv.FormatInt(lastSeen, 10)
+	}
+
+	return ""
+}
+
+func (t *txnTime) sync(newTxnTime int64) {
+	t.Lock()
+	defer t.Unlock()
+
+	for {
+		oldTxnTime := atomic.LoadInt64(&t.Value)
+		if oldTxnTime >= newTxnTime ||
+			atomic.CompareAndSwapInt64(&t.Value, oldTxnTime, newTxnTime) {
+			break
+		}
+	}
 }
 
 func isEnabled(envVar string, defaultValue bool) bool {
