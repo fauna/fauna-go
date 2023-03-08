@@ -145,15 +145,6 @@ func TestDefaultClient(t *testing.T) {
 			t.Logf("expected [%v] got [%v]", value, v)
 		}
 	})
-
-	t.Run("invalid timeout", func(t *testing.T) {
-		t.Setenv(fauna.EnvFaunaTimeout, "invalidTime")
-
-		_, invalidErr := fauna.NewDefaultClient()
-		if invalidErr != nil {
-			t.Errorf("invalid: %s", invalidErr.Error())
-		}
-	})
 }
 
 func TestNewClient(t *testing.T) {
@@ -177,38 +168,6 @@ func TestNewClient(t *testing.T) {
 		if clientErr == nil {
 			t.Errorf("should have failed due to missing secret")
 		}
-	})
-
-	t.Run("custom timeout", func(t *testing.T) {
-		t.Setenv(fauna.EnvFaunaSecret, "secret")
-		t.Setenv(fauna.EnvFaunaTimeout, "3s")
-
-		_, clientErr := fauna.NewDefaultClient()
-		if clientErr != nil {
-			t.Errorf("should be able to init a client with a custom timeout: %s", clientErr.Error())
-		}
-	})
-
-	t.Run("disable type checking", func(t *testing.T) {
-		t.Setenv(fauna.EnvFaunaSecret, "secret")
-		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
-
-		t.Run("at client", func(t *testing.T) {
-			t.Setenv(fauna.EnvFaunaTypeCheckEnabled, "false")
-
-		})
-
-		t.Run("at request", func(t *testing.T) {
-			client, clientErr := fauna.NewDefaultClient()
-			if clientErr != nil {
-				t.Fatalf("should be able to init client: %s", clientErr.Error())
-			}
-
-			_, queryErr := client.Query(`Math.abs(-5.123e3)`, nil, nil, fauna.QueryTypeChecking(false))
-			if queryErr != nil {
-				t.Fatalf("should be able to query without type checking: %s", queryErr)
-			}
-		})
 	})
 
 	t.Run("has transaction time", func(t *testing.T) {

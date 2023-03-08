@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	_ "embed"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -36,10 +35,6 @@ const (
 	EnvFaunaEndpoint = "FAUNA_ENDPOINT"
 	// EnvFaunaSecret environment variable for Fauna Client authentication
 	EnvFaunaSecret = "FAUNA_SECRET"
-	// EnvFaunaTimeout environment variable for Fauna Client Read-Idle Timeout
-	EnvFaunaTimeout = "FAUNA_TIMEOUT"
-	// EnvFaunaTypeCheckEnabled environment variable for Fauna Client TypeChecking
-	EnvFaunaTypeCheckEnabled = "FAUNA_TYPE_CHECK_ENABLED"
 
 	// DefaultHttpReadIdleTimeout Fauna Client default HTTP read idle timeout
 	DefaultHttpReadIdleTimeout = time.Minute * 3
@@ -91,19 +86,6 @@ func NewDefaultClient() (*Client, error) {
 		url = EndpointProduction
 	}
 
-	readIdleTimeout := DefaultHttpReadIdleTimeout
-	if val, found := os.LookupEnv(EnvFaunaTimeout); found {
-		if timeoutFromEnv, err := time.ParseDuration(val); err != nil {
-			log.Default().Printf("[WARNING] using default timeout - failed to parse timeout [%s]", err.Error())
-		} else {
-			if timeoutFromEnv.Seconds() <= 0 {
-				log.Default().Printf("[WARNING] using default timeout - value must be greater than 0")
-			} else {
-				readIdleTimeout = timeoutFromEnv
-			}
-		}
-	}
-
 	return NewClient(
 		secret,
 		URL(url),
@@ -113,7 +95,7 @@ func NewDefaultClient() (*Client, error) {
 					return net.Dial(network, addr)
 				},
 				AllowHTTP:        url == EndpointLocal,
-				ReadIdleTimeout:  readIdleTimeout,
+				ReadIdleTimeout:  DefaultHttpReadIdleTimeout,
 				PingTimeout:      time.Second * 3,
 				WriteByteTimeout: time.Second * 5,
 			},
@@ -124,8 +106,6 @@ func NewDefaultClient() (*Client, error) {
 
 // NewClient initialize a new [fauna.Client] with custom settings
 func NewClient(secret string, configFns ...ClientConfigFn) *Client {
-	typeCheckEnabled := isEnabled(EnvFaunaTypeCheckEnabled, true)
-
 	client := &Client{
 		ctx:    context.TODO(),
 		secret: secret,
@@ -139,7 +119,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 			"X-Go-Version":             fingerprinting.Version(),
 		},
 		lastTxnTime:         txnTime{},
-		typeCheckingEnabled: typeCheckEnabled,
+		typeCheckingEnabled: false,
 	}
 
 	// set options to override defaults
@@ -234,14 +214,4 @@ func (t *txnTime) sync(newTxnTime int64) {
 			break
 		}
 	}
-}
-
-func isEnabled(envVar string, defaultValue bool) bool {
-	if val, found := os.LookupEnv(envVar); found {
-		if boolVal, err := strconv.ParseBool(val); err == nil {
-			return boolVal
-		}
-	}
-
-	return defaultValue
 }
