@@ -9,10 +9,6 @@ import (
 	"time"
 )
 
-func (c *Client) setHeader(key, val string) {
-	c.headers[key] = val
-}
-
 // ClientConfigFn configuration options for the [fauna.Client]
 type ClientConfigFn func(*Client)
 
