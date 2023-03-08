@@ -12,7 +12,7 @@ type fqlSuccessCase struct {
 	testName string
 	query    string
 	args     map[string]interface{}
-	wants    fauna.CompositionQueryBuilder
+	wants    fauna.QueryInterpolationBuilder
 }
 
 func TestFQL(t *testing.T) {
@@ -28,7 +28,7 @@ func TestFQL(t *testing.T) {
 			"simple literal case",
 			"let x = 11",
 			nil,
-			fauna.CompositionQueryBuilder{
+			fauna.QueryInterpolationBuilder{
 				Fragments: []fauna.Fragment{fauna.NewLiteralFragment("let x = 11")},
 			},
 		},
@@ -36,7 +36,7 @@ func TestFQL(t *testing.T) {
 			"simple literal case with brace",
 			"let x = { y: 11 }",
 			nil,
-			fauna.CompositionQueryBuilder{
+			fauna.QueryInterpolationBuilder{
 				Fragments: []fauna.Fragment{fauna.NewLiteralFragment("let x = { y: 11 }")},
 			},
 		},
@@ -44,7 +44,7 @@ func TestFQL(t *testing.T) {
 			"template variable and fauna variable",
 			"let age = ${n1}\n\"Alice is #{age} years old.\"",
 			map[string]interface{}{"n1": 5},
-			fauna.CompositionQueryBuilder{
+			fauna.QueryInterpolationBuilder{
 				Fragments: []fauna.Fragment{
 					fauna.NewLiteralFragment("let age = "),
 					fauna.NewValueFragment(5),
@@ -56,7 +56,7 @@ func TestFQL(t *testing.T) {
 			"template variable",
 			"let x = ${my_var}",
 			map[string]interface{}{"my_var": testDino},
-			fauna.CompositionQueryBuilder{
+			fauna.QueryInterpolationBuilder{
 				Fragments: []fauna.Fragment{
 					fauna.NewLiteralFragment("let x = "),
 					fauna.NewValueFragment(testDino),
@@ -69,7 +69,7 @@ func TestFQL(t *testing.T) {
 			map[string]interface{}{
 				"inner": testInnerDino,
 			},
-			fauna.CompositionQueryBuilder{
+			fauna.QueryInterpolationBuilder{
 				Fragments: []fauna.Fragment{
 					fauna.NewValueFragment(testInnerDino),
 					fauna.NewLiteralFragment("\nx { .name }"),
@@ -90,20 +90,20 @@ func TestFQL(t *testing.T) {
 				t.Fatalf("error rendering query: %s", err)
 			}
 
-			if queryBuildersAreEqual(tc.wants, *q) {
+			if buildersAreEqual(tc.wants, *q) {
 				t.Errorf("(%s) expected %v but got %v", tc.testName, tc.wants, *q)
 			}
 		})
 	}
 }
 
-func queryBuildersAreEqual(wants fauna.CompositionQueryBuilder, test fauna.CompositionQueryBuilder) bool {
+func buildersAreEqual(wants fauna.QueryInterpolationBuilder, test fauna.QueryInterpolationBuilder) bool {
 	for i, wantsFrag := range wants.Fragments {
 		testFrag := test.Fragments[i]
 
 		switch typedFrag := wantsFrag.Get().(type) {
-		case fauna.CompositionQueryBuilder:
-			return queryBuildersAreEqual(typedFrag, testFrag.Get().(fauna.CompositionQueryBuilder))
+		case fauna.QueryInterpolationBuilder:
+			return buildersAreEqual(typedFrag, testFrag.Get().(fauna.QueryInterpolationBuilder))
 		}
 		return !reflect.DeepEqual(wantsFrag.Get(), testFrag.Get())
 	}

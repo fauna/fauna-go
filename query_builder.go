@@ -33,11 +33,11 @@ func NewLiteralFragment(value string) *LiteralFragment {
 	return &LiteralFragment{value}
 }
 
-type CompositionQueryBuilder struct {
+type QueryInterpolationBuilder struct {
 	Fragments []Fragment
 }
 
-func FQL(query string, args map[string]interface{}) (*CompositionQueryBuilder, error) {
+func FQL(query string, args map[string]interface{}) (*QueryInterpolationBuilder, error) {
 	template := NewTemplate(query)
 	parts, err := template.Parse()
 
@@ -68,5 +68,5 @@ func FQL(query string, args map[string]interface{}) (*CompositionQueryBuilder, e
 		}
 	}
 
-	return &CompositionQueryBuilder{Fragments: fragments}, nil
+	return &QueryInterpolationBuilder{Fragments: fragments}, nil
 }
