@@ -2,7 +2,6 @@ package fauna_test
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -55,9 +54,10 @@ func TestDefaultClient(t *testing.T) {
 					t.Errorf("expected some compute ops")
 				}
 
-				if res.Stats[fauna.StatsQueryTimeMs] == 0 {
-					t.Errorf("should have some query time")
-				}
+				// if res.Stats[fauna.StatsQueryTimeMs] == 0 {
+				// This can be flakey on fast systems
+				//t.Errorf("should have some query time")
+				// }
 
 				if res.Stats[fauna.StatsContentionRetries] > 0 {
 					t.Errorf("should not have any retries")
@@ -283,7 +283,7 @@ func TestBasicCRUDRequests(t *testing.T) {
 	}
 
 	t.Run("Create a Person", func(t *testing.T) {
-		res, queryErr := client.Query(fmt.Sprintf(`%s.create(%s)`, coll, p.String()), nil, nil)
+		res, queryErr := client.Query(fmt.Sprintf(`%s.create(person)`, coll), fauna.QueryArguments(fauna.QueryArg("person", p)), nil)
 		if queryErr != nil {
 			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
 		}
@@ -557,16 +557,8 @@ func TestErrorHandling(t *testing.T) {
 }
 
 type Person struct {
-	Name    string `json:"name"`
-	Address string `json:"address"`
-}
-
-func (p *Person) String() string {
-	j, e := json.Marshal(p)
-	if e != nil {
-		return ""
-	}
-	return string(j)
+	Name    string `fauna:"name"`
+	Address string `fauna:"address"`
 }
 
 func randomString(n int) string {

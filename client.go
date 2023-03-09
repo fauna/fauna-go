@@ -170,8 +170,8 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 
 	// we only need to unmarshal if the consumer provided an object
 	if obj != nil {
-		if unmarshalErr := decode(res.Data, obj); unmarshalErr != nil {
-			return res, fmt.Errorf("failed to unmarshal object [%v] from result: %v\nerror: %w", obj, res.Data, unmarshalErr)
+		if unmarshalErr := unmarshal(res.Data, obj); unmarshalErr != nil {
+			return res, fmt.Errorf("failed to unmarshal object [%v] from result: %v\nerror: %w", obj, string(res.Data), unmarshalErr)
 		}
 	}
 
