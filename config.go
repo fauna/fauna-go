@@ -65,13 +65,6 @@ func QueryTags(tags map[string]string) ClientConfigFn {
 	}
 }
 
-// TypeChecking toggle if [fauna.Client] enforces type checking
-func TypeChecking(enabled bool) ClientConfigFn {
-	return func(c *Client) {
-		c.typeCheckingEnabled = enabled
-	}
-}
-
 // URL set the [fauna.Client] URL
 func URL(url string) ClientConfigFn {
 	return func(c *Client) { c.url = url }
@@ -84,13 +77,6 @@ type QueryOptFn func(req *fqlRequest)
 func QueryContext(ctx context.Context) QueryOptFn {
 	return func(req *fqlRequest) {
 		req.Context = ctx
-	}
-}
-
-// QueryTypeChecking toggle if [fauna.Client] uses type checking for a single [Client.Query]
-func QueryTypeChecking(enabled bool) QueryOptFn {
-	return func(req *fqlRequest) {
-		req.Headers[HeaderTypeChecking] = fmt.Sprintf("%v", enabled)
 	}
 }
 
