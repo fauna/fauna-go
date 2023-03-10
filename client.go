@@ -39,25 +39,25 @@ const (
 	// DefaultHttpReadIdleTimeout Fauna Client default HTTP read idle timeout
 	DefaultHttpReadIdleTimeout = time.Minute * 3
 
-	// Request/response Headers
+	// Headers consumers might want to use
 
-	HeaderContentType = "Content-Type"
-	HeaderLastTxnTs   = "X-Last-Txn-Ts"
-
-	// Request Headers
-
-	HeaderAuthorization        = "Authorization"
-	HeaderFormat               = "X-Format"
+	HeaderLastTxnTs            = "X-Last-Txn-Ts"
 	HeaderLinearized           = "X-Linearized"
 	HeaderMaxContentionRetries = "X-Max-Contention-Retries"
-	HeaderTags                 = "X-Tags"
+	HeaderTags                 = "X-Query-Tags"
 	HeaderTimeoutMs            = "X-Timeout-Ms"
+	HeaderTraceparent          = "Traceparent"
 	HeaderTypeChecking         = "X-Type-Checking"
 
-	// Response Headers
+	// Headers just used internally
 
-	HeaderTraceparent = "Traceparent"
-	HeaderFaunaBuild  = "X-Faunadb-Build"
+	headerAuthorization = "Authorization"
+	headerContentType   = "Content-Type"
+	headerDriver        = "X-Driver"
+	headerDriverVersion = "X-Driver-Version"
+	headerRuntime       = "X-Runtime"
+	headerFormat        = "X-Format"
+	headerFaunaBuild    = "X-Faunadb-Build"
 )
 
 // Client is the Fauna Client.
@@ -112,11 +112,15 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 		http:   http.DefaultClient,
 		url:    EndpointProduction,
 		headers: map[string]string{
-			HeaderContentType:          "application/json; charset=utf-8",
-			"X-Fauna-Driver":           DriverVersion,
-			"X-Runtime-Environment-OS": fingerprinting.EnvironmentOS(),
-			"X-Runtime-Environment":    fingerprinting.Environment(),
-			"X-Go-Version":             fingerprinting.Version(),
+			headerContentType:   "application/json; charset=utf-8",
+			headerDriver:        "go",
+			headerDriverVersion: DriverVersion,
+			headerRuntime: fmt.Sprintf(
+				"env=%s; os=%s; go=%s",
+				fingerprinting.Environment(),
+				fingerprinting.EnvironmentOS(),
+				fingerprinting.Version(),
+			),
 		},
 		lastTxnTime:         txnTime{},
 		typeCheckingEnabled: false,

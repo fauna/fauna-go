@@ -28,7 +28,7 @@ type Response struct {
 }
 
 func (r Response) FaunaBuild() string {
-	return stringFromResponseHeader(r.Raw, HeaderFaunaBuild)
+	return stringFromResponseHeader(r.Raw, headerFaunaBuild)
 }
 
 func (r Response) Traceparent() string {
