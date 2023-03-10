@@ -89,17 +89,7 @@ func NewDefaultClient() (*Client, error) {
 	return NewClient(
 		secret,
 		URL(url),
-		HTTPClient(&http.Client{
-			Transport: &http2.Transport{
-				DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-					return net.Dial(network, addr)
-				},
-				AllowHTTP:        url == EndpointLocal,
-				ReadIdleTimeout:  DefaultHttpReadIdleTimeout,
-				PingTimeout:      time.Second * 3,
-				WriteByteTimeout: time.Second * 5,
-			},
-		}),
+		HTTPClient(DefaultHTTPClient(url == EndpointLocal)),
 		Context(context.TODO()),
 	), nil
 }
@@ -109,7 +99,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	client := &Client{
 		ctx:    context.TODO(),
 		secret: secret,
-		http:   http.DefaultClient,
+		http:   DefaultHTTPClient(false),
 		url:    EndpointProduction,
 		headers: map[string]string{
 			HeaderContentType:          "application/json; charset=utf-8",
@@ -130,7 +120,22 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	return client
 }
 
-// Query invoke fql with args and map to the provided obj, optionally set [QueryOptFn]
+// DefaultHTTPClient returns the default [http.Client] used by the [fauna.Client]
+func DefaultHTTPClient(allowHTTP bool) *http.Client {
+	return &http.Client{
+		Transport: &http2.Transport{
+			DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+				return net.Dial(network, addr)
+			},
+			AllowHTTP:        allowHTTP,
+			ReadIdleTimeout:  DefaultHttpReadIdleTimeout,
+			PingTimeout:      time.Second * 3,
+			WriteByteTimeout: time.Second * 5,
+		},
+	}
+}
+
+// Query invoke fql with args and map to the provided obj, optionally set multiple [QueryOptFn]
 func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...QueryOptFn) (*Response, error) {
 	req := &fqlRequest{
 		Context:   c.ctx,
