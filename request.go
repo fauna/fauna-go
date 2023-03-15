@@ -65,7 +65,6 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	req.Header.Set(headerAuthorization, `Bearer `+c.secret)
-	req.Header.Set(headerFormat, "simple")
 	if lastTxnTs := c.lastTxnTime.string(); lastTxnTs != "" {
 		req.Header.Set(HeaderLastTxnTs, lastTxnTs)
 	}
