@@ -51,6 +51,7 @@ func Environment() string {
 	return "Unknown"
 }
 
+// Version return the current version of the Go runtime
 func Version() string {
 	return runtime.Version()
 }

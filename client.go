@@ -159,6 +159,10 @@ func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...Quer
 }
 
 // SetLastTxnTime update the last txn time for the [fauna.Client]
+// This has no effect if earlier than stored timestamp.
+//
+// WARNING: This should be used only when coordinating timestamps across multiple clients.
+// Moving the timestamp arbitrarily forward into the future will cause transactions to stall.
 func (c *Client) SetLastTxnTime(txnTime time.Time) {
 	c.lastTxnTime.Lock()
 	defer c.lastTxnTime.Unlock()
@@ -168,7 +172,7 @@ func (c *Client) SetLastTxnTime(txnTime time.Time) {
 	}
 }
 
-// GetLastTxnTime gets the freshest timestamp reported to this client.
+// GetLastTxnTime gets the last txn timestamp seen by the [fauna.Client]
 func (c *Client) GetLastTxnTime() int64 {
 	c.lastTxnTime.RLock()
 	defer c.lastTxnTime.RUnlock()
@@ -177,7 +181,7 @@ func (c *Client) GetLastTxnTime() int64 {
 }
 
 // String fulfil Stringify interface for the [fauna.Client]
-// only returns the URL to prevent logging potentially sensitive Headers.
+// only returns the URL to prevent logging potentially sensitive headers.
 func (c *Client) String() string {
 	return c.url
 }
