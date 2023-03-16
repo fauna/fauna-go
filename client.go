@@ -89,7 +89,7 @@ func NewDefaultClient() (*Client, error) {
 	return NewClient(
 		secret,
 		URL(url),
-		HTTPClient(DefaultHTTPClient(url == EndpointLocal)),
+		HTTPClient(defaultHTTPClient(url == EndpointLocal)),
 		Context(context.TODO()),
 	), nil
 }
@@ -99,7 +99,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	client := &Client{
 		ctx:    context.TODO(),
 		secret: secret,
-		http:   DefaultHTTPClient(false),
+		http:   defaultHTTPClient(false),
 		url:    EndpointProduction,
 		headers: map[string]string{
 			HeaderContentType:          "application/json; charset=utf-8",
@@ -118,21 +118,6 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	}
 
 	return client
-}
-
-// DefaultHTTPClient returns the default [http.Client] used by the [fauna.Client]
-func DefaultHTTPClient(allowHTTP bool) *http.Client {
-	return &http.Client{
-		Transport: &http2.Transport{
-			DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-				return net.Dial(network, addr)
-			},
-			AllowHTTP:        allowHTTP,
-			ReadIdleTimeout:  DefaultHttpReadIdleTimeout,
-			PingTimeout:      time.Second * 3,
-			WriteByteTimeout: time.Second * 5,
-		},
-	}
 }
 
 // Query invoke fql with args and map to the provided obj, optionally set multiple [QueryOptFn]
@@ -185,6 +170,20 @@ func (c *Client) GetLastTxnTime() int64 {
 // only returns the URL to prevent logging potentially sensitive Headers.
 func (c *Client) String() string {
 	return c.url
+}
+
+func defaultHTTPClient(allowHTTP bool) *http.Client {
+	return &http.Client{
+		Transport: &http2.Transport{
+			DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+				return net.Dial(network, addr)
+			},
+			AllowHTTP:        allowHTTP,
+			ReadIdleTimeout:  DefaultHttpReadIdleTimeout,
+			PingTimeout:      time.Second * 3,
+			WriteByteTimeout: time.Second * 5,
+		},
+	}
 }
 
 func (c *Client) setHeader(key, val string) {
