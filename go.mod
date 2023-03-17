@@ -3,6 +3,7 @@ module github.com/fauna/fauna-go
 go 1.17
 
 require (
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/stretchr/testify v1.8.2
 	golang.org/x/net v0.7.0
 )
