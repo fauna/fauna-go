@@ -89,17 +89,7 @@ func NewDefaultClient() (*Client, error) {
 	return NewClient(
 		secret,
 		URL(url),
-		HTTPClient(&http.Client{
-			Transport: &http2.Transport{
-				DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-					return net.Dial(network, addr)
-				},
-				AllowHTTP:        url == EndpointLocal,
-				ReadIdleTimeout:  DefaultHttpReadIdleTimeout,
-				PingTimeout:      time.Second * 3,
-				WriteByteTimeout: time.Second * 5,
-			},
-		}),
+		HTTPClient(defaultHTTPClient(url == EndpointLocal)),
 		Context(context.TODO()),
 	), nil
 }
@@ -109,7 +99,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	client := &Client{
 		ctx:    context.TODO(),
 		secret: secret,
-		http:   http.DefaultClient,
+		http:   defaultHTTPClient(false),
 		url:    EndpointProduction,
 		headers: map[string]string{
 			headerContentType:   "application/json; charset=utf-8",
@@ -134,7 +124,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	return client
 }
 
-// Query invoke fql with args and map to the provided obj, optionally set [QueryOptFn]
+// Query invoke fql with args and map to the provided obj, optionally set multiple [QueryOptFn]
 func (c *Client) Query(fql string, args QueryArgs, obj interface{}, opts ...QueryOptFn) (*Response, error) {
 	req := &fqlRequest{
 		Context:   c.ctx,
@@ -188,6 +178,20 @@ func (c *Client) GetLastTxnTime() int64 {
 // only returns the URL to prevent logging potentially sensitive headers.
 func (c *Client) String() string {
 	return c.url
+}
+
+func defaultHTTPClient(allowHTTP bool) *http.Client {
+	return &http.Client{
+		Transport: &http2.Transport{
+			DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+				return net.Dial(network, addr)
+			},
+			AllowHTTP:        allowHTTP,
+			ReadIdleTimeout:  DefaultHttpReadIdleTimeout,
+			PingTimeout:      time.Second * 3,
+			WriteByteTimeout: time.Second * 5,
+		},
+	}
 }
 
 func (c *Client) setHeader(key, val string) {
