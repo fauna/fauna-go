@@ -1,22 +1,21 @@
 package fauna
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
 	fieldTag = "fauna"
 
-	dateFormat    = "2006-01-02"
-	timeEncFormat = "2006-01-02T15:04:05.999999-07:00"
-	timeDecFormat = "2006-01-02T15:04:05.999999Z"
+	dateFormat = "2006-01-02"
+	timeFormat = "2006-01-02T15:04:05.999999Z"
 
 	maxInt  = 2147483647
 	minInt  = -2147483648
@@ -33,6 +32,8 @@ const (
 	typeTagDate   typeTag = "@date"
 	typeTagTime   typeTag = "@time"
 	typeTagDoc    typeTag = "@doc"
+	typeTagRef    typeTag = "@ref"
+	typeTagSet    typeTag = "@set"
 	typeTagMod    typeTag = "@mod"
 	typeTagObject typeTag = "@object"
 )
@@ -48,503 +49,335 @@ func keyConflicts(key string) bool {
 	}
 }
 
-type DocumentReference struct {
-	CollectionName string
-	RefID          string
-}
-
 type Module struct {
 	Name string
 }
 
-func typeErr(expected string, data interface{}) error {
-	return fmt.Errorf("%s is not a %s", reflect.ValueOf(data).Kind(), expected)
+type Document struct {
+	ID   string     `fauna:"id"`
+	Coll *Module    `fauna:"coll"`
+	TS   *time.Time `fauna:"ts"`
+	Data map[string]interface{}
+}
+
+type NamedDocument struct {
+	Name string     `fauna:"name"`
+	Coll *Module    `fauna:"coll"`
+	TS   *time.Time `fauna:"ts"`
+	Data map[string]interface{}
+}
+
+type Ref struct {
+	ID   string  `fauna:"id"`
+	Coll *Module `fauna:"coll"`
+}
+
+type NamedRef struct {
+	Name string  `fauna:"name"`
+	Coll *Module `fauna:"coll"`
+}
+
+type SetCollection struct {
+	Data  []interface{} `fauna:"data"`
+	After string        `fauna:"after"`
+}
+
+func mapDecoder(into interface{}) (*mapstructure.Decoder, error) {
+	return mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		TagName:              "fauna",
+		Result:               into,
+		IgnoreUntaggedFields: true,
+		ErrorUnused:          false,
+		ErrorUnset:           false,
+		DecodeHook:           unmarshalDoc,
+		Squash:               true,
+	})
 }
 
 func unmarshal(body []byte, into interface{}) error {
-	intoVal := reflect.ValueOf(into)
-	if intoVal.Kind() != reflect.Ptr {
-		return fmt.Errorf("result must be a pointer got %s", intoVal.Kind())
-	}
-
-	intoVal = intoVal.Elem()
-	if !intoVal.CanAddr() {
-		return errors.New("result must be addressable (a pointer)")
-	}
-
-	dec := json.NewDecoder(bytes.NewReader(body))
-	dec.UseNumber()
-
-	var bodyMap interface{}
-	if err := dec.Decode(&bodyMap); err != nil {
+	decBody, err := decode(body)
+	if err != nil {
 		return err
 	}
 
-	return decode(false, bodyMap, intoVal)
-}
-
-func decode(escaped bool, body interface{}, intoVal reflect.Value) error {
-	if body == nil {
-		return nil
-	}
-
-	bodyVal := reflect.ValueOf(body)
-
-	if !bodyVal.IsValid() {
-		// If the input value is invalid, then we just set the value
-		// to be the zero value.
-		intoVal.Set(reflect.Zero(intoVal.Type()))
-		return nil
-	}
-
-	switch intoVal.Interface().(type) {
-	case time.Time:
-		return decodeTime(body, intoVal)
-	case DocumentReference:
-		return decodeDoc(body, intoVal)
-	case Module:
-		return decodeMod(body, intoVal)
-	}
-
-	switch intoVal.Kind() {
-	case reflect.Bool:
-		return decodeBool(body, intoVal)
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-		reflect.Uintptr:
-		return decodeInt(body, intoVal)
-	case reflect.Float32, reflect.Float64:
-		return decodeFloat(body, intoVal)
-	case reflect.String:
-		return decodeString(body, intoVal)
-	case reflect.Slice:
-		return decodeSlice(body, intoVal)
-	case reflect.Array:
-		return decodeArray(body, intoVal)
-	case reflect.Struct:
-		return decodeStruct(escaped, body, intoVal)
-	case reflect.Map:
-		return decodeMap(escaped, body, intoVal)
-	case reflect.Ptr:
-		return decodePtr(escaped, body, intoVal)
-	}
-
-	return nil
-}
-
-func unbox(tag typeTag, body interface{}) (string, bool) {
-	if m, ok := body.(map[string]interface{}); ok && len(m) == 1 {
-		if v, ok := m[string(tag)]; ok {
-			if out, ok := v.(string); ok {
-				return out, true
-			}
-		}
-	}
-	return "", false
-}
-
-func decodeDoc(body interface{}, into reflect.Value) error {
-	if val, ok := unbox(typeTagDoc, body); ok {
-		parts := strings.Split(val, ":")
-		if len(parts) == 2 {
-			into.Set(reflect.ValueOf(DocumentReference{parts[0], parts[1]}))
-			return nil
-		}
-	}
-	return typeErr("fauna.DocumentReference", body)
-}
-
-func decodeMod(body interface{}, into reflect.Value) error {
-	if val, ok := unbox(typeTagMod, body); ok {
-		into.Set(reflect.ValueOf(Module{val}))
-		return nil
-	}
-	return typeErr("fauna.Module", body)
-}
-
-func decodeTime(body interface{}, into reflect.Value) error {
-	if val, ok := unbox(typeTagDate, body); ok {
-		if t, err := time.Parse(dateFormat, val); err != nil {
-			return err
-		} else {
-			into.Set(reflect.ValueOf(t))
-			return nil
-		}
-	}
-
-	if val, ok := unbox(typeTagTime, body); ok {
-		if t, err := time.Parse(timeDecFormat, val); err != nil {
-			return err
-		} else {
-			into.Set(reflect.ValueOf(t))
-			return nil
-		}
-	}
-
-	return typeErr("time.Time", body)
-}
-
-func decodeBool(body interface{}, into reflect.Value) error {
-	if b, ok := body.(bool); !ok {
-		return typeErr("bool", body)
-	} else {
-		into.SetBool(b)
-		return nil
-	}
-}
-
-func decodeInt(body interface{}, into reflect.Value) error {
-	bodyVal := reflect.ValueOf(body)
-	bodyKind := bodyVal.Kind()
-	switch {
-	case bodyKind >= reflect.Int && bodyKind <= reflect.Int64:
-		into.SetInt(bodyVal.Int())
-		return nil
-	case bodyKind >= reflect.Uint && bodyKind <= reflect.Uint64:
-		into.SetInt(int64(bodyVal.Uint()))
-		return nil
-	case bodyKind >= reflect.Float32 && bodyKind <= reflect.Float64:
-		into.SetInt(int64(bodyVal.Float()))
-		return nil
-	case bodyKind == reflect.String:
-		str := bodyVal.String()
-		if str == "" {
-			str = "0"
-		}
-
-		if i, err := strconv.ParseInt(str, 10, into.Type().Bits()); err != nil {
-			return err
-		} else {
-			into.SetInt(i)
-			return nil
-		}
-	}
-
-	val := ""
-	ok := false
-	if val, ok = unbox(typeTagInt, body); !ok {
-		if val, ok = unbox(typeTagLong, body); !ok {
-			return typeErr("int", body)
-		}
-	}
-
-	if i, err := strconv.ParseInt(val, 10, into.Type().Bits()); err != nil {
+	dec, err := mapDecoder(into)
+	if err != nil {
 		return err
-	} else {
-		into.SetInt(i)
-		return nil
 	}
+
+	return dec.Decode(decBody)
 }
 
-func decodeFloat(body interface{}, into reflect.Value) error {
-	bodyVal := reflect.ValueOf(body)
-	bodyKind := bodyVal.Kind()
-	switch {
-	case bodyKind >= reflect.Int && bodyKind <= reflect.Int64:
-		into.SetFloat(float64(bodyVal.Int()))
-		return nil
-	case bodyKind >= reflect.Uint && bodyKind <= reflect.Uint64:
-		into.SetFloat(float64(bodyVal.Uint()))
-		return nil
-	case bodyKind >= reflect.Float32 && bodyKind <= reflect.Float64:
-		into.SetFloat(bodyVal.Float())
-		return nil
-	case bodyKind == reflect.String:
-		str := bodyVal.String()
-		if str == "" {
-			str = "0"
-		}
+var (
+	docType      = reflect.TypeOf(&Document{})
+	namedDocType = reflect.TypeOf(&NamedDocument{})
+)
 
-		if f, err := strconv.ParseFloat(str, into.Type().Bits()); err != nil {
-			return err
+func unmarshalDoc(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+	if f != docType && f != namedDocType {
+		return data, nil
+	}
+
+	var docData map[string]interface{}
+	if f == docType {
+		doc := data.(*Document)
+		docData = doc.Data
+		docData["id"] = doc.ID
+		docData["coll"] = doc.Coll
+		docData["ts"] = doc.TS
+	}
+
+	if f == namedDocType {
+		doc := data.(*NamedDocument)
+		docData = doc.Data
+		docData["name"] = doc.Name
+		docData["coll"] = doc.Coll
+		docData["ts"] = doc.TS
+	}
+
+	result := reflect.New(t).Interface()
+	dec, err := mapDecoder(result)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := dec.Decode(docData); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func decode(bodyBytes []byte) (interface{}, error) {
+	var body interface{}
+	if err := json.Unmarshal(bodyBytes, &body); err != nil {
+		return nil, err
+	}
+
+	return convert(false, body)
+}
+
+func convert(escaped bool, body interface{}) (interface{}, error) {
+	switch b := body.(type) {
+	case map[string]interface{}:
+		if escaped {
+			return convertMap(b)
 		} else {
-			into.SetFloat(f)
-			return nil
+			return unboxType(b)
 		}
+
+	case []interface{}:
+		return convertSlice(b)
+
+	default:
+		return body, nil
 	}
+}
 
-	if val, ok := unbox(typeTagDouble, body); !ok {
-		return typeErr("float", body)
-
-	} else {
-		if f, err := strconv.ParseFloat(val, into.Type().Bits()); err != nil {
-			return err
+func convertMap(body map[string]interface{}) (map[string]interface{}, error) {
+	retBody := map[string]interface{}{}
+	for k, vRaw := range body {
+		if v, err := convert(false, vRaw); err != nil {
+			return nil, err
 		} else {
-			into.SetFloat(f)
-			return nil
+			retBody[k] = v
 		}
 	}
+	return retBody, nil
 }
 
-func decodeString(body interface{}, into reflect.Value) error {
-	if s, ok := body.(string); !ok {
-		into.SetString(s)
-		return nil
+func convertSlice(body []interface{}) ([]interface{}, error) {
+	for i, vRaw := range body {
+		if v, err := convert(false, vRaw); err != nil {
+			return nil, err
+		} else {
+			body[i] = v
+		}
 	}
-
-	bodyVal := reflect.ValueOf(body)
-	if bodyVal.Kind() == reflect.String {
-		into.SetString(bodyVal.String())
-		return nil
-	}
-
-	return typeErr("string", body)
+	return body, nil
 }
 
-func decodeSlice(body interface{}, into reflect.Value) error {
-	bodyVal := reflect.ValueOf(body)
-	bodyKind := bodyVal.Kind()
-	if bodyKind != reflect.Array && bodyKind != reflect.Slice {
-		return fmt.Errorf("%s is not an array", bodyKind)
-	}
-
-	intoType := into.Type()
-	intoElemType := intoType.Elem()
-
-	intoSlice := into
-	if intoSlice.IsNil() {
-		// Make a new slice to hold our result, same size as the original data.
-		intoSlice = reflect.MakeSlice(intoType, bodyVal.Len(), bodyVal.Len())
-	}
-
-	for i := 0; i < bodyVal.Len(); i++ {
-		currentData := bodyVal.Index(i)
-		for intoSlice.Len() <= i {
-			intoSlice = reflect.Append(intoSlice, reflect.Zero(intoElemType))
-		}
-		currentField := intoSlice.Index(i)
-		if err := decode(false, currentData, currentField); err != nil {
-			return err
-		}
-	}
-
-	// Finally, set the value to the slice we built up
-	into.Set(intoSlice)
-
-	return nil
-}
-
-func decodeArray(body interface{}, into reflect.Value) error {
-	bodyVal := reflect.ValueOf(body)
-	bodyKind := bodyVal.Kind()
-	intoType := into.Type()
-	intoElemType := intoType.Elem()
-	arrayType := reflect.ArrayOf(intoType.Len(), intoElemType)
-
-	valArray := into
-
-	if valArray.Interface() == reflect.Zero(valArray.Type()).Interface() {
-		// Check input type
-		if bodyKind != reflect.Array && bodyKind != reflect.Slice {
-			return fmt.Errorf(
-				"source data must be an array or slice, got %s", bodyKind)
-
-		}
-		if into.Len() > arrayType.Len() {
-			return fmt.Errorf(
-				"expected source data to have length less or equal to %d, got %d", arrayType.Len(), bodyVal.Len())
-
-		}
-
-		// Make a new array to hold our result, same size as the original data.
-		valArray = reflect.New(arrayType).Elem()
-	}
-
-	for i := 0; i < bodyVal.Len(); i++ {
-		currentData := bodyVal.Index(i)
-		currentField := valArray.Index(i)
-
-		if err := decode(false, currentData.Interface(), currentField); err != nil {
-			return err
-		}
-	}
-
-	// Finally, set the value to the array we built up
-	into.Set(valArray)
-
-	return nil
-}
-
-func unboxObject(body interface{}) (interface{}, bool) {
-	bodyVal := reflect.ValueOf(body)
-	key := bodyVal.MapKeys()[0]
-	if key.Kind() == reflect.String && typeTag(key.String()) == typeTagObject {
-		return bodyVal.MapIndex(key).Interface(), true
-	}
-
-	return nil, false
-}
-
-func decodeStruct(escaped bool, body interface{}, into reflect.Value) error {
-	bodyVal := reflect.ValueOf(body)
-
-	if bodyVal.Kind() != reflect.Map {
-		return typeErr("object", body)
-	}
-
-	// If the input data is empty, then we just match what the input data is.
-	if bodyVal.Len() == 0 {
-		if bodyVal.IsNil() {
-			if !into.IsNil() {
-				into.Set(bodyVal)
+func unboxType(body map[string]interface{}) (interface{}, error) {
+	if len(body) == 1 {
+		for boxedK, v := range body {
+			switch typeTag(boxedK) {
+			case typeTagInt, typeTagLong:
+				return unboxInt(v.(string))
+			case typeTagDouble:
+				return unboxDouble(v.(string))
+			case typeTagDate:
+				return unboxDate(v.(string))
+			case typeTagTime:
+				return unboxTime(v.(string))
+			case typeTagMod:
+				return unboxMod(v.(string))
+			case typeTagRef:
+				return unboxRef(v.(map[string]interface{}))
+			case typeTagSet:
+				return unboxSet(v.(map[string]interface{}))
+			case typeTagDoc:
+				return unboxDoc(v.(map[string]interface{}))
+			case typeTagObject:
+				return convertMap(v.(map[string]interface{}))
 			}
 		}
-
-		return nil
 	}
 
-	if !escaped {
-		if unboxed, ok := unboxObject(body); ok {
-			return decode(true, unboxed, into)
-		}
-	}
-
-	structType := into.Type()
-
-	for i := 0; i < structType.NumField(); i++ {
-		field := structType.Field(i)
-		fieldVal := into.Field(i)
-		if fieldVal.Kind() == reflect.Ptr && fieldVal.Elem().Kind() == reflect.Struct {
-			// Handle embedded struct pointers as embedded structs.
-			fieldVal = fieldVal.Elem()
-		}
-
-		fieldName := field.Name
-		if n := strings.Split(field.Tag.Get(fieldTag), ",")[0]; n != "" {
-			fieldName = n
-		}
-
-		rawMapKey := reflect.ValueOf(fieldName)
-		rawMapVal := bodyVal.MapIndex(rawMapKey)
-		if !rawMapVal.IsValid() {
-			continue
-		}
-
-		if !fieldVal.IsValid() {
-			// This should never happen
-			panic("field is not valid")
-		}
-
-		if !fieldVal.CanSet() {
-			continue
-		}
-
-		if err := decode(false, rawMapVal.Interface(), fieldVal); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return convertMap(body)
 }
 
-func decodeMap(escaped bool, body interface{}, into reflect.Value) error {
-	bodyVal := reflect.ValueOf(body)
-	if bodyVal.Kind() != reflect.Map {
-		return typeErr("map", body)
+func unboxMod(v string) (*Module, error) {
+	m := Module{v}
+	return &m, nil
+}
+
+func getColl(v map[string]interface{}) (*Module, error) {
+	if coll, ok := v["coll"]; ok {
+		modI, err := convert(false, coll)
+		if err != nil {
+			return nil, err
+		}
+
+		if mod, ok := modI.(*Module); ok {
+			return mod, nil
+		}
+	}
+	return nil, nil
+}
+
+func getIDorName(v map[string]interface{}) (id string, name string) {
+	if idRaw, ok := v["id"]; ok {
+		if id, ok := idRaw.(string); ok {
+			return id, ""
+		}
 	}
 
-	// If the input data is empty, then we just match what the input data is.
-	if bodyVal.Len() == 0 {
-		if bodyVal.IsNil() {
-			if !into.IsNil() {
-				into.Set(bodyVal)
-			}
+	if nameRaw, ok := v["name"]; ok {
+		if name, ok := nameRaw.(string); ok {
+			return "", name
+		}
+	}
+
+	return
+}
+
+func unboxRef(v map[string]interface{}) (interface{}, error) {
+	mod, err := getColl(v)
+	if err != nil {
+		return nil, err
+	}
+
+	if mod != nil {
+		id, name := getIDorName(v)
+		if id != "" {
+			return &Ref{id, mod}, nil
+		}
+
+		if name != "" {
+			return &NamedRef{name, mod}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("invalid ref %v", v)
+}
+
+func unboxDoc(v map[string]interface{}) (interface{}, error) {
+	mod, err := getColl(v)
+	if err != nil {
+		return nil, err
+	}
+
+	var ts *time.Time
+	if tsRaw, ok := v["ts"]; ok {
+		if tsI, err := convert(false, tsRaw); err != nil {
+			return nil, err
 		} else {
-			// Set to empty allocated value
-			into.Set(bodyVal)
-		}
-
-		return nil
-	}
-
-	if !escaped {
-		if unboxed, ok := unboxObject(body); ok {
-			return decode(true, unboxed, into)
+			if unboxedTS, ok := tsI.(*time.Time); ok {
+				ts = unboxedTS
+			}
 		}
 	}
 
-	intoType := into.Type()
-	intoKeyType := intoType.Key()
-	intoElemType := intoType.Elem()
+	id, name := getIDorName(v)
 
-	// By default we overwrite keys in the current map
-	intoMap := into
+	if mod != nil && ts != nil && (id != "" || name != "") {
+		delete(v, "id")
+		delete(v, "coll")
+		delete(v, "ts")
 
-	// If the map is nil or we're purposely zeroing fields, make a new map
-	if intoMap.IsNil() {
-		// Make a new map to hold our result
-		mapType := reflect.MapOf(intoKeyType, intoElemType)
-		intoMap = reflect.MakeMap(mapType)
-	}
-
-	for _, k := range bodyVal.MapKeys() {
-		// First decode the key into the proper type
-		currentKey := reflect.Indirect(reflect.New(intoKeyType))
-		if err := decode(false, k.Interface(), currentKey); err != nil {
-			return err
+		if id == "" {
+			delete(v, "name")
 		}
 
-		// Next decode the data into the proper type
-		v := bodyVal.MapIndex(k)
-		currentVal := reflect.Indirect(reflect.New(intoElemType))
-		if err := decode(false, v.Interface(), currentVal); err != nil {
-			return err
+		data, err := convertMap(v)
+		if err != nil {
+			return nil, err
 		}
 
-		intoMap.SetMapIndex(currentKey, currentVal)
+		if id != "" {
+			return &Document{ID: id, Coll: mod, TS: ts, Data: data}, nil
+		}
+
+		if name != "" {
+			return &NamedDocument{Name: name, Coll: mod, TS: ts, Data: data}, nil
+		}
 	}
 
-	// Set the built up map to the value
-	into.Set(intoMap)
-
-	return nil
+	return nil, fmt.Errorf("invalid doc %v", v)
 }
 
-func decodePtr(escaped bool, body interface{}, into reflect.Value) error {
-	isNil := body == nil
-	if !isNil {
-		switch v := reflect.Indirect(reflect.ValueOf(body)); v.Kind() {
-		case reflect.Chan,
-			reflect.Func,
-			reflect.Interface,
-			reflect.Map,
-			reflect.Ptr,
-			reflect.Slice:
-			isNil = v.IsNil()
+func unboxSet(v map[string]interface{}) (interface{}, error) {
+	if dataI, ok := v["data"]; ok {
+		if dataRaw, ok := dataI.([]interface{}); ok {
+			data, err := convertSlice(dataRaw)
+			if err != nil {
+				return nil, err
+			}
+
+			setC := SetCollection{Data: data}
+			if afterRaw, ok := v["after"]; ok {
+				if after, ok := afterRaw.(string); ok {
+					setC.After = after
+				}
+			}
+
+			return &setC, nil
 		}
 	}
 
-	if isNil {
-		if !into.IsNil() && into.CanSet() {
-			nilValue := reflect.New(into.Type()).Elem()
-			into.Set(nilValue)
-		}
+	return nil, fmt.Errorf("invalid set %v", v)
+}
 
-		return nil
-	}
-
-	// Create an element of the concrete (non pointer) type and decode
-	// into that. Then set the value of the pointer to this type.
-	valType := into.Type()
-	valElemType := valType.Elem()
-	if into.CanSet() {
-		realVal := into
-		if realVal.IsNil() {
-			realVal = reflect.New(valElemType)
-		}
-
-		if err := decode(escaped, body, reflect.Indirect(realVal)); err != nil {
-			return err
-		}
-
-		into.Set(realVal)
+func unboxTime(v string) (*time.Time, error) {
+	if t, err := time.Parse(timeFormat, v); err != nil {
+		return nil, err
 	} else {
-		if err := decode(escaped, body, reflect.Indirect(into)); err != nil {
-			return err
-		}
+		return &t, nil
 	}
+}
 
-	return nil
+func unboxDate(v string) (*time.Time, error) {
+	if t, err := time.Parse(dateFormat, v); err != nil {
+		return nil, err
+	} else {
+		return &t, nil
+	}
+}
+
+func unboxInt(v string) (interface{}, error) {
+	if i, err := strconv.ParseInt(v, 10, 64); err != nil {
+		return nil, err
+	} else {
+		return i, nil
+	}
+}
+
+func unboxDouble(v string) (interface{}, error) {
+	if i, err := strconv.ParseFloat(v, 64); err != nil {
+		return nil, err
+	} else {
+		return i, nil
+	}
 }
 
 func marshal(v interface{}) ([]byte, error) {
@@ -557,14 +390,20 @@ func marshal(v interface{}) ([]byte, error) {
 
 func encode(v interface{}, hint string) (interface{}, error) {
 	switch vt := v.(type) {
-	case time.Time:
-		return encodeTime(vt, hint)
-
-	case DocumentReference:
-		return encodeDocRef(vt)
-
 	case Module:
 		return encodeMod(vt)
+
+	case Ref:
+		return encodeFaunaStruct(typeTagRef, vt)
+
+	case NamedRef:
+		return encodeFaunaStruct(typeTagRef, vt)
+
+	case SetCollection:
+		return encodeFaunaStruct(typeTagSet, vt)
+
+	case time.Time:
+		return encodeTime(vt, hint)
 
 	case fqlRequest:
 		out := map[string]interface{}{"query": vt.Query}
@@ -628,17 +467,21 @@ func encodeTime(t time.Time, hint string) (interface{}, error) {
 	if hint == "date" {
 		out[typeTagDate] = t.Format(dateFormat)
 	} else {
-		out[typeTagTime] = t.Format(timeEncFormat)
+		out[typeTagTime] = t.UTC().Format(timeFormat)
 	}
 	return out, nil
 }
 
-func encodeDocRef(d DocumentReference) (interface{}, error) {
-	return map[typeTag]string{typeTagDoc: d.CollectionName + ":" + d.RefID}, nil
-}
-
 func encodeMod(m Module) (interface{}, error) {
 	return map[typeTag]string{typeTagMod: m.Name}, nil
+}
+
+func encodeFaunaStruct(tag typeTag, s interface{}) (interface{}, error) {
+	if doc, err := encodeStruct(s); err != nil {
+		return nil, err
+	} else {
+		return map[typeTag]interface{}{tag: doc}, nil
+	}
 }
 
 func encodeMap(mv reflect.Value) (interface{}, error) {
@@ -686,6 +529,7 @@ func encodeSlice(sv reflect.Value) (interface{}, error) {
 
 func encodeStruct(s interface{}) (interface{}, error) {
 	hasConflictingKey := false
+	isDoc := false
 	out := make(map[string]interface{})
 
 	elem := reflect.ValueOf(s)
@@ -693,6 +537,53 @@ func encodeStruct(s interface{}) (interface{}, error) {
 
 	for i := 0; i < fields; i++ {
 		structField := elem.Type().Field(i)
+
+		if structField.Anonymous && structField.Name == "Document" {
+			doc := elem.Field(i).Interface().(Document)
+			// if the relevant fields are present, consider this an @doc and encode it as such
+			if doc.ID != "" && doc.Coll != nil && doc.TS != nil {
+				out["id"] = doc.ID
+
+				if coll, err := encode(doc.Coll, ""); err != nil {
+					return nil, err
+				} else {
+					out["coll"] = coll
+				}
+
+				if ts, err := encode(doc.TS, "time"); err != nil {
+					return nil, err
+				} else {
+					out["ts"] = ts
+				}
+
+				isDoc = true
+				continue
+			}
+		}
+
+		if structField.Anonymous && structField.Name == "NamedDocument" {
+			doc := elem.Field(i).Interface().(NamedDocument)
+			// if the relevant fields are present, consider this an @doc and encode it as such
+			if doc.Name != "" && doc.Coll != nil && doc.TS != nil {
+				out["name"] = doc.Name
+
+				if coll, err := encode(doc.Coll, ""); err != nil {
+					return nil, err
+				} else {
+					out["coll"] = coll
+				}
+
+				if ts, err := encode(doc.TS, "time"); err != nil {
+					return nil, err
+				} else {
+					out["ts"] = ts
+				}
+
+				isDoc = true
+				continue
+			}
+		}
+
 		tag, found := structField.Tag.Lookup(fieldTag)
 		if !found {
 			continue
@@ -720,9 +611,13 @@ func encodeStruct(s interface{}) (interface{}, error) {
 		}
 	}
 
+	if isDoc {
+		return map[typeTag]interface{}{typeTagDoc: out}, nil
+	}
+
 	if hasConflictingKey {
 		return map[typeTag]interface{}{typeTagObject: out}, nil
-	} else {
-		return out, nil
 	}
+
+	return out, nil
 }

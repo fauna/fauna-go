@@ -21,15 +21,29 @@ type SubBusinessObj struct {
 	IgnoredField2 string
 }
 
+type DocBusinessObj struct {
+	Document
+	ExtraField string `fauna:"extra_field"`
+}
+
+type NamedDocBusinessObj struct {
+	NamedDocument
+	ExtraField string `fauna:"extra_field"`
+}
+
 type BusinessObj struct {
-	IntField       int                `fauna:"int_field"`
-	LongField      int64              `fauna:"long_field"`
-	DoubleField    float64            `fauna:"double_field"`
-	DocRefField    DocumentReference  `fauna:"doc_ref_field"`
-	ModField       Module             `fauna:"mod_field"`
-	PtrDocRefField *DocumentReference `fauna:"ptr_doc_ref_field"`
-	PtrModField    *Module            `fauna:"ptr_mod_field"`
-	ObjField       SubBusinessObj     `fauna:"obj_field"`
+	IntField      int                 `fauna:"int_field"`
+	LongField     int64               `fauna:"long_field"`
+	DoubleField   float64             `fauna:"double_field"`
+	PtrModField   *Module             `fauna:"ptr_mod_field"`
+	ModField      Module              `fauna:"mod_field"`
+	PtrRefField   *Ref                `fauna:"ptr_ref_field"`
+	RefField      Ref                 `fauna:"ref_field"`
+	NamedRefField NamedRef            `fauna:"named_ref_field"`
+	SetField      SetCollection       `fauna:"set_field"`
+	ObjField      SubBusinessObj      `fauna:"obj_field"`
+	DocField      DocBusinessObj      `fauna:"doc_field"`
+	NamedDocField NamedDocBusinessObj `fauna:"named_doc_field"`
 
 	IgnoredField string
 }
@@ -50,14 +64,28 @@ func unmarshalAndCheck(t *testing.T, bs []byte, obj interface{}) {
 }
 
 func TestRoundtrip(t *testing.T) {
-	var doc = `{
+	var businessObjDoc = []byte(`{
     "int_field": {"@int":"1234"},
     "long_field": {"@long":"123456"},
     "double_field": {"@double":"123.456"},
-    "doc_ref_field": {"@doc":"Foo:123"},
-    "mod_field": {"@mod":"Foo"},
-    "ptr_doc_ref_field": {"@doc":"PtrFoo:123"},
     "ptr_mod_field": {"@mod":"PtrFoo"},
+    "mod_field": {"@mod":"Foo"},
+    "ptr_ref_field": {"@ref":{"id":"1234","coll":{"@mod":"PtrFoo"}}},
+    "ref_field": {"@ref":{"id":"1234","coll":{"@mod":"Foo:123"}}},
+    "named_ref_field": {"@ref":{"name":"FooBar","coll":{"@mod":"Foo"}}},
+    "set_field": {"@set":{"data":[0,1,2,3],"after":"foobarbaz"}},
+    "doc_field": {"@doc": {
+      "id": "1234",
+      "coll": {"@mod":"Foo"},
+      "ts": {"@time":"2023-02-28T18:10:10.00001Z"},
+      "extra_field": "foobar"
+    }},
+    "named_doc_field": {"@doc": {
+      "name": "mydoc",
+      "coll": {"@mod":"Foo"},
+      "ts": {"@time":"2023-02-28T18:10:10.00001Z"},
+      "extra_field": "foobar"
+    }},
     "obj_field": {"@object": {
       "string_field": "foobarbaz",
       "bool_field": true,
@@ -68,10 +96,10 @@ func TestRoundtrip(t *testing.T) {
       "int_field": 1234,
       "double_field": 1234.567
     }}
-  }`
+  }`)
 
 	obj := &BusinessObj{}
-	unmarshalAndCheck(t, []byte(doc), obj)
+	unmarshalAndCheck(t, businessObjDoc, obj)
 
 	bs := marshalAndCheck(t, obj)
 
@@ -150,7 +178,7 @@ func TestEncodingTime(t *testing.T) {
 	t.Run("encodes time as @time", func(t *testing.T) {
 		if tz, err := time.LoadLocation("America/Los_Angeles"); assert.NoError(t, err) {
 			bs := marshalAndCheck(t, time.Date(2023, 02, 28, 10, 10, 10, 10000, tz))
-			if assert.JSONEq(t, `{"@time":"2023-02-28T10:10:10.00001-08:00"}`, string(bs)) {
+			if assert.JSONEq(t, `{"@time":"2023-02-28T18:10:10.00001Z"}`, string(bs)) {
 				var decoded time.Time
 				bs := []byte(`{"@time":"2023-02-28T18:10:10.000010Z"}`)
 				unmarshalAndCheck(t, bs, &decoded)
@@ -166,6 +194,64 @@ func TestEncodingTime(t *testing.T) {
 			D: time.Date(2023, 02, 28, 0, 0, 0, 0, time.UTC),
 		}
 		roundTripCheck(t, obj, `{"d_field":{"@date":"2023-02-28"}}`)
+	})
+}
+
+func TestDecodingToInterface(t *testing.T) {
+	var doc = []byte(`{
+    "int_field": {"@int":"1234"},
+    "long_field": {"@long":"123456"},
+    "double_field": {"@double":"123.456"},
+    "slice_field": [{"@mod":"Foo"}, {"@date":"2023-03-17"}],
+    "obj_field": {"@object": {
+      "string_field": "foobarbaz",
+      "bool_field": true,
+      "int_field": 1234,
+      "double_field": 1234.567
+    }}
+  }`)
+
+	var res interface{}
+	err := unmarshal(doc, &res)
+	if assert.NoError(t, err) {
+		rMap := res.(map[string]interface{})
+
+		assert.Equal(t, int64(1234), rMap["int_field"].(int64))
+		assert.Equal(t, int64(123456), rMap["long_field"].(int64))
+		assert.Equal(t, float64(123.456), rMap["double_field"].(float64))
+
+		sliceField := rMap["slice_field"].([]interface{})
+		assert.Equal(t, &Module{"Foo"}, sliceField[0].(*Module))
+		sliceDate := time.Date(2023, 03, 17, 0, 0, 0, 0, time.UTC)
+		assert.Equal(t, &sliceDate, sliceField[1].(*time.Time))
+
+		objMap := rMap["obj_field"].(map[string]interface{})
+		assert.Equal(t, "foobarbaz", objMap["string_field"].(string))
+		assert.Equal(t, true, objMap["bool_field"].(bool))
+		assert.Equal(t, float64(1234), objMap["int_field"].(float64))
+		assert.Equal(t, 1234.567, objMap["double_field"].(float64))
+	}
+}
+
+func TestEncodingFaunaStructs(t *testing.T) {
+	t.Run("encodes Module", func(t *testing.T) {
+		obj := Module{"Foo"}
+		roundTripCheck(t, obj, `{"@mod":"Foo"}`)
+	})
+
+	t.Run("encodes Ref", func(t *testing.T) {
+		obj := Ref{"1234", &Module{"Foo"}}
+		roundTripCheck(t, obj, `{"@ref":{"id":"1234","coll":{"@mod":"Foo"}}}`)
+	})
+
+	t.Run("encodes NamedRef", func(t *testing.T) {
+		obj := NamedRef{"Bar", &Module{"Foo"}}
+		roundTripCheck(t, obj, `{"@ref":{"name":"Bar","coll":{"@mod":"Foo"}}}`)
+	})
+
+	t.Run("encodes SetCollection", func(t *testing.T) {
+		obj := SetCollection{[]interface{}{"0", "1", "2"}, "foobarbaz"}
+		roundTripCheck(t, obj, `{"@set":{"data":["0","1","2"],"after":"foobarbaz"}}`)
 	})
 }
 
@@ -301,5 +387,89 @@ func TestEncodingObject(t *testing.T) {
 			map[string]int{"@foo": 10},
 			`{"@foo":{"@int":"10"}}`,
 		)
+	})
+}
+
+func TestEncodingDocuments(t *testing.T) {
+	t.Run("Document", func(t *testing.T) {
+		type MyDoc struct {
+			Document
+			ExtraField1 string `fauna:"extra_field_1"`
+			ExtraField2 string `fauna:"extra_field_2"`
+		}
+
+		doc := []byte(`{"@doc":{
+      "id": "1234",
+      "coll": {"@mod":"Foo"},
+      "ts": {"@time":"2023-02-28T18:10:10.000010Z"},
+      "extra_field_1": "foobar",
+      "extra_field_2": "bazbuz"
+    }}`)
+
+		ts := time.Date(2023, 02, 28, 18, 10, 10, 10000, time.UTC)
+		expected := MyDoc{
+			Document: Document{
+				ID:   "1234",
+				Coll: &Module{"Foo"},
+				TS:   &ts,
+			},
+			ExtraField1: "foobar",
+			ExtraField2: "bazbuz",
+		}
+
+		var got MyDoc
+		unmarshalAndCheck(t, doc, &got)
+		assert.Equal(t, expected, got)
+
+		encodedDoc := `{"@doc":{
+    "id": "1234",
+    "coll": {"@mod":"Foo"},
+    "ts": {"@time":"2023-02-28T18:10:10.00001Z"},
+    "extra_field_1": "foobar",
+    "extra_field_2": "bazbuz"
+  }}`
+		bs := marshalAndCheck(t, expected)
+		assert.JSONEq(t, encodedDoc, string(bs))
+	})
+
+	t.Run("NamedDocument", func(t *testing.T) {
+		type MyDoc struct {
+			NamedDocument
+			ExtraField1 string `fauna:"extra_field_1"`
+			ExtraField2 string `fauna:"extra_field_2"`
+		}
+
+		doc := []byte(`{"@doc":{
+      "name": "mydoc",
+      "coll": {"@mod":"Foo"},
+      "ts": {"@time":"2023-02-28T18:10:10.000010Z"},
+      "extra_field_1": "foobar",
+      "extra_field_2": "bazbuz"
+    }}`)
+
+		ts := time.Date(2023, 02, 28, 18, 10, 10, 10000, time.UTC)
+		expected := MyDoc{
+			NamedDocument: NamedDocument{
+				Name: "mydoc",
+				Coll: &Module{"Foo"},
+				TS:   &ts,
+			},
+			ExtraField1: "foobar",
+			ExtraField2: "bazbuz",
+		}
+
+		var got MyDoc
+		unmarshalAndCheck(t, doc, &got)
+		assert.Equal(t, expected, got)
+
+		encodedDoc := `{"@doc":{
+      "name": "mydoc",
+      "coll": {"@mod":"Foo"},
+      "ts": {"@time":"2023-02-28T18:10:10.00001Z"},
+      "extra_field_1": "foobar",
+      "extra_field_2": "bazbuz"
+    }}`
+		bs := marshalAndCheck(t, expected)
+		assert.JSONEq(t, encodedDoc, string(bs))
 	})
 }
