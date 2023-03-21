@@ -57,14 +57,14 @@ type Document struct {
 	ID   string     `fauna:"id"`
 	Coll *Module    `fauna:"coll"`
 	TS   *time.Time `fauna:"ts"`
-	Data map[string]interface{}
+	Data map[string]any
 }
 
 type NamedDocument struct {
 	Name string     `fauna:"name"`
 	Coll *Module    `fauna:"coll"`
 	TS   *time.Time `fauna:"ts"`
-	Data map[string]interface{}
+	Data map[string]any
 }
 
 type Ref struct {
@@ -78,11 +78,11 @@ type NamedRef struct {
 }
 
 type SetCollection struct {
-	Data  []interface{} `fauna:"data"`
-	After string        `fauna:"after"`
+	Data  []any  `fauna:"data"`
+	After string `fauna:"after"`
 }
 
-func mapDecoder(into interface{}) (*mapstructure.Decoder, error) {
+func mapDecoder(into any) (*mapstructure.Decoder, error) {
 	return mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName:              "fauna",
 		Result:               into,
@@ -94,7 +94,7 @@ func mapDecoder(into interface{}) (*mapstructure.Decoder, error) {
 	})
 }
 
-func unmarshal(body []byte, into interface{}) error {
+func unmarshal(body []byte, into any) error {
 	decBody, err := decode(body)
 	if err != nil {
 		return err
@@ -113,12 +113,12 @@ var (
 	namedDocType = reflect.TypeOf(&NamedDocument{})
 )
 
-func unmarshalDoc(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+func unmarshalDoc(f reflect.Type, t reflect.Type, data any) (any, error) {
 	if f != docType && f != namedDocType {
 		return data, nil
 	}
 
-	var docData map[string]interface{}
+	var docData map[string]any
 	if f == docType {
 		doc := data.(*Document)
 		docData = doc.Data
@@ -148,8 +148,8 @@ func unmarshalDoc(f reflect.Type, t reflect.Type, data interface{}) (interface{}
 	return result, nil
 }
 
-func decode(bodyBytes []byte) (interface{}, error) {
-	var body interface{}
+func decode(bodyBytes []byte) (any, error) {
+	var body any
 	if err := json.Unmarshal(bodyBytes, &body); err != nil {
 		return nil, err
 	}
@@ -157,16 +157,16 @@ func decode(bodyBytes []byte) (interface{}, error) {
 	return convert(false, body)
 }
 
-func convert(escaped bool, body interface{}) (interface{}, error) {
+func convert(escaped bool, body any) (any, error) {
 	switch b := body.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		if escaped {
 			return convertMap(b)
 		} else {
 			return unboxType(b)
 		}
 
-	case []interface{}:
+	case []any:
 		return convertSlice(b)
 
 	default:
@@ -174,8 +174,8 @@ func convert(escaped bool, body interface{}) (interface{}, error) {
 	}
 }
 
-func convertMap(body map[string]interface{}) (map[string]interface{}, error) {
-	retBody := map[string]interface{}{}
+func convertMap(body map[string]any) (map[string]any, error) {
+	retBody := map[string]any{}
 	for k, vRaw := range body {
 		if v, err := convert(false, vRaw); err != nil {
 			return nil, err
@@ -186,7 +186,7 @@ func convertMap(body map[string]interface{}) (map[string]interface{}, error) {
 	return retBody, nil
 }
 
-func convertSlice(body []interface{}) ([]interface{}, error) {
+func convertSlice(body []any) ([]any, error) {
 	for i, vRaw := range body {
 		if v, err := convert(false, vRaw); err != nil {
 			return nil, err
@@ -197,7 +197,7 @@ func convertSlice(body []interface{}) ([]interface{}, error) {
 	return body, nil
 }
 
-func unboxType(body map[string]interface{}) (interface{}, error) {
+func unboxType(body map[string]any) (any, error) {
 	if len(body) == 1 {
 		for boxedK, v := range body {
 			switch typeTag(boxedK) {
@@ -212,13 +212,13 @@ func unboxType(body map[string]interface{}) (interface{}, error) {
 			case typeTagMod:
 				return unboxMod(v.(string))
 			case typeTagRef:
-				return unboxRef(v.(map[string]interface{}))
+				return unboxRef(v.(map[string]any))
 			case typeTagSet:
-				return unboxSet(v.(map[string]interface{}))
+				return unboxSet(v.(map[string]any))
 			case typeTagDoc:
-				return unboxDoc(v.(map[string]interface{}))
+				return unboxDoc(v.(map[string]any))
 			case typeTagObject:
-				return convertMap(v.(map[string]interface{}))
+				return convertMap(v.(map[string]any))
 			}
 		}
 	}
@@ -231,7 +231,7 @@ func unboxMod(v string) (*Module, error) {
 	return &m, nil
 }
 
-func getColl(v map[string]interface{}) (*Module, error) {
+func getColl(v map[string]any) (*Module, error) {
 	if coll, ok := v["coll"]; ok {
 		modI, err := convert(false, coll)
 		if err != nil {
@@ -245,7 +245,7 @@ func getColl(v map[string]interface{}) (*Module, error) {
 	return nil, nil
 }
 
-func getIDorName(v map[string]interface{}) (id string, name string) {
+func getIDorName(v map[string]any) (id string, name string) {
 	if idRaw, ok := v["id"]; ok {
 		if id, ok := idRaw.(string); ok {
 			return id, ""
@@ -261,7 +261,7 @@ func getIDorName(v map[string]interface{}) (id string, name string) {
 	return
 }
 
-func unboxRef(v map[string]interface{}) (interface{}, error) {
+func unboxRef(v map[string]any) (any, error) {
 	mod, err := getColl(v)
 	if err != nil {
 		return nil, err
@@ -281,7 +281,7 @@ func unboxRef(v map[string]interface{}) (interface{}, error) {
 	return nil, fmt.Errorf("invalid ref %v", v)
 }
 
-func unboxDoc(v map[string]interface{}) (interface{}, error) {
+func unboxDoc(v map[string]any) (any, error) {
 	mod, err := getColl(v)
 	if err != nil {
 		return nil, err
@@ -326,9 +326,9 @@ func unboxDoc(v map[string]interface{}) (interface{}, error) {
 	return nil, fmt.Errorf("invalid doc %v", v)
 }
 
-func unboxSet(v map[string]interface{}) (interface{}, error) {
+func unboxSet(v map[string]any) (any, error) {
 	if dataI, ok := v["data"]; ok {
-		if dataRaw, ok := dataI.([]interface{}); ok {
+		if dataRaw, ok := dataI.([]any); ok {
 			data, err := convertSlice(dataRaw)
 			if err != nil {
 				return nil, err
@@ -364,7 +364,7 @@ func unboxDate(v string) (*time.Time, error) {
 	}
 }
 
-func unboxInt(v string) (interface{}, error) {
+func unboxInt(v string) (any, error) {
 	if i, err := strconv.ParseInt(v, 10, 64); err != nil {
 		return nil, err
 	} else {
@@ -372,7 +372,7 @@ func unboxInt(v string) (interface{}, error) {
 	}
 }
 
-func unboxDouble(v string) (interface{}, error) {
+func unboxDouble(v string) (any, error) {
 	if i, err := strconv.ParseFloat(v, 64); err != nil {
 		return nil, err
 	} else {
@@ -380,7 +380,7 @@ func unboxDouble(v string) (interface{}, error) {
 	}
 }
 
-func marshal(v interface{}) ([]byte, error) {
+func marshal(v any) ([]byte, error) {
 	if enc, err := encode(v, ""); err != nil {
 		return nil, err
 	} else {
@@ -388,7 +388,7 @@ func marshal(v interface{}) ([]byte, error) {
 	}
 }
 
-func encode(v interface{}, hint string) (interface{}, error) {
+func encode(v any, hint string) (any, error) {
 	switch vt := v.(type) {
 	case Module:
 		return encodeMod(vt)
@@ -406,7 +406,7 @@ func encode(v interface{}, hint string) (interface{}, error) {
 		return encodeTime(vt, hint)
 
 	case fqlRequest:
-		out := map[string]interface{}{"query": vt.Query}
+		out := map[string]any{"query": vt.Query}
 		if len(vt.Arguments) > 0 {
 			if args, err := encodeMap(reflect.ValueOf(vt.Arguments)); err != nil {
 				return nil, err
@@ -433,7 +433,7 @@ func encode(v interface{}, hint string) (interface{}, error) {
 		}
 
 	case reflect.Float32, reflect.Float64:
-		return map[typeTag]interface{}{typeTagDouble: strconv.FormatFloat(value.Float(), 'f', -1, 64)}, nil
+		return map[typeTag]any{typeTagDouble: strconv.FormatFloat(value.Float(), 'f', -1, 64)}, nil
 
 	case reflect.Ptr:
 		if value.IsNil() {
@@ -454,16 +454,16 @@ func encode(v interface{}, hint string) (interface{}, error) {
 	return v, nil
 }
 
-func encodeInt(i int64) (interface{}, error) {
+func encodeInt(i int64) (any, error) {
 	tag := typeTagLong
 	if i <= maxInt && i >= minInt {
 		tag = typeTagInt
 	}
-	return map[typeTag]interface{}{tag: strconv.FormatInt(i, 10)}, nil
+	return map[typeTag]any{tag: strconv.FormatInt(i, 10)}, nil
 }
 
-func encodeTime(t time.Time, hint string) (interface{}, error) {
-	out := make(map[typeTag]interface{})
+func encodeTime(t time.Time, hint string) (any, error) {
+	out := make(map[typeTag]any)
 	if hint == "date" {
 		out[typeTagDate] = t.Format(dateFormat)
 	} else {
@@ -472,21 +472,21 @@ func encodeTime(t time.Time, hint string) (interface{}, error) {
 	return out, nil
 }
 
-func encodeMod(m Module) (interface{}, error) {
+func encodeMod(m Module) (any, error) {
 	return map[typeTag]string{typeTagMod: m.Name}, nil
 }
 
-func encodeFaunaStruct(tag typeTag, s interface{}) (interface{}, error) {
+func encodeFaunaStruct(tag typeTag, s any) (any, error) {
 	if doc, err := encodeStruct(s); err != nil {
 		return nil, err
 	} else {
-		return map[typeTag]interface{}{tag: doc}, nil
+		return map[typeTag]any{tag: doc}, nil
 	}
 }
 
-func encodeMap(mv reflect.Value) (interface{}, error) {
+func encodeMap(mv reflect.Value) (any, error) {
 	hasConflictingKey := false
-	out := make(map[string]interface{})
+	out := make(map[string]any)
 
 	mi := mv.MapRange()
 	for i := 0; mi.Next(); i++ {
@@ -507,15 +507,15 @@ func encodeMap(mv reflect.Value) (interface{}, error) {
 	}
 
 	if hasConflictingKey {
-		return map[typeTag]interface{}{typeTagObject: out}, nil
+		return map[typeTag]any{typeTagObject: out}, nil
 	} else {
 		return out, nil
 	}
 }
 
-func encodeSlice(sv reflect.Value) (interface{}, error) {
+func encodeSlice(sv reflect.Value) (any, error) {
 	sLen := sv.Len()
-	out := make([]interface{}, sLen)
+	out := make([]any, sLen)
 	for i := 0; i < sLen; i++ {
 		if enc, err := encode(sv.Index(i).Interface(), ""); err != nil {
 			return nil, err
@@ -527,10 +527,10 @@ func encodeSlice(sv reflect.Value) (interface{}, error) {
 	return out, nil
 }
 
-func encodeStruct(s interface{}) (interface{}, error) {
+func encodeStruct(s any) (any, error) {
 	hasConflictingKey := false
 	isDoc := false
-	out := make(map[string]interface{})
+	out := make(map[string]any)
 
 	elem := reflect.ValueOf(s)
 	fields := reflect.TypeOf(s).NumField()
@@ -612,11 +612,11 @@ func encodeStruct(s interface{}) (interface{}, error) {
 	}
 
 	if isDoc {
-		return map[typeTag]interface{}{typeTagDoc: out}, nil
+		return map[typeTag]any{typeTagDoc: out}, nil
 	}
 
 	if hasConflictingKey {
-		return map[typeTag]interface{}{typeTagObject: out}, nil
+		return map[typeTag]any{typeTagObject: out}, nil
 	}
 
 	return out, nil

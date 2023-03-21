@@ -9,14 +9,14 @@ import (
 )
 
 type SubBusinessObj struct {
-	StringField       string                 `fauna:"string_field"`
-	BoolField         bool                   `fauna:"bool_field"`
-	MapField          map[string]interface{} `fauna:"map_field"`
-	SingleKeyMapField map[string]interface{} `fauna:"single_key_map_field"`
-	SliceField        []interface{}          `fauna:"slice_field"`
-	TupleField        []interface{}          `fauna:"tuple_field"`
-	IntField          int                    `fauna:"int_field"`
-	DoubleField       float64                `fauna:"double_field"`
+	StringField       string         `fauna:"string_field"`
+	BoolField         bool           `fauna:"bool_field"`
+	MapField          map[string]any `fauna:"map_field"`
+	SingleKeyMapField map[string]any `fauna:"single_key_map_field"`
+	SliceField        []any          `fauna:"slice_field"`
+	TupleField        []any          `fauna:"tuple_field"`
+	IntField          int            `fauna:"int_field"`
+	DoubleField       float64        `fauna:"double_field"`
 
 	IgnoredField2 string
 }
@@ -48,7 +48,7 @@ type BusinessObj struct {
 	IgnoredField string
 }
 
-func marshalAndCheck(t *testing.T, obj interface{}) []byte {
+func marshalAndCheck(t *testing.T, obj any) []byte {
 	if bs, err := marshal(obj); err != nil {
 		t.Fatalf("failed to marshal: %s", err)
 		return nil
@@ -57,7 +57,7 @@ func marshalAndCheck(t *testing.T, obj interface{}) []byte {
 	}
 }
 
-func unmarshalAndCheck(t *testing.T, bs []byte, obj interface{}) {
+func unmarshalAndCheck(t *testing.T, bs []byte, obj any) {
 	if err := unmarshal(bs, obj); err != nil {
 		t.Fatalf("failed to unmarshal: %s", err)
 	}
@@ -109,7 +109,7 @@ func TestRoundtrip(t *testing.T) {
 	assert.Equal(t, obj, obj2)
 }
 
-func roundTripCheck(t *testing.T, test interface{}, expected string) {
+func roundTripCheck(t *testing.T, test any, expected string) {
 	bs := marshalAndCheck(t, test)
 	if assert.JSONEq(t, expected, string(bs)) {
 		decoded := reflect.New(reflect.TypeOf(test)).Interface()
@@ -211,21 +211,21 @@ func TestDecodingToInterface(t *testing.T) {
     }}
   }`)
 
-	var res interface{}
+	var res any
 	err := unmarshal(doc, &res)
 	if assert.NoError(t, err) {
-		rMap := res.(map[string]interface{})
+		rMap := res.(map[string]any)
 
 		assert.Equal(t, int64(1234), rMap["int_field"].(int64))
 		assert.Equal(t, int64(123456), rMap["long_field"].(int64))
 		assert.Equal(t, float64(123.456), rMap["double_field"].(float64))
 
-		sliceField := rMap["slice_field"].([]interface{})
+		sliceField := rMap["slice_field"].([]any)
 		assert.Equal(t, &Module{"Foo"}, sliceField[0].(*Module))
 		sliceDate := time.Date(2023, 03, 17, 0, 0, 0, 0, time.UTC)
 		assert.Equal(t, &sliceDate, sliceField[1].(*time.Time))
 
-		objMap := rMap["obj_field"].(map[string]interface{})
+		objMap := rMap["obj_field"].(map[string]any)
 		assert.Equal(t, "foobarbaz", objMap["string_field"].(string))
 		assert.Equal(t, true, objMap["bool_field"].(bool))
 		assert.Equal(t, float64(1234), objMap["int_field"].(float64))
@@ -250,7 +250,7 @@ func TestEncodingFaunaStructs(t *testing.T) {
 	})
 
 	t.Run("encodes SetCollection", func(t *testing.T) {
-		obj := SetCollection{[]interface{}{"0", "1", "2"}, "foobarbaz"}
+		obj := SetCollection{[]any{"0", "1", "2"}, "foobarbaz"}
 		roundTripCheck(t, obj, `{"@set":{"data":["0","1","2"],"after":"foobarbaz"}}`)
 	})
 }

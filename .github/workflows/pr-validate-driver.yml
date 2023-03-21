@@ -18,7 +18,7 @@ jobs:
           - 8443:8443
     strategy:
       matrix:
-        go: [ '1.20', '1.19', '1.18', '1.17' ]
+        go: [ '1.20', '1.19' ]
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
