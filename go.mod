@@ -1,6 +1,6 @@
 module github.com/fauna/fauna-go
 
-go 1.17
+go 1.19
 
 require (
 	github.com/mitchellh/mapstructure v1.5.0

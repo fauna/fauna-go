@@ -8,17 +8,16 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path"
 )
 
 // QueryArgItem query args structure
 type QueryArgItem struct {
 	Key   string
-	Value interface{}
+	Value any
 }
 
 // QueryArg create an [QueryArgItem]
-func QueryArg(key string, value interface{}) QueryArgItem {
+func QueryArg(key string, value any) QueryArgItem {
 	return QueryArgItem{
 		Key:   key,
 		Value: value,
@@ -26,11 +25,11 @@ func QueryArg(key string, value interface{}) QueryArgItem {
 }
 
 // QueryArgs map from [QueryArgItem]
-type QueryArgs map[string]interface{}
+type QueryArgs map[string]any
 
 // QueryArguments convenience method to structure [QueryArgs]
 func QueryArguments(args ...QueryArgItem) QueryArgs {
-	out := map[string]interface{}{}
+	out := map[string]any{}
 	for n := range args {
 		arg := args[n]
 		out[arg.Key] = arg.Value
@@ -42,8 +41,8 @@ func QueryArguments(args ...QueryArgItem) QueryArgs {
 type fqlRequest struct {
 	Context   context.Context
 	Headers   map[string]string
-	Query     string                 `fauna:"query"`
-	Arguments map[string]interface{} `fauna:"arguments"`
+	Query     string         `fauna:"query"`
+	Arguments map[string]any `fauna:"arguments"`
 }
 
 func (c *Client) do(request *fqlRequest) (*Response, error) {
@@ -57,7 +56,11 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 		return nil, urlErr
 	}
 
-	reqURL.Path = path.Join(reqURL.Path, "/query/1")
+	if path, err := url.JoinPath(reqURL.Path, "query", "1"); err != nil {
+		return nil, err
+	} else {
+		reqURL.Path = path
+	}
 
 	req, reqErr := http.NewRequestWithContext(request.Context, http.MethodPost, reqURL.String(), bytes.NewReader(bytesOut))
 	if reqErr != nil {
