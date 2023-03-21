@@ -14,9 +14,8 @@ import (
 const (
 	fieldTag = "fauna"
 
-	dateFormat    = "2006-01-02"
-	timeEncFormat = "2006-01-02T15:04:05.999999-07:00"
-	timeDecFormat = "2006-01-02T15:04:05.999999Z"
+	dateFormat = "2006-01-02"
+	timeFormat = "2006-01-02T15:04:05.999999Z"
 
 	maxInt  = 2147483647
 	minInt  = -2147483648
@@ -350,7 +349,7 @@ func unboxSet(v map[string]interface{}) (interface{}, error) {
 }
 
 func unboxTime(v string) (*time.Time, error) {
-	if t, err := time.Parse(timeDecFormat, v); err != nil {
+	if t, err := time.Parse(timeFormat, v); err != nil {
 		return nil, err
 	} else {
 		return &t, nil
@@ -468,7 +467,7 @@ func encodeTime(t time.Time, hint string) (interface{}, error) {
 	if hint == "date" {
 		out[typeTagDate] = t.Format(dateFormat)
 	} else {
-		out[typeTagTime] = t.Format(timeEncFormat)
+		out[typeTagTime] = t.UTC().Format(timeFormat)
 	}
 	return out, nil
 }
@@ -541,42 +540,48 @@ func encodeStruct(s interface{}) (interface{}, error) {
 
 		if structField.Anonymous && structField.Name == "Document" {
 			doc := elem.Field(i).Interface().(Document)
-			out["id"] = doc.ID
+			// if the relevant fields are present, consider this an @doc and encode it as such
+			if doc.ID != "" && doc.Coll != nil && doc.TS != nil {
+				out["id"] = doc.ID
 
-			if coll, err := encode(doc.Coll, ""); err != nil {
-				return nil, err
-			} else {
-				out["coll"] = coll
+				if coll, err := encode(doc.Coll, ""); err != nil {
+					return nil, err
+				} else {
+					out["coll"] = coll
+				}
+
+				if ts, err := encode(doc.TS, "time"); err != nil {
+					return nil, err
+				} else {
+					out["ts"] = ts
+				}
+
+				isDoc = true
+				continue
 			}
-
-			if ts, err := encode(doc.TS, "time"); err != nil {
-				return nil, err
-			} else {
-				out["ts"] = ts
-			}
-
-			isDoc = true
-			continue
 		}
 
 		if structField.Anonymous && structField.Name == "NamedDocument" {
 			doc := elem.Field(i).Interface().(NamedDocument)
-			out["name"] = doc.Name
+			// if the relevant fields are present, consider this an @doc and encode it as such
+			if doc.Name != "" && doc.Coll != nil && doc.TS != nil {
+				out["name"] = doc.Name
 
-			if coll, err := encode(doc.Coll, ""); err != nil {
-				return nil, err
-			} else {
-				out["coll"] = coll
+				if coll, err := encode(doc.Coll, ""); err != nil {
+					return nil, err
+				} else {
+					out["coll"] = coll
+				}
+
+				if ts, err := encode(doc.TS, "time"); err != nil {
+					return nil, err
+				} else {
+					out["ts"] = ts
+				}
+
+				isDoc = true
+				continue
 			}
-
-			if ts, err := encode(doc.TS, "time"); err != nil {
-				return nil, err
-			} else {
-				out["ts"] = ts
-			}
-
-			isDoc = true
-			continue
 		}
 
 		tag, found := structField.Tag.Lookup(fieldTag)
