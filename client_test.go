@@ -250,7 +250,7 @@ func TestBasicCRUDRequests(t *testing.T) {
 
 	q := Person{}
 	t.Run("Query a Person", func(t *testing.T) {
-		res, queryErr := client.Query(fmt.Sprintf(`%s.all.firstWhere(.name == "%s")`, coll, n), nil, &q)
+		res, queryErr := client.Query(fmt.Sprintf(`%s.all().firstWhere(.name == "%s")`, coll, n), nil, &q)
 		if queryErr != nil {
 			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
 		}
@@ -265,7 +265,7 @@ func TestBasicCRUDRequests(t *testing.T) {
 	})
 
 	t.Run("Update a Person", func(t *testing.T) {
-		res, queryErr := client.Query(fmt.Sprintf(`%v.all.firstWhere(.name == "%v").update({address: "321 Rainy St Seattle, WA 98011"})`, coll, n), nil, &q)
+		res, queryErr := client.Query(fmt.Sprintf(`%v.all().firstWhere(.name == "%v").update({address: "321 Rainy St Seattle, WA 98011"})`, coll, n), nil, &q)
 		if queryErr != nil {
 			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
 		}
@@ -276,7 +276,7 @@ func TestBasicCRUDRequests(t *testing.T) {
 	})
 
 	t.Run("Delete a Person", func(t *testing.T) {
-		res, queryErr := client.Query(fmt.Sprintf(`%s.all.firstWhere(.name == arg1).delete()`, coll), fauna.QueryArguments(fauna.QueryArg("arg1", p.Name)), &q)
+		res, queryErr := client.Query(fmt.Sprintf(`%s.all().firstWhere(.name == arg1).delete()`, coll), fauna.QueryArguments(fauna.QueryArg("arg1", p.Name)), &q)
 		if queryErr != nil {
 			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
 		}
