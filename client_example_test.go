@@ -75,17 +75,17 @@ func ExampleFQL() {
 		Name string `fauna:"name"`
 	}
 
-	query, fqlErr := fauna.FQL("let x = ${my_obj}\nx[\"name\"]", map[string]any{"my_obj": &MyObj{Name: "foo"}})
+	query, fqlErr := fauna.FQL("let x = ${my_obj}\nx { name }", map[string]any{"my_obj": &MyObj{Name: "foo"}})
 	if fqlErr != nil {
 		log.Fatalf("failed to create query: %s", fqlErr.Error())
 	}
 
-	var result string
+	var result map[string]any
 	_, queryErr := client.Query(query, nil, &result)
 	if queryErr != nil {
 		log.Fatalf("query failed: %s", queryErr.Error())
 	}
 
-	fmt.Printf("%s", result)
+	fmt.Printf("%s", result["name"])
 	// Output: foo
 }

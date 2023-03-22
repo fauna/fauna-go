@@ -511,11 +511,11 @@ func TestComposition(t *testing.T) {
           }}
         ]
       }},
-      "\nx { .name }"
+      "\nx { name }"
     ]}`
 
 		if assert.NoError(t, err) {
-			inner, err := FQL("${inner}\nx { .name }", map[string]any{"inner": testInnerDino})
+			inner, err := FQL("${inner}\nx { name }", map[string]any{"inner": testInnerDino})
 			if assert.NoError(t, err) {
 				bs := marshalAndCheck(t, inner)
 				assert.JSONEq(t, encodedDoc, string(bs))

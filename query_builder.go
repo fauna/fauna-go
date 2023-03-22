@@ -5,39 +5,16 @@ import (
 	"fmt"
 )
 
-type Fragment interface {
-	Get() any
+type queryFragment struct {
+	literal bool
+	value   any
 }
 
-type ValueFragment struct {
-	value any
+type Query struct {
+	fragments []*queryFragment
 }
 
-func (vf *ValueFragment) Get() any {
-	return vf.value
-}
-
-func NewValueFragment(value any) *ValueFragment {
-	return &ValueFragment{value}
-}
-
-type LiteralFragment struct {
-	value string
-}
-
-func (lf *LiteralFragment) Get() any {
-	return lf.value
-}
-
-func NewLiteralFragment(value string) *LiteralFragment {
-	return &LiteralFragment{value}
-}
-
-type QueryInterpolation struct {
-	Fragments []Fragment
-}
-
-func FQL(query string, args map[string]any) (*QueryInterpolation, error) {
+func FQL(query string, args map[string]any) (*Query, error) {
 	template := NewTemplate(query)
 	parts, err := template.Parse()
 
@@ -45,12 +22,12 @@ func FQL(query string, args map[string]any) (*QueryInterpolation, error) {
 		return nil, err
 	}
 
-	fragments := make([]Fragment, 0)
+	fragments := make([]*queryFragment, 0)
 	for _, part := range parts {
 
 		switch category := part.Category; category {
 		case TemplateLiteral:
-			fragments = append(fragments, NewLiteralFragment(part.Text))
+			fragments = append(fragments, &queryFragment{true, part.Text})
 
 		case TemplateVariable:
 			if args == nil {
@@ -60,7 +37,7 @@ func FQL(query string, args map[string]any) (*QueryInterpolation, error) {
 			arg, ok := args[part.Text]
 
 			if ok {
-				fragments = append(fragments, NewValueFragment(arg))
+				fragments = append(fragments, &queryFragment{false, arg})
 			} else {
 				return nil, fmt.Errorf("template variable %s not found in args", part.Text)
 			}
@@ -68,5 +45,5 @@ func FQL(query string, args map[string]any) (*QueryInterpolation, error) {
 		}
 	}
 
-	return &QueryInterpolation{Fragments: fragments}, nil
+	return &Query{fragments: fragments}, nil
 }
