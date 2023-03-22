@@ -47,7 +47,7 @@ const (
 	HeaderTags                 = "X-Query-Tags"
 	HeaderTimeoutMs            = "X-Timeout-Ms"
 	HeaderTraceparent          = "Traceparent"
-	HeaderTypeChecking         = "X-Type-Checking"
+	HeaderTypecheck            = "X-Typecheck"
 
 	// Headers just used internally
 
