@@ -31,6 +31,16 @@ func AdditionalHeaders(headers map[string]string) ClientConfigFn {
 	}
 }
 
+// DefaultTypecheck set header on the [fauna.Client]
+// Enable or disable typechecking of the query before evaluation. If
+// not set, Fauna will use the value of the "typechecked" flag on
+// the database configuration.
+func DefaultTypecheck(enabled bool) ClientConfigFn {
+	return func(c *Client) {
+		c.setHeader(HeaderTypecheck, fmt.Sprintf("%v", enabled))
+	}
+}
+
 // Linearized set header on the [fauna.Client]
 // If true, unconditionally run the query as strictly serialized.
 // This affects read-only transactions. Transactions which write will always be strictly serialized.
@@ -99,8 +109,13 @@ func QueryTraceparent(id string) QueryOptFn {
 // Timeout set the query timeout on a single [Client.Query]
 func Timeout(dur time.Duration) QueryOptFn {
 	return func(req *fqlRequest) {
-		req.Headers[HeaderTypeChecking] = fmt.Sprintf("%f", dur.Seconds())
+		req.Headers[HeaderTimeoutMs] = fmt.Sprintf("%d", dur.Milliseconds())
 	}
+}
+
+// Typecheck sets the header on a single [Client.Query]
+func Typecheck(enabled bool) QueryOptFn {
+	return func(req *fqlRequest) { req.Headers[HeaderTypecheck] = fmt.Sprintf("%v", enabled) }
 }
 
 func argsStringFromMap(input map[string]string, currentArgs ...string) string {
