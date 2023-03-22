@@ -41,7 +41,7 @@ func QueryArguments(args ...QueryArgItem) QueryArgs {
 type fqlRequest struct {
 	Context   context.Context
 	Headers   map[string]string
-	Query     string         `fauna:"query"`
+	Query     any            `fauna:"query"`
 	Arguments map[string]any `fauna:"arguments"`
 }
 

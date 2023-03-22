@@ -125,7 +125,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 }
 
 // Query invoke fql with args and map to the provided obj, optionally set multiple [QueryOptFn]
-func (c *Client) Query(fql string, args QueryArgs, obj any, opts ...QueryOptFn) (*Response, error) {
+func (c *Client) Query(fql any, args QueryArgs, obj any, opts ...QueryOptFn) (*Response, error) {
 	req := &fqlRequest{
 		Context:   c.ctx,
 		Query:     fql,

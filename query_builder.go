@@ -6,18 +6,18 @@ import (
 )
 
 type Fragment interface {
-	Get() interface{}
+	Get() any
 }
 
 type ValueFragment struct {
-	value interface{}
+	value any
 }
 
-func (vf *ValueFragment) Get() interface{} {
+func (vf *ValueFragment) Get() any {
 	return vf.value
 }
 
-func NewValueFragment(value interface{}) *ValueFragment {
+func NewValueFragment(value any) *ValueFragment {
 	return &ValueFragment{value}
 }
 
@@ -25,7 +25,7 @@ type LiteralFragment struct {
 	value string
 }
 
-func (lf *LiteralFragment) Get() interface{} {
+func (lf *LiteralFragment) Get() any {
 	return lf.value
 }
 
@@ -33,11 +33,11 @@ func NewLiteralFragment(value string) *LiteralFragment {
 	return &LiteralFragment{value}
 }
 
-type QueryInterpolationBuilder struct {
+type QueryInterpolation struct {
 	Fragments []Fragment
 }
 
-func FQL(query string, args map[string]interface{}) (*QueryInterpolationBuilder, error) {
+func FQL(query string, args map[string]any) (*QueryInterpolation, error) {
 	template := NewTemplate(query)
 	parts, err := template.Parse()
 
@@ -68,5 +68,5 @@ func FQL(query string, args map[string]interface{}) (*QueryInterpolationBuilder,
 		}
 	}
 
-	return &QueryInterpolationBuilder{Fragments: fragments}, nil
+	return &QueryInterpolation{Fragments: fragments}, nil
 }

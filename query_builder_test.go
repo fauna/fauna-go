@@ -11,24 +11,24 @@ import (
 type fqlSuccessCase struct {
 	testName string
 	query    string
-	args     map[string]interface{}
-	wants    fauna.QueryInterpolationBuilder
+	args     map[string]any
+	wants    fauna.QueryInterpolation
 }
 
 func TestFQL(t *testing.T) {
 	testDate := time.Date(2023, 2, 24, 0, 0, 0, 0, time.UTC)
-	testDino := map[string]interface{}{
+	testDino := map[string]any{
 		"name":      "Dino",
 		"age":       0,
 		"birthdate": testDate,
 	}
-	testInnerDino, _ := fauna.FQL("let x = ${my_var}", map[string]interface{}{"my_var": testDino})
+	testInnerDino, _ := fauna.FQL("let x = ${my_var}", map[string]any{"my_var": testDino})
 	testCases := []fqlSuccessCase{
 		{
 			"simple literal case",
 			"let x = 11",
 			nil,
-			fauna.QueryInterpolationBuilder{
+			fauna.QueryInterpolation{
 				Fragments: []fauna.Fragment{fauna.NewLiteralFragment("let x = 11")},
 			},
 		},
@@ -36,15 +36,15 @@ func TestFQL(t *testing.T) {
 			"simple literal case with brace",
 			"let x = { y: 11 }",
 			nil,
-			fauna.QueryInterpolationBuilder{
+			fauna.QueryInterpolation{
 				Fragments: []fauna.Fragment{fauna.NewLiteralFragment("let x = { y: 11 }")},
 			},
 		},
 		{
 			"template variable and fauna variable",
 			"let age = ${n1}\n\"Alice is #{age} years old.\"",
-			map[string]interface{}{"n1": 5},
-			fauna.QueryInterpolationBuilder{
+			map[string]any{"n1": 5},
+			fauna.QueryInterpolation{
 				Fragments: []fauna.Fragment{
 					fauna.NewLiteralFragment("let age = "),
 					fauna.NewValueFragment(5),
@@ -55,8 +55,8 @@ func TestFQL(t *testing.T) {
 		{
 			"template variable",
 			"let x = ${my_var}",
-			map[string]interface{}{"my_var": testDino},
-			fauna.QueryInterpolationBuilder{
+			map[string]any{"my_var": testDino},
+			fauna.QueryInterpolation{
 				Fragments: []fauna.Fragment{
 					fauna.NewLiteralFragment("let x = "),
 					fauna.NewValueFragment(testDino),
@@ -65,14 +65,14 @@ func TestFQL(t *testing.T) {
 		},
 		{
 			"query variable",
-			"${inner}\nx { .name }",
-			map[string]interface{}{
+			"${inner}\nx[\"name\"]",
+			map[string]any{
 				"inner": testInnerDino,
 			},
-			fauna.QueryInterpolationBuilder{
+			fauna.QueryInterpolation{
 				Fragments: []fauna.Fragment{
 					fauna.NewValueFragment(testInnerDino),
-					fauna.NewLiteralFragment("\nx { .name }"),
+					fauna.NewLiteralFragment("\nx[\"name\"]"),
 				},
 			},
 		},
@@ -97,14 +97,14 @@ func TestFQL(t *testing.T) {
 	}
 }
 
-func buildersAreEqual(wants fauna.QueryInterpolationBuilder, test fauna.QueryInterpolationBuilder) bool {
+func buildersAreEqual(wants fauna.QueryInterpolation, test fauna.QueryInterpolation) bool {
 	isEqual := true
 	for i, wantsFrag := range wants.Fragments {
 		testFrag := test.Fragments[i]
 
 		switch typedFrag := wantsFrag.Get().(type) {
-		case fauna.QueryInterpolationBuilder:
-			isEqual = isEqual && buildersAreEqual(typedFrag, testFrag.Get().(fauna.QueryInterpolationBuilder))
+		case fauna.QueryInterpolation:
+			isEqual = isEqual && buildersAreEqual(typedFrag, testFrag.Get().(fauna.QueryInterpolation))
 		}
 		isEqual = isEqual && reflect.DeepEqual(wantsFrag.Get(), testFrag.Get())
 	}

@@ -56,3 +56,36 @@ func ExampleNewClient() {
 	fmt.Printf("%0.f", result)
 	// Output: 1200000
 }
+
+// ExampleComposedQuery query fauna running in a local Docker instance:
+//
+//	docker run --rm -p 8443:8443 fauna/faunadb:latest
+func ExampleFQL() {
+	// IMPORTANT: just for the purpose of example, don't actually hardcode secret
+	_ = os.Setenv(fauna.EnvFaunaSecret, "secret")
+	_ = os.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+
+	client, clientErr := fauna.NewDefaultClient()
+	if clientErr != nil {
+		log.Fatalf("client should have been initialized: %s", clientErr.Error())
+	}
+
+	type MyObj struct {
+		fauna.Document
+		Name string `fauna:"name"`
+	}
+
+	query, fqlErr := fauna.FQL("let x = ${my_obj}\nx[\"name\"]", map[string]any{"my_obj": &MyObj{Name: "foo"}})
+	if fqlErr != nil {
+		log.Fatalf("failed to create query: %s", fqlErr.Error())
+	}
+
+	var result string
+	_, queryErr := client.Query(query, nil, &result)
+	if queryErr != nil {
+		log.Fatalf("query failed: %s", queryErr.Error())
+	}
+
+	fmt.Printf("%s", result)
+	// Output: foo
+}
