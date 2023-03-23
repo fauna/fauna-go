@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -184,7 +185,11 @@ func defaultHTTPClient(allowHTTP bool) *http.Client {
 	return &http.Client{
 		Transport: &http2.Transport{
 			DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-				return net.Dial(network, addr)
+				if strings.HasPrefix(addr, "localhost") {
+					return net.Dial(network, addr)
+				}
+
+				return tls.Dial(network, addr, cfg)
 			},
 			AllowHTTP:        allowHTTP,
 			ReadIdleTimeout:  DefaultHttpReadIdleTimeout,
