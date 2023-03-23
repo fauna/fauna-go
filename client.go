@@ -191,7 +191,9 @@ func defaultHTTPClient(allowHTTP bool) *http.Client {
 
 	if allowHTTP {
 		dialerContext = func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-			return net.Dial(network, addr)
+			dialer := net.Dialer{}
+
+			return dialer.DialContext(ctx, network, addr)
 		}
 	}
 
