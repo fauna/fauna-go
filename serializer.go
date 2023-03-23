@@ -393,7 +393,7 @@ func encode(v any, hint string) (any, error) {
 	case *queryFragment:
 		return encodeQueryFragment(vt)
 
-	case *Query:
+	case *QueryInterpolation:
 		return encodeQuery(vt)
 
 	case Module:
@@ -633,7 +633,7 @@ func encodeStruct(s any) (any, error) {
 	return out, nil
 }
 
-func encodeQuery(q *Query) (any, error) {
+func encodeQuery(q *QueryInterpolation) (any, error) {
 	const fqlLabel = "fql"
 
 	rendered := make([]any, len(q.fragments))

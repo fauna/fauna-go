@@ -10,11 +10,11 @@ type queryFragment struct {
 	value   any
 }
 
-type Query struct {
+type QueryInterpolation struct {
 	fragments []*queryFragment
 }
 
-func FQL(query string, args map[string]any) (*Query, error) {
+func FQL(query string, args map[string]any) (*QueryInterpolation, error) {
 	template := NewTemplate(query)
 	parts, err := template.Parse()
 
@@ -45,5 +45,5 @@ func FQL(query string, args map[string]any) (*Query, error) {
 		}
 	}
 
-	return &Query{fragments: fragments}, nil
+	return &QueryInterpolation{fragments: fragments}, nil
 }
