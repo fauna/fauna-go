@@ -182,12 +182,12 @@ func (c *Client) String() string {
 
 func defaultHTTPClient(allowHTTP bool) *http.Client {
 	dialerContext := func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-		return tls.Dial(network, addr, cfg)
+		return tls.DialContext(ctx, network, addr, cfg)
 	}
 
 	if allowHTTP {
 		dialerContext = func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-			return net.Dial(network, addr)
+			return net.DialContext(ctx, network, addr)
 		}
 	}
 
