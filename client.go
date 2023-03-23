@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -182,15 +181,19 @@ func (c *Client) String() string {
 }
 
 func defaultHTTPClient(allowHTTP bool) *http.Client {
+	dialerContext := func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+		return tls.Dial(network, addr, cfg)
+	}
+
+	if allowHTTP {
+		dialerContext = func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+			return net.Dial(network, addr)
+		}
+	}
+
 	return &http.Client{
 		Transport: &http2.Transport{
-			DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-				if strings.HasPrefix(addr, "localhost") {
-					return net.Dial(network, addr)
-				}
-
-				return tls.Dial(network, addr, cfg)
-			},
+			DialTLSContext:   dialerContext,
 			AllowHTTP:        allowHTTP,
 			ReadIdleTimeout:  DefaultHttpReadIdleTimeout,
 			PingTimeout:      time.Second * 3,
