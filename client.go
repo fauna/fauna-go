@@ -181,11 +181,25 @@ func (c *Client) String() string {
 }
 
 func defaultHTTPClient(allowHTTP bool) *http.Client {
+	dialerContext := func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+		dialer := tls.Dialer{
+			Config: cfg,
+		}
+
+		return dialer.DialContext(ctx, network, addr)
+	}
+
+	if allowHTTP {
+		dialerContext = func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+			dialer := net.Dialer{}
+
+			return dialer.DialContext(ctx, network, addr)
+		}
+	}
+
 	return &http.Client{
 		Transport: &http2.Transport{
-			DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-				return net.Dial(network, addr)
-			},
+			DialTLSContext:   dialerContext,
 			AllowHTTP:        allowHTTP,
 			ReadIdleTimeout:  DefaultHttpReadIdleTimeout,
 			PingTimeout:      time.Second * 3,
