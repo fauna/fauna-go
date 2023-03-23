@@ -14,12 +14,24 @@ type QueryInterpolation struct {
 	fragments []*queryFragment
 }
 
-func FQL(query string, args map[string]any) (*QueryInterpolation, error) {
+func FQL(query string, args ...map[string]any) (*QueryInterpolation, error) {
 	template := NewTemplate(query)
 	parts, err := template.Parse()
 
 	if err != nil {
 		return nil, err
+	}
+
+	var qArgs map[string]any
+	if len(args) == 1 {
+		qArgs = args[0]
+	} else if len(args) > 1 {
+		qArgs = map[string]any{}
+		for _, a := range args {
+			for k, v := range a {
+				qArgs[k] = v
+			}
+		}
 	}
 
 	fragments := make([]*queryFragment, 0)
@@ -34,7 +46,7 @@ func FQL(query string, args map[string]any) (*QueryInterpolation, error) {
 				return nil, errors.New("found template variable, but args is nil")
 			}
 
-			arg, ok := args[part.Text]
+			arg, ok := qArgs[part.Text]
 
 			if ok {
 				fragments = append(fragments, &queryFragment{false, arg})

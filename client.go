@@ -124,13 +124,12 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	return client
 }
 
-// Query invoke fql with args and map to the provided obj, optionally set multiple [QueryOptFn]
-func (c *Client) Query(fql any, args QueryArgs, obj any, opts ...QueryOptFn) (*Response, error) {
+// Query invoke fql and unmarshal the data into the provided result object, optionally set multiple [QueryOptFn]
+func (c *Client) Query(fql *QueryInterpolation, result any, opts ...QueryOptFn) (*Response, error) {
 	req := &fqlRequest{
-		Context:   c.ctx,
-		Query:     fql,
-		Arguments: args,
-		Headers:   c.headers,
+		Context: c.ctx,
+		Query:   fql,
+		Headers: c.headers,
 	}
 
 	for _, queryOptionFn := range opts {
@@ -143,9 +142,9 @@ func (c *Client) Query(fql any, args QueryArgs, obj any, opts ...QueryOptFn) (*R
 	}
 
 	// we only need to unmarshal if the consumer provided an object
-	if obj != nil {
-		if unmarshalErr := unmarshal(res.Data, obj); unmarshalErr != nil {
-			return res, fmt.Errorf("failed to unmarshal object [%v] from result: %v\nerror: %w", obj, string(res.Data), unmarshalErr)
+	if result != nil {
+		if unmarshalErr := unmarshal(res.Data, result); unmarshalErr != nil {
+			return res, fmt.Errorf("failed to unmarshal object [%v] from result: %v\nerror: %w", result, string(res.Data), unmarshalErr)
 		}
 	}
 
