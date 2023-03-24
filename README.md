@@ -46,14 +46,14 @@ func main() {
 		panic(err)
 	}
 
-    var scout Dog
-	res, err := client.Query(`Dogs.create({ name: name }`, map[string]any{"name": "Scout"}, &scout)
+	res, err := client.Query(`Dogs.create({ name: name }`, map[string]any{"name": "Scout"})
 	if err != nil {
 		panic(err)
 	}
 
-    if res.Error != nil {
-        panic(res.Error)
+    var scout Dog
+    if err := res.Unmarshal(&scout); err != nil {
+        panic(err)
     }
 
 	fmt.Println(scout)
@@ -89,16 +89,12 @@ func main() {
         panic(err)
     }
 
-    var username string
-    res, err := client.Query(`${user}["name"]`, map[string]any{"user": byTin}, &username)
+    res, err := client.Query(`${user}["name"]`, map[string]any{"user": byTin})
 	if err != nil {
 		panic(err)
 	}
 
-    if res.Error != nil {
-        panic(res.Error)
-    }
-
+    username := res.Data.(string)
 	fmt.Println(username)
 }
 

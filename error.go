@@ -4,6 +4,8 @@ import (
 	"net/http"
 )
 
+const HttpStatusQueryTimeout = 440
+
 var queryCheckFailureCodes = map[string]struct{}{
 	"invalid_function_definition": {},
 	"invalid_identifier":          {},
@@ -13,6 +15,7 @@ var queryCheckFailureCodes = map[string]struct{}{
 }
 
 type ServiceError struct {
+	*QueryInfo
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
@@ -21,121 +24,79 @@ func (e ServiceError) Error() string {
 	return e.Message
 }
 
+type QueryRuntimeError struct {
+	*ServiceError
+}
+
+type QueryCheckError struct {
+	*ServiceError
+}
+
+type QueryTimeoutError struct {
+	*ServiceError
+}
+
+type AuthenticationError struct {
+	*ServiceError
+}
+
+type AuthorizationError struct {
+	*ServiceError
+}
+
+type ThrottlingError struct {
+	*ServiceError
+}
+
+type ServiceInternalError struct {
+	*ServiceError
+}
+
+type ServiceTimeoutError struct {
+	*ServiceError
+}
+
+type NetworkError error
+
 // GetServiceError return a typed error based on the http status code
 // and ServiceError response from fauna
-func GetServiceError(httpStatus int, e *ServiceError, summary string) error {
+func getServiceError(httpStatus int, res *queryResponse) error {
+	if res.Error != nil {
+		res.Error.QueryInfo = newQueryInfo(res)
+	}
+
 	switch httpStatus {
 	case http.StatusBadRequest:
-		if e == nil {
-			return NewQueryRuntimeError(&ServiceError{Code: "", Message: ""}, summary)
+		if res.Error == nil {
+			err := &QueryRuntimeError{&ServiceError{QueryInfo: newQueryInfo(res), Code: "", Message: ""}}
+			err.Message += "\n" + res.Summary
+			return err
 		}
 
-		if _, found := queryCheckFailureCodes[e.Code]; found {
-			return NewQueryCheckError(e, summary)
+		if _, found := queryCheckFailureCodes[res.Error.Code]; found {
+			err := &QueryCheckError{res.Error}
+			err.Message += "\n" + res.Summary
+			return err
+
 		} else {
-			return NewQueryRuntimeError(e, summary)
+			err := &QueryRuntimeError{res.Error}
+			err.Message += "\n" + res.Summary
+			return err
 		}
+
 	case http.StatusUnauthorized:
-		return NewAuthenticationError(e)
+		return &AuthenticationError{res.Error}
 	case http.StatusForbidden:
-		return NewAuthorizationError(e)
+		return &AuthorizationError{res.Error}
 	case http.StatusTooManyRequests:
-		return NewThrottlingError(e)
-	case 440:
-		return NewQueryTimeoutError(e)
+		return &ThrottlingError{res.Error}
+	case HttpStatusQueryTimeout:
+		return &QueryTimeoutError{res.Error}
 	case http.StatusInternalServerError:
-		return NewServiceInternalError(e)
+		return &ServiceInternalError{res.Error}
 	case http.StatusServiceUnavailable:
-		return NewServiceTimeoutError(e)
+		return &ServiceTimeoutError{res.Error}
 	}
 
 	return nil
 }
-
-type QueryRuntimeError struct {
-	ServiceError
-}
-
-func NewQueryRuntimeError(e *ServiceError, summary string) QueryRuntimeError {
-	q := QueryRuntimeError{
-		ServiceError: *e,
-	}
-	q.Message = "\n" + summary
-
-	return q
-}
-
-type QueryCheckError struct {
-	ServiceError
-}
-
-func NewQueryCheckError(e *ServiceError, summary string) QueryCheckError {
-	q := QueryCheckError{
-		ServiceError: *e,
-	}
-	q.Message += "\n" + summary
-
-	return q
-}
-
-type QueryTimeoutError struct {
-	ServiceError
-}
-
-func NewQueryTimeoutError(e *ServiceError) QueryTimeoutError {
-	return QueryTimeoutError{
-		ServiceError: *e,
-	}
-}
-
-type AuthenticationError struct {
-	ServiceError
-}
-
-func NewAuthenticationError(e *ServiceError) AuthenticationError {
-	return AuthenticationError{
-		ServiceError: *e,
-	}
-}
-
-type AuthorizationError struct {
-	ServiceError
-}
-
-func NewAuthorizationError(e *ServiceError) AuthorizationError {
-	return AuthorizationError{
-		ServiceError: *e,
-	}
-}
-
-type ThrottlingError struct {
-	ServiceError
-}
-
-func NewThrottlingError(e *ServiceError) ThrottlingError {
-	return ThrottlingError{
-		ServiceError: *e,
-	}
-}
-
-type ServiceInternalError struct {
-	ServiceError
-}
-
-func NewServiceInternalError(e *ServiceError) ServiceInternalError {
-	return ServiceInternalError{
-		ServiceError: *e,
-	}
-}
-
-type ServiceTimeoutError struct {
-	ServiceError
-}
-
-func NewServiceTimeoutError(e *ServiceError) ServiceTimeoutError {
-	return ServiceTimeoutError{
-		ServiceError: *e,
-	}
-}
-
-type NetworkError error

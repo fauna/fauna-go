@@ -29,10 +29,14 @@ func ExampleDefaultClient() {
 		log.Fatalf("query failed: %s", qErr.Error())
 	}
 
-	var result float32
-	_, queryErr := client.Query(query, &result)
+	res, queryErr := client.Query(query)
 	if queryErr != nil {
 		log.Fatalf("request failed: %s", queryErr.Error())
+	}
+
+	var result float32
+	if err := res.Unmarshal(&result); err != nil {
+		log.Fatalf("%s", err.Error())
 	}
 
 	fmt.Printf("%0.f", result)
@@ -57,10 +61,14 @@ func ExampleNewClient() {
 		log.Fatalf("query failed: %s", qErr.Error())
 	}
 
-	var result float32
-	_, queryErr := client.Query(query, &result)
+	res, queryErr := client.Query(query)
 	if queryErr != nil {
 		log.Fatalf("request failed: %s", queryErr.Error())
+	}
+
+	var result float32
+	if err := res.Unmarshal(&result); err != nil {
+		log.Fatalf("%s", queryErr.Error())
 	}
 
 	fmt.Printf("%0.f", result)
@@ -90,12 +98,16 @@ func ExampleFQL() {
 		log.Fatalf("query failed: %s", fqlErr.Error())
 	}
 
-	var result map[string]any
-	_, queryErr := client.Query(query, &result)
+	res, queryErr := client.Query(query)
 	if queryErr != nil {
 		log.Fatalf("request failed: %s", queryErr.Error())
 	}
 
-	fmt.Printf("%s", result["name"])
-	// Output: foo
+	var result map[string]any
+	if err := res.Unmarshal(&result); err != nil {
+		log.Fatalf("%s", queryErr.Error())
+	}
+
+	fmt.Printf("%s", result)
+	// Output: map[name:foo]
 }

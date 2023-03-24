@@ -1,45 +1,37 @@
 package fauna
 
-import (
-	"encoding/json"
-	"net/http"
-)
-
-const (
-	StatsComputeOps        = "compute_ops"
-	StatsReadOps           = "read_ops"
-	StatsWriteOps          = "write_ops"
-	StatsQueryTimeMs       = "query_time_ms"
-	StatsContentionRetries = "contention_retries"
-	StatsStorageBytesRead  = "storage_bytes_read"
-	StatsStorageBytesWrite = "storage_bytes_write"
-)
-
-// The Response from a [Client.Query]
-type Response struct {
-	Bytes      []byte
-	Data       json.RawMessage `json:"data"`
-	Error      *ServiceError   `json:"error,omitempty"`
-	Logging    []string        `json:"logging,omitempty"`
-	Raw        *http.Response
-	StaticType string         `json:"static_type"`
-	Stats      map[string]int `json:"stats,omitempty"`
-	Summary    string         `json:"summary"`
-	TxnTime    int64          `json:"txn_ts"`
+type Stats struct {
+	ComputeOps        int `json:"compute_ops"`
+	ReadOps           int `json:"read_ops"`
+	WriteOps          int `json:"write_ops"`
+	QueryTimeMs       int `json:"query_time_ms"`
+	ContentionRetries int `json:"contention_retries"`
+	StorageBytesRead  int `json:"storage_bytes_read"`
+	StorageBytesWrite int `json:"storage_bytes_write"`
 }
 
-func (r Response) FaunaBuild() string {
-	return stringFromResponseHeader(r.Raw, headerFaunaBuild)
+type QueryInfo struct {
+	TxnTime   int64
+	Summary   string
+	QueryTags map[string]string
+	Stats     *Stats
 }
 
-func (r Response) Traceparent() string {
-	return stringFromResponseHeader(r.Raw, HeaderTraceparent)
-}
-
-func stringFromResponseHeader(r *http.Response, key string) string {
-	if r != nil {
-		return r.Header.Get(key)
+func newQueryInfo(res *queryResponse) *QueryInfo {
+	return &QueryInfo{
+		TxnTime:   res.TxnTime,
+		Summary:   res.Summary,
+		QueryTags: res.QueryTags(),
+		Stats:     res.Stats,
 	}
+}
 
-	return ""
+type QuerySuccess struct {
+	*QueryInfo
+	Data       any
+	StaticType string
+}
+
+func (r *QuerySuccess) Unmarshal(into any) error {
+	return decodeInto(r.Data, into)
 }
