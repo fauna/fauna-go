@@ -21,7 +21,43 @@ Currently, the driver is tested on:
 
 ## Using the Driver
 
+For FQL templates, denote variables with `${}` and pass variables as `map[string]any` to `fauna.FQL()`. You can escape a variable with by prepending
+an additional `$`.
+
 ### Basic Usage
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/fauna/fauna-go"
+)
+
+func main() {
+	client, clientErr := fauna.NewDefaultClient()
+	if clientErr != nil {
+		panic(clientErr)
+	}
+
+	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" }`)
+	if _, err := client.Query(createColl); err != nil {
+		panic(err)
+	}
+
+	createDog, _ := fauna.FQL(`Dogs.create({ name: name })`, map[string]any{"name": "Scout"})
+	res, err := client.Query(createDog)
+	if err != nil {
+		panic(err)
+	}
+
+	scout := res.Data.(map[string]string)
+	fmt.Println(scout["name"])
+}
+```
+
+### Using Structs
 
 ```go
 package main
@@ -42,28 +78,28 @@ func main() {
 		panic(clientErr)
 	}
 
-	if _, err := client.Query(`Collection.create({ name: "Dogs" }`); err != nil {
+	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" }`)
+	if _, err := client.Query(createColl); err != nil {
 		panic(err)
 	}
 
-	res, err := client.Query(`Dogs.create({ name: name }`, map[string]any{"name": "Scout"})
+	newDog := Dog{"Scout"}
+	createDog, _ := fauna.FQL(`Dogs.create(${dog})`, map[string]any{"dog": newDog})
+	res, err := client.Query(createDog)
 	if err != nil {
 		panic(err)
 	}
 
-    var scout Dog
-    if err := res.Unmarshal(&scout); err != nil {
-        panic(err)
-    }
+	var scout Dog
+	if err := res.Unmarshal(&scout); err != nil {
+		panic(err)
+	}
 
 	fmt.Println(scout)
 }
 ```
 
-### Query Composition
-
-For FQL templates, denote variables with `${}` and pass variables as `map[string]any` to `fauna.FQL()`. You can escape a variable with by prepending
-an additional `$`.
+### Composing Multiple Queries
 
 ```go
 package main
@@ -71,11 +107,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/fauna/fauna-go/v10/fauna"
+	"github.com/fauna/fauna-go"
 )
 
 func userByTin(tin string) (*fauna.Query, error) {
-    return fauna.FQL(`Users.byTin(${tin})`, map[string]any{"tin":tin})
+	return fauna.FQL(`Users.byTin(${tin})`, map[string]any{"tin": tin})
 }
 
 func main() {
@@ -84,20 +120,20 @@ func main() {
 		panic(clientErr)
 	}
 
-    byTin, err := userByTin("1234")
-    if err != nil {
-        panic(err)
-    }
-
-    res, err := client.Query(`${user}["name"]`, map[string]any{"user": byTin})
+	byTin, err := userByTin("1234")
 	if err != nil {
 		panic(err)
 	}
 
-    username := res.Data.(string)
-	fmt.Println(username)
-}
+	q, _ := fauna.FQL(`${user} { name }`, map[string]any{"user": byTin})
+	res, err := client.Query(q)
+	if err != nil {
+		panic(err)
+	}
 
+	data := res.Data.(map[string]string)
+	fmt.Println(data["name"])
+}
 ```
 
 ## Contributing
