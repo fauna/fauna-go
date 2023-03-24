@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -102,7 +103,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 		headers: map[string]string{
 			headerContentType:   "application/json; charset=utf-8",
 			headerDriver:        "go",
-			headerDriverVersion: DriverVersion,
+			headerDriverVersion: strings.TrimSpace(DriverVersion),
 			headerRuntime: fmt.Sprintf(
 				"env=%s; os=%s; go=%s",
 				fingerprinting.Environment(),
