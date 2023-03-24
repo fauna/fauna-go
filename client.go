@@ -125,7 +125,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 }
 
 // Query invoke fql and unmarshal the data into the provided result object, optionally set multiple [QueryOptFn]
-func (c *Client) Query(fql *QueryInterpolation, result any, opts ...QueryOptFn) (*Response, error) {
+func (c *Client) Query(fql *Query, result any, opts ...QueryOptFn) (*Response, error) {
 	req := &fqlRequest{
 		Context: c.ctx,
 		Query:   fql,
