@@ -3,6 +3,7 @@ name: Validate Driver
 on:
   pull_request:
     paths:
+      - ".github/workflows/pr-validate-driver.yml"
       - "**.go"
       - "go.mod"
       - "go.sum"
@@ -17,7 +18,7 @@ jobs:
           - 8443:8443
     strategy:
       matrix:
-        go: [ '1.19', '1.18', '1.17' ]
+        go: [ '1.20', '1.19' ]
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
@@ -26,6 +27,7 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go }}
+          cache: true
 
       - name: Install tools
         run: |
@@ -42,8 +44,8 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      - name: Test
-        run: go test -v ./...
-
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
+
+      - name: Test
+        run: go test -v ./...

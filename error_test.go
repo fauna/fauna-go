@@ -1,17 +1,15 @@
-package fauna_test
+package fauna
 
 import (
 	"fmt"
 	"net/http"
 	"testing"
-
-	"github.com/fauna/fauna-go"
 )
 
 func TestGetServiceError(t *testing.T) {
 	type args struct {
 		httpStatus   int
-		serviceError *fauna.ServiceError
+		serviceError *ServiceError
 		errType      error
 	}
 	tests := []struct {
@@ -32,8 +30,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Query check error",
 			args: args{
 				httpStatus:   http.StatusBadRequest,
-				serviceError: &fauna.ServiceError{Code: "invalid_query", Message: ""},
-				errType:      fauna.QueryCheckError{},
+				serviceError: &ServiceError{Code: "invalid_query", Message: ""},
+				errType:      &QueryCheckError{},
 			},
 			wantErr: true,
 		},
@@ -41,8 +39,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Query runtime error",
 			args: args{
 				httpStatus:   http.StatusBadRequest,
-				serviceError: &fauna.ServiceError{Code: "", Message: ""},
-				errType:      fauna.QueryRuntimeError{},
+				serviceError: &ServiceError{Code: "", Message: ""},
+				errType:      &QueryRuntimeError{},
 			},
 			wantErr: true,
 		},
@@ -50,8 +48,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Unauthorized",
 			args: args{
 				httpStatus:   http.StatusUnauthorized,
-				serviceError: &fauna.ServiceError{Code: "", Message: ""},
-				errType:      fauna.AuthenticationError{},
+				serviceError: &ServiceError{Code: "", Message: ""},
+				errType:      &AuthenticationError{},
 			},
 			wantErr: true,
 		},
@@ -59,8 +57,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Access not granted",
 			args: args{
 				httpStatus:   http.StatusForbidden,
-				serviceError: &fauna.ServiceError{Code: "", Message: ""},
-				errType:      fauna.AuthorizationError{},
+				serviceError: &ServiceError{Code: "", Message: ""},
+				errType:      &AuthorizationError{},
 			},
 			wantErr: true,
 		},
@@ -68,8 +66,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Too many requests",
 			args: args{
 				httpStatus:   http.StatusTooManyRequests,
-				serviceError: &fauna.ServiceError{Code: "", Message: ""},
-				errType:      fauna.ThrottlingError{},
+				serviceError: &ServiceError{Code: "", Message: ""},
+				errType:      &ThrottlingError{},
 			},
 			wantErr: true,
 		},
@@ -77,8 +75,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Query timeout",
 			args: args{
 				httpStatus:   440,
-				serviceError: &fauna.ServiceError{Code: "", Message: ""},
-				errType:      fauna.QueryTimeoutError{},
+				serviceError: &ServiceError{Code: "", Message: ""},
+				errType:      &QueryTimeoutError{},
 			},
 			wantErr: true,
 		},
@@ -86,8 +84,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Internal error",
 			args: args{
 				httpStatus:   http.StatusInternalServerError,
-				serviceError: &fauna.ServiceError{Code: "", Message: ""},
-				errType:      fauna.ServiceInternalError{},
+				serviceError: &ServiceError{Code: "", Message: ""},
+				errType:      &ServiceInternalError{},
 			},
 			wantErr: true,
 		},
@@ -95,15 +93,16 @@ func TestGetServiceError(t *testing.T) {
 			name: "Service timeout",
 			args: args{
 				httpStatus:   http.StatusServiceUnavailable,
-				serviceError: &fauna.ServiceError{Code: "", Message: ""},
-				errType:      fauna.ServiceTimeoutError{},
+				serviceError: &ServiceError{Code: "", Message: ""},
+				errType:      &ServiceTimeoutError{},
 			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := fauna.GetServiceError(tt.args.httpStatus, tt.args.serviceError, "")
+			res := &queryResponse{Error: tt.args.serviceError, Summary: ""}
+			err := getServiceError(tt.args.httpStatus, res)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetServiceError() error = %v, wantErr %v", err, tt.wantErr)
 			} else if tt.wantErr && fmt.Sprintf("%T", err) != fmt.Sprintf("%T", tt.args.errType) {
