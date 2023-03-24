@@ -1,0 +1,17 @@
+---
+platform: linux
+image_resource:
+  type: registry-image
+  source:
+    repository: golang
+    tag: 3.9.16-alpine3.16
+
+inputs:
+  - name: fauna-go-repository
+
+outputs:
+  - name: slack-message
+
+run:
+  path: ./fauna-python-repository/concourse/scripts/publish.sh
+

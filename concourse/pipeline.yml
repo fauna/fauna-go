@@ -1,0 +1,53 @@
+---
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+
+resources:
+  - name: notify
+    type: slack-notification
+    source:
+      url: ((slack-webhook))
+
+  - name: fauna-go-repository
+    type: git
+    icon: github
+    source:
+      uri: https://github.com/fauna/fauna-go
+      branch: main
+      paths:
+        - version
+
+jobs:
+  - name: set-self
+    plan:
+      - get: fauna-go-repository
+        trigger: true
+      - set_pipeline: self
+        file: fauna-go-repository/concourse/pipeline.yml
+
+  - name: release
+    serial: true
+    public: false
+    plan:
+      - get: fauna-go-repository
+        passed:
+          - set-self
+
+      - task: set-slack-message
+        file: fauna-go-repository/concourse/task/slack-message.yml
+
+      - put: fauna-go-repository
+        params:
+          repository: fauna-go-repository
+          tag_prefix: v
+          tag_only: true
+          # use contents of version file
+          tag: version
+        on_success:
+          put: notify
+          params:
+            text_file: slack-message/publish
+
