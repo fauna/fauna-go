@@ -10,38 +10,10 @@ import (
 	"net/url"
 )
 
-// QueryArgItem query args structure
-type QueryArgItem struct {
-	Key   string
-	Value any
-}
-
-// QueryArg create an [QueryArgItem]
-func QueryArg(key string, value any) QueryArgItem {
-	return QueryArgItem{
-		Key:   key,
-		Value: value,
-	}
-}
-
-// QueryArgs map from [QueryArgItem]
-type QueryArgs map[string]any
-
-// QueryArguments convenience method to structure [QueryArgs]
-func QueryArguments(args ...QueryArgItem) QueryArgs {
-	out := map[string]any{}
-	for n := range args {
-		arg := args[n]
-		out[arg.Key] = arg.Value
-	}
-
-	return out
-}
-
 type fqlRequest struct {
 	Context   context.Context
 	Headers   map[string]string
-	Query     string         `fauna:"query"`
+	Query     any            `fauna:"query"`
 	Arguments map[string]any `fauna:"arguments"`
 }
 

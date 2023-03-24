@@ -473,3 +473,53 @@ func TestEncodingDocuments(t *testing.T) {
 		assert.JSONEq(t, encodedDoc, string(bs))
 	})
 }
+
+func TestComposition(t *testing.T) {
+	testDate := time.Date(2023, 2, 24, 0, 0, 0, 0, time.UTC)
+	testDino := map[string]any{
+		"name":      "Dino",
+		"age":       0,
+		"birthdate": testDate,
+	}
+	testInnerDino, err := FQL("let x = ${my_var}", map[string]any{"my_var": testDino})
+
+	t.Run("template variable", func(t *testing.T) {
+		encodedDoc := `{"fql":[
+      "let x = ",
+      {"value":{
+        "age":{"@int":"0"},
+        "birthdate":{"@time":"2023-02-24T00:00:00Z"},
+        "name":"Dino"
+      }}
+    ]}`
+
+		if assert.NoError(t, err) {
+			bs := marshalAndCheck(t, testInnerDino)
+			assert.JSONEq(t, encodedDoc, string(bs))
+		}
+	})
+
+	t.Run("sub query", func(t *testing.T) {
+		encodedDoc := `{"fql":[
+      {"value":{
+        "fql":[
+          "let x = ",
+          {"value":{
+            "age":{"@int":"0"},
+            "birthdate":{"@time":"2023-02-24T00:00:00Z"},
+            "name":"Dino"
+          }}
+        ]
+      }},
+      "\nx { name }"
+    ]}`
+
+		if assert.NoError(t, err) {
+			inner, err := FQL("${inner}\nx { name }", map[string]any{"inner": testInnerDino})
+			if assert.NoError(t, err) {
+				bs := marshalAndCheck(t, inner)
+				assert.JSONEq(t, encodedDoc, string(bs))
+			}
+		}
+	})
+}

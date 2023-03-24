@@ -390,6 +390,12 @@ func marshal(v any) ([]byte, error) {
 
 func encode(v any, hint string) (any, error) {
 	switch vt := v.(type) {
+	case *queryFragment:
+		return encodeQueryFragment(vt)
+
+	case *QueryInterpolation:
+		return encodeQuery(vt)
+
 	case Module:
 		return encodeMod(vt)
 
@@ -406,7 +412,12 @@ func encode(v any, hint string) (any, error) {
 		return encodeTime(vt, hint)
 
 	case fqlRequest:
-		out := map[string]any{"query": vt.Query}
+		query, err := encode(vt.Query, hint)
+		if err != nil {
+			return nil, err
+		}
+
+		out := map[string]any{"query": query}
 		if len(vt.Arguments) > 0 {
 			if args, err := encodeMap(reflect.ValueOf(vt.Arguments)); err != nil {
 				return nil, err
@@ -620,4 +631,34 @@ func encodeStruct(s any) (any, error) {
 	}
 
 	return out, nil
+}
+
+func encodeQuery(q *QueryInterpolation) (any, error) {
+	const fqlLabel = "fql"
+
+	rendered := make([]any, len(q.fragments))
+	for i, f := range q.fragments {
+		if r, err := encode(f, ""); err != nil {
+			return nil, err
+		} else {
+			rendered[i] = r
+		}
+	}
+
+	return map[string]any{fqlLabel: rendered}, nil
+}
+
+func encodeQueryFragment(f *queryFragment) (any, error) {
+	if f.literal {
+		return f.value, nil
+	}
+
+	const valLabel = "value"
+
+	ret, err := encode(f.value, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{valLabel: ret}, nil
 }
