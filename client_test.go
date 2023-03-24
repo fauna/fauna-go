@@ -18,14 +18,12 @@ func TestDefaultClient(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaSecret, "secret")
 
 	client, clientErr := fauna.NewDefaultClient()
-	if clientErr != nil {
-		t.Fatalf("should be able to init default client: %s", clientErr.Error())
+	if !assert.NoError(t, clientErr) {
+		return
 	}
 
 	t.Run("should have version", func(t *testing.T) {
-		if fauna.DriverVersion == "" {
-			t.Errorf("driver version should not be empty")
-		}
+		assert.NotEmpty(t, fauna.DriverVersion)
 	})
 
 	t.Run("basic requests", func(t *testing.T) {
@@ -35,52 +33,31 @@ func TestDefaultClient(t *testing.T) {
 			query, _ := fauna.FQL(`${arg0}.length`, map[string]any{"arg0": s})
 
 			res, queryErr := client.Query(query)
-			if queryErr != nil {
-				t.Errorf("%s", queryErr.Error())
+			if !assert.NoError(t, queryErr) {
+				return
 			}
 
 			var i int
-			if err := res.Unmarshal(&i); err != nil {
-				t.Errorf(err.Error())
-			}
-
-			n := len(s)
-			if n != i {
-				t.Errorf("expected [%d] got [%d]", n, i)
+			marshalErr := res.Unmarshal(&i)
+			if assert.NoError(t, marshalErr) {
+				assert.Equal(t, len(s), i)
 			}
 
 			t.Run("response has expected stats headers", func(t *testing.T) {
-				if res.Stats.ComputeOps == 0 {
-					t.Errorf("expected some compute ops")
-				}
-
-				// This can be flakey on fast systems
-				// if res.Stats.QueryTimeMs == 0 {
-				// 	t.Errorf("should have some query time")
-				// }
-
-				if res.Stats.ContentionRetries > 0 {
-					t.Errorf("should not have any retries")
-				}
-
-				if res.Stats.ReadOps > 0 || res.Stats.WriteOps > 0 {
-					t.Errorf("should not have read/written any bytes")
-				}
-
-				if res.Stats.StorageBytesRead > 0 || res.Stats.StorageBytesWrite > 0 {
-					t.Errorf("should not have accessed storage")
-				}
+				assert.Greater(t, res.Stats.ComputeOps, 0, "should have some compute ops")
+				assert.GreaterOrEqual(t, res.Stats.QueryTimeMs, 0)
+				assert.Zero(t, res.Stats.ContentionRetries, "should not have retried")
+				assert.Zero(t, res.Stats.ReadOps, "should not have read any bytes")
+				assert.Zero(t, res.Stats.WriteOps, "should not have written any bytes")
+				assert.Zero(t, res.Stats.StorageBytesRead, "should not have read from storage")
+				assert.Zero(t, res.Stats.StorageBytesWrite, "should not have written to storage")
 			})
 		})
 
 		t.Run("Query with options", func(t *testing.T) {
 			q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
 			res, queryErr := client.Query(q, fauna.Timeout(time.Second))
-			if queryErr != nil {
-				t.Errorf("query failed: %s", queryErr.Error())
-			}
-
-			if res != nil {
+			if assert.NoError(t, queryErr) {
 				t.Logf("summary: %s", res.Summary)
 			}
 		})
@@ -91,23 +68,17 @@ func TestNewClient(t *testing.T) {
 	t.Run("default client", func(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
 		_, clientErr := fauna.NewDefaultClient()
-		if clientErr != nil {
-			t.Errorf("should be able to init default client: %s", clientErr.Error())
-		}
+		assert.NoError(t, clientErr)
 	})
 
 	t.Run("stringify", func(t *testing.T) {
 		client := fauna.NewClient("secret", fauna.URL(fauna.EndpointLocal))
-		if client.String() != fauna.EndpointLocal {
-			t.Errorf("client toString should be equal to the endpoint to ensure we don't expose secrets")
-		}
+		assert.Equal(t, client.String(), fauna.EndpointLocal, "client toString should be equal to the endpoint to ensure we don't expose secrets")
 	})
 
 	t.Run("missing secret", func(t *testing.T) {
 		_, clientErr := fauna.NewDefaultClient()
-		if clientErr == nil {
-			t.Errorf("should have failed due to missing secret")
-		}
+		assert.Error(t, clientErr, "should have failed due to missing secret")
 	})
 
 	t.Run("has transaction time", func(t *testing.T) {
@@ -115,30 +86,27 @@ func TestNewClient(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
 		client, clientErr := fauna.NewDefaultClient()
-		if clientErr != nil {
-			t.Fatalf("should be able to init a client: %s", clientErr.Error())
+		if !assert.NoError(t, clientErr) {
+			return
 		}
 
 		before := client.GetLastTxnTime()
-		if before != 0 {
-			t.Fatalf("shouldn't have a transaction time")
+		if !assert.Zero(t, before) {
+			return
 		}
 
 		q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
-		_, queryErr := client.Query(q)
-		if queryErr != nil {
-			t.Fatalf("query shouldn't error: %s", queryErr.Error())
+		if _, queryErr := client.Query(q); !assert.NoError(t, queryErr) {
+			return
 		}
 
 		first := client.GetLastTxnTime()
-		if first == 0 {
-			t.Errorf("should have a last transaction time greater than 0, got: %d", first)
-		}
+		assert.NotZero(t, first)
 
 		second := client.GetLastTxnTime()
-		if first != second {
-			t.Errorf("transaction time not have changed, first [%d] second [%d]", before, second)
-		}
+		assert.Equal(t, first, second)
+
+		assert.NotEqual(t, before, second)
 	})
 
 	t.Run("custom HTTP client", func(t *testing.T) {
@@ -149,9 +117,7 @@ func TestNewClient(t *testing.T) {
 		)
 		q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
 		_, queryErr := client.Query(q)
-		if queryErr != nil {
-			t.Errorf("failed to query: %s", queryErr.Error())
-		}
+		assert.NoError(t, queryErr)
 	})
 }
 
@@ -159,8 +125,8 @@ func TestBasicCRUDRequests(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaSecret, "secret")
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 	client, err := fauna.NewDefaultClient()
-	if err != nil {
-		t.Fatalf("%s", err.Error())
+	if !assert.NoError(t, err) {
+		return
 	}
 
 	coll := fmt.Sprintf("Person_%v", randomString(12))
@@ -192,19 +158,17 @@ func TestBasicCRUDRequests(t *testing.T) {
 		}
 
 		var result Person
-		if err := res.Unmarshal(&result); err != nil {
-			t.Errorf(err.Error())
-		}
+		err := res.Unmarshal(&result)
+		assert.NoError(t, err)
 
-		if p.Name != result.Name {
-			t.Errorf("expected Name [%s] got [%s]", p.Name, result.Name)
-		}
+		assert.Equal(t, p, &result)
 	})
 
 	t.Run("Update a Person", func(t *testing.T) {
+		addr := "321 Rainy St Seattle, WA 98011"
 		q, _ := fauna.FQL(
-			`${coll}.all().firstWhere(.name == ${name}).update({address: "321 Rainy St Seattle, WA 98011"})`,
-			map[string]any{"coll": collMod, "name": n})
+			`${coll}.all().firstWhere(.name == ${name}).update({address: ${addr}})`,
+			map[string]any{"coll": collMod, "name": n, "addr": addr})
 
 		res, queryErr := client.Query(q)
 		if !assert.NoError(t, queryErr) {
@@ -212,13 +176,10 @@ func TestBasicCRUDRequests(t *testing.T) {
 		}
 
 		var result Person
-		if err := res.Unmarshal(&result); err != nil {
-			t.Errorf(err.Error())
-		}
+		err := res.Unmarshal(&result)
+		assert.NoError(t, err)
 
-		if p.Address == result.Address {
-			t.Errorf("expected [%s] got [%s]", p.Address, result.Address)
-		}
+		assert.Equal(t, Person{n, addr}, result)
 	})
 
 	t.Run("Delete a Person", func(t *testing.T) {
@@ -229,9 +190,8 @@ func TestBasicCRUDRequests(t *testing.T) {
 		}
 
 		var result Person
-		if err := res.Unmarshal(&result); err != nil {
-			t.Errorf(err.Error())
-		}
+		err := res.Unmarshal(&result)
+		assert.NoError(t, err)
 	})
 
 	t.Run("Delete a Collection", func(t *testing.T) {
@@ -250,10 +210,7 @@ func TestHeaders(t *testing.T) {
 	// use a test client to validate the headers are being set as expected below
 	testingClient := &http.Client{Transport: &http.Transport{
 		Proxy: func(request *http.Request) (*url.URL, error) {
-			if val := request.Header.Get(currentHeader); val != expectedValue {
-				t.Errorf("header [%s] wrong, got [%s] should be [%s]", currentHeader, val, expectedValue)
-			}
-
+			assert.Equal(t, expectedValue, request.Header.Get(currentHeader))
 			return request.URL, nil
 		},
 	}}
@@ -321,8 +278,10 @@ func TestHeaders(t *testing.T) {
 				// running a simple query just to invoke the request
 				q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
 				_, queryErr := client.Query(q)
-				if !tt.expectError && queryErr != nil {
-					t.Errorf("query failed: %s", queryErr.Error())
+				if !tt.expectError {
+					assert.NoError(t, queryErr)
+				} else {
+					assert.Error(t, queryErr)
 				}
 			})
 		}
@@ -343,9 +302,8 @@ func TestHeaders(t *testing.T) {
 		expectedValue = "hero=Wolverine,team=X_Men"
 
 		q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
-		if _, queryErr := client.Query(q, fauna.Tags(map[string]string{"hero": "Wolverine"})); queryErr != nil {
-			t.Errorf("query failed: %s", queryErr.Error())
-		}
+		_, queryErr := client.Query(q, fauna.Tags(map[string]string{"hero": "Wolverine"}))
+		assert.NoError(t, queryErr)
 
 		// assertion in testingClient above
 
@@ -353,9 +311,8 @@ func TestHeaders(t *testing.T) {
 		expectedValue = "query-traceparent-id"
 
 		q, _ = fauna.FQL(`Math.abs(-5.123e3)`)
-		if _, queryErr := client.Query(q, fauna.Traceparent(expectedValue)); queryErr != nil {
-			t.Fatalf("failed to query with traceparent: %s", queryErr.Error())
-		}
+		_, queryErr = client.Query(q, fauna.Traceparent(expectedValue))
+		assert.NoError(t, queryErr)
 	})
 
 	t.Run("can use convenience methods", func(t *testing.T) {
@@ -375,9 +332,8 @@ func TestHeaders(t *testing.T) {
 				currentHeader: expectedValue,
 			}),
 		)
-		if client == nil {
-			t.Errorf("failed to init client with header")
-		}
+
+		assert.NotNil(t, client)
 	})
 
 	t.Run("supports empty headers", func(t *testing.T) {
@@ -388,9 +344,7 @@ func TestHeaders(t *testing.T) {
 				"shouldBeEmpty": "",
 			}),
 		)
-		if client == nil {
-			t.Errorf("failed to init client with empty header")
-		}
+		assert.NotNil(t, client)
 	})
 }
 
@@ -399,8 +353,8 @@ func TestQueryTags(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaSecret, "secret")
 
 	client, clientErr := fauna.NewDefaultClient()
-	if clientErr != nil {
-		t.Fatalf("should be able to init default client: %s", clientErr.Error())
+	if !assert.NoError(t, clientErr) {
+		return
 	}
 
 	tags := map[string]string{
@@ -422,14 +376,14 @@ func TestErrorHandling(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
 		client, clientErr := fauna.NewDefaultClient()
-		if clientErr != nil {
-			t.Fatalf("failed to init fauna.Client")
+		if assert.NoError(t, clientErr) {
+			return
 		}
 
 		q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
 		_, queryErr := client.Query(q)
-		if queryErr == nil {
-			t.Fatalf("expected an error")
+		if assert.NoError(t, queryErr) {
+			return
 		}
 
 		var expectedErr *fauna.AuthenticationError
@@ -441,18 +395,17 @@ func TestErrorHandling(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
 		client, clientErr := fauna.NewDefaultClient()
-		if clientErr != nil {
-			t.Fatalf("failed to init fauna.Client")
+		if assert.NoError(t, clientErr) {
+			return
 		}
 
 		q, _ := fauna.FQL(`SillyPants`)
 		_, queryErr := client.Query(q)
-		if queryErr == nil {
-			t.Fatalf("expected an error")
-		}
 
-		var expectedErr *fauna.QueryRuntimeError
-		assert.ErrorAs(t, queryErr, &expectedErr)
+		if assert.Error(t, queryErr) {
+			var expectedErr *fauna.QueryRuntimeError
+			assert.ErrorAs(t, queryErr, &expectedErr)
+		}
 	})
 
 	t.Run("service error", func(t *testing.T) {
@@ -460,8 +413,8 @@ func TestErrorHandling(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
 		client, clientErr := fauna.NewDefaultClient()
-		if clientErr != nil {
-			t.Fatalf("failed to init fauna.Client")
+		if assert.NoError(t, clientErr) {
+			return
 		}
 
 		testCollection := "testing"
@@ -473,20 +426,16 @@ func TestErrorHandling(t *testing.T) {
 		}
 
 		q, _ = fauna.FQL(`Collection.create({ name: ${arg1} })`, map[string]any{"arg1": testCollection})
-		res, queryErr := client.Query(q)
-		if queryErr == nil {
-			t.Logf("response: %v", res.Data)
-			t.Errorf("expected this to fail")
-		} else {
+		if _, queryErr := client.Query(q); assert.Error(t, queryErr) {
 			var expectedErr *fauna.QueryRuntimeError
 			assert.ErrorAs(t, queryErr, &expectedErr)
+		} else {
+			return
 		}
 
 		q, _ = fauna.FQL(`Collection.byName(${arg1}).delete()`, map[string]any{"arg1": testCollection})
 		_, queryErr = client.Query(q)
-		if queryErr != nil {
-			t.Fatalf("error: %s", queryErr.Error())
-		}
+		assert.NoError(t, queryErr)
 	})
 }
 

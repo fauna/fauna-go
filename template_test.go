@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/fauna/fauna-go"
+	"github.com/stretchr/testify/assert"
 )
 
 type TemplateSuccessCase struct {
@@ -86,20 +87,16 @@ func TestTemplate_ParseSuccess(t *testing.T) {
 
 	for _, tc := range testCases {
 		parsed, err := fauna.NewTemplate(tc.given).Parse()
-
-		if err != nil {
-			t.Fatalf("could not parse template: %s. err: %s", tc.given, err)
+		if !assert.NoError(t, err) {
+			return
 		}
 
-		if len(parsed) != len(*tc.wants) {
-			t.Errorf("wants %q but got %q", tc.wants, parsed)
-		}
+		assert.Equal(t, len(*tc.wants), len(parsed))
 
 		for i, tp := range parsed {
 			expected := (*tc.wants)[i]
-			if tp.Text != expected.Text && tp.Category != expected.Category {
-				t.Errorf("wants %q but got %q", expected, tp)
-			}
+			assert.Equal(t, expected.Text, tp.Text)
+			assert.Equal(t, expected.Category, tp.Category)
 		}
 	}
 }
@@ -113,14 +110,9 @@ func TestTemplate_ParseFail(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		parsed, err := fauna.NewTemplate(tc.given).Parse()
-
-		if err == nil {
-			t.Fatalf("expected error, but instead we parsed %s into %q", tc.given, parsed)
-		}
-
-		if err.Error() != tc.error {
-			t.Errorf("Expected error `%s` but received `%s`", tc.error, err.Error())
+		_, err := fauna.NewTemplate(tc.given).Parse()
+		if assert.Error(t, err) {
+			assert.EqualError(t, err, tc.error)
 		}
 	}
 }
