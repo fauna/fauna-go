@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"os"
 	"testing"
 	"time"
 
@@ -120,27 +119,6 @@ func TestDefaultClient(t *testing.T) {
 				t.Logf("summary: %s", res.Summary)
 			}
 		})
-	})
-
-	t.Run("validate preview", func(t *testing.T) {
-		if val, found := os.LookupEnv("FAUNA_PREVIEW_SECRET"); !found {
-			t.Skip()
-		} else {
-			t.Setenv("FAUNA_SECRET", val)
-			t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointPreview)
-
-			previewClient, previewClientErr := fauna.NewDefaultClient()
-			if previewClientErr != nil {
-				t.Errorf("failed to init preview client: %v", clientErr.Error())
-				t.Fail()
-			}
-
-			q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
-			_, queryErr := previewClient.Query(q, nil)
-			if queryErr != nil {
-				t.Errorf("query env preview failed: %v", clientErr.Error())
-			}
-		}
 	})
 }
 

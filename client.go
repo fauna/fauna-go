@@ -24,10 +24,8 @@ import (
 var DriverVersion string
 
 const (
-	// EndpointProduction constant for Fauna Production endpoint
-	EndpointProduction = "https://db.fauna.com"
-	// EndpointPreview constant for Fauna Preview endpoint
-	EndpointPreview = "https://db.fauna-preview.com"
+	// EndpointDefault constant for Fauna Production endpoint
+	EndpointDefault = "https://db.fauna.com"
 	// EndpointLocal constant for local (Docker) endpoint
 	EndpointLocal = "http://localhost:8443"
 
@@ -83,7 +81,7 @@ func NewDefaultClient() (*Client, error) {
 
 	url, urlFound := os.LookupEnv(EnvFaunaEndpoint)
 	if !urlFound {
-		url = EndpointProduction
+		url = EndpointDefault
 	}
 
 	return NewClient(
@@ -100,7 +98,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 		ctx:    context.TODO(),
 		secret: secret,
 		http:   defaultHTTPClient(false),
-		url:    EndpointProduction,
+		url:    EndpointDefault,
 		headers: map[string]string{
 			headerContentType:   "application/json; charset=utf-8",
 			headerDriver:        "go",
