@@ -99,13 +99,16 @@ func unmarshal(body []byte, into any) error {
 	if err != nil {
 		return err
 	}
+	return decodeInto(decBody, into)
+}
 
+func decodeInto(body any, into any) error {
 	dec, err := mapDecoder(into)
 	if err != nil {
 		return err
 	}
 
-	return dec.Decode(decBody)
+	return dec.Decode(body)
 }
 
 var (

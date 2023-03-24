@@ -122,8 +122,8 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	return client
 }
 
-// Query invoke fql and unmarshal the data into the provided result object, optionally set multiple [QueryOptFn]
-func (c *Client) Query(fql *Query, result any, opts ...QueryOptFn) (*Response, error) {
+// Query invoke fql optionally set multiple [QueryOptFn]
+func (c *Client) Query(fql *Query, opts ...QueryOptFn) (*QuerySuccess, error) {
 	req := &fqlRequest{
 		Context: c.ctx,
 		Query:   fql,
@@ -134,19 +134,7 @@ func (c *Client) Query(fql *Query, result any, opts ...QueryOptFn) (*Response, e
 		queryOptionFn(req)
 	}
 
-	res, err := c.do(req)
-	if err != nil {
-		return res, err
-	}
-
-	// we only need to unmarshal if the consumer provided an object
-	if result != nil {
-		if unmarshalErr := unmarshal(res.Data, result); unmarshalErr != nil {
-			return res, fmt.Errorf("failed to unmarshal object [%v] from result: %v\nerror: %w", result, string(res.Data), unmarshalErr)
-		}
-	}
-
-	return res, nil
+	return c.do(req)
 }
 
 // SetLastTxnTime update the last txn time for the [fauna.Client]

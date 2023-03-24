@@ -2,7 +2,6 @@ package fauna_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/fauna/fauna-go"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultClient(t *testing.T) {
@@ -34,15 +34,14 @@ func TestDefaultClient(t *testing.T) {
 
 			query, _ := fauna.FQL(`${arg0}.length`, map[string]any{"arg0": s})
 
-			var i int
-			res, queryErr := client.Query(query, &i)
+			res, queryErr := client.Query(query)
 			if queryErr != nil {
 				t.Errorf("%s", queryErr.Error())
 			}
 
-			expectedProto := "HTTP/2.0"
-			if res.Raw.Proto != expectedProto {
-				t.Errorf("request protocol got [%s] expected [%s]", res.Raw.Proto, expectedProto)
+			var i int
+			if err := res.Unmarshal(&i); err != nil {
+				t.Errorf(err.Error())
 			}
 
 			n := len(s)
@@ -51,66 +50,32 @@ func TestDefaultClient(t *testing.T) {
 			}
 
 			t.Run("response has expected stats headers", func(t *testing.T) {
-				if res.Stats[fauna.StatsComputeOps] == 0 {
+				if res.Stats.ComputeOps == 0 {
 					t.Errorf("expected some compute ops")
 				}
 
-				// if res.Stats[fauna.StatsQueryTimeMs] == 0 {
 				// This can be flakey on fast systems
-				//t.Errorf("should have some query time")
+				// if res.Stats.QueryTimeMs == 0 {
+				// 	t.Errorf("should have some query time")
 				// }
 
-				if res.Stats[fauna.StatsContentionRetries] > 0 {
+				if res.Stats.ContentionRetries > 0 {
 					t.Errorf("should not have any retries")
 				}
 
-				if res.Stats[fauna.StatsReadOps] > 0 || res.Stats[fauna.StatsWriteOps] > 0 {
+				if res.Stats.ReadOps > 0 || res.Stats.WriteOps > 0 {
 					t.Errorf("should not have read/written any bytes")
 				}
 
-				if res.Stats[fauna.StatsStorageBytesRead] > 0 || res.Stats[fauna.StatsStorageBytesWrite] > 0 {
+				if res.Stats.StorageBytesRead > 0 || res.Stats.StorageBytesWrite > 0 {
 					t.Errorf("should not have accessed storage")
-				}
-
-				if res.FaunaBuild() == "" {
-					t.Errorf("expected a fauna build")
-				}
-
-				if res.Traceparent() == "" {
-					t.Errorf("should have a traceparent")
 				}
 			})
 		})
 
-		t.Run("Argument Request", func(t *testing.T) {
-			a := "arg1"
-			s := "maverick"
-
-			q, _ := fauna.FQL(fmt.Sprintf(`${%v}.length`, a), map[string]any{a: s})
-
-			var i int
-			res, queryErr := client.Query(q, &i)
-			if queryErr != nil {
-				if res != nil {
-					t.Logf("response: %s", res.Bytes)
-				}
-
-				t.Fatalf("%s", queryErr)
-			}
-
-			n := len(s)
-			if n != i {
-				t.Errorf("expected [%d] got [%d]", n, i)
-			}
-
-			if client.GetLastTxnTime() == 0 {
-				t.Errorf("last transaction time should be greater than 0")
-			}
-		})
-
 		t.Run("Query with options", func(t *testing.T) {
 			q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
-			res, queryErr := client.Query(q, nil, fauna.Timeout(time.Second))
+			res, queryErr := client.Query(q, fauna.Timeout(time.Second))
 			if queryErr != nil {
 				t.Errorf("query failed: %s", queryErr.Error())
 			}
@@ -160,7 +125,7 @@ func TestNewClient(t *testing.T) {
 		}
 
 		q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
-		_, queryErr := client.Query(q, nil)
+		_, queryErr := client.Query(q)
 		if queryErr != nil {
 			t.Fatalf("query shouldn't error: %s", queryErr.Error())
 		}
@@ -183,14 +148,9 @@ func TestNewClient(t *testing.T) {
 			fauna.HTTPClient(http.DefaultClient),
 		)
 		q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
-		res, queryErr := client.Query(q, nil)
+		_, queryErr := client.Query(q)
 		if queryErr != nil {
 			t.Errorf("failed to query: %s", queryErr.Error())
-		}
-
-		expectedProto := "HTTP/1.1"
-		if res.Raw.Proto != expectedProto {
-			t.Errorf("expected protocol: %s got %s", expectedProto, res.Raw.Proto)
 		}
 	})
 }
@@ -204,13 +164,12 @@ func TestBasicCRUDRequests(t *testing.T) {
 	}
 
 	coll := fmt.Sprintf("Person_%v", randomString(12))
+	collMod := &fauna.Module{coll}
 
 	t.Run("Create a collection", func(t *testing.T) {
 		q, _ := fauna.FQL(`Collection.create({ name: ${name} })`, map[string]any{"name": coll})
-		res, queryErr := client.Query(q, nil)
-		if queryErr != nil {
-			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
-		}
+		_, queryErr := client.Query(q)
+		assert.NoError(t, queryErr)
 	})
 
 	n := "John Smith"
@@ -220,59 +179,65 @@ func TestBasicCRUDRequests(t *testing.T) {
 	}
 
 	t.Run("Create a Person", func(t *testing.T) {
-		q, _ := fauna.FQL(fmt.Sprintf(`%s.create(${person})`, coll), map[string]any{"person": p})
-		res, queryErr := client.Query(q, nil)
-		if queryErr != nil {
-			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
-		}
+		q, _ := fauna.FQL(`${coll}.create(${person})`, map[string]any{"coll": collMod, "person": p})
+		_, queryErr := client.Query(q)
+		assert.NoError(t, queryErr)
 	})
 
 	t.Run("Query a Person", func(t *testing.T) {
-		pResult := Person{}
-		q, _ := fauna.FQL(fmt.Sprintf(`%s.all().firstWhere(.name == ${name})`, coll), map[string]any{"name": n})
-		res, queryErr := client.Query(q, &pResult)
-		if queryErr != nil {
-			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
+		q, _ := fauna.FQL(`${coll}.all().firstWhere(.name == ${name})`, map[string]any{"coll": collMod, "name": n})
+		res, queryErr := client.Query(q)
+		if !assert.NoError(t, queryErr) {
+			return
 		}
 
-		if res != nil {
-			t.Logf("response: %s", res.Bytes)
+		var result Person
+		if err := res.Unmarshal(&result); err != nil {
+			t.Errorf(err.Error())
 		}
 
-		if p.Name != pResult.Name {
-			t.Errorf("expected Name [%s] got [%s]", p.Name, pResult.Name)
+		if p.Name != result.Name {
+			t.Errorf("expected Name [%s] got [%s]", p.Name, result.Name)
 		}
 	})
 
 	t.Run("Update a Person", func(t *testing.T) {
-		pResult := Person{}
 		q, _ := fauna.FQL(
-			fmt.Sprintf(`%s.all().firstWhere(.name == ${name}).update({address: "321 Rainy St Seattle, WA 98011"})`, coll),
-			map[string]any{"name": n})
-		res, queryErr := client.Query(q, &pResult)
-		if queryErr != nil {
-			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
+			`${coll}.all().firstWhere(.name == ${name}).update({address: "321 Rainy St Seattle, WA 98011"})`,
+			map[string]any{"coll": collMod, "name": n})
+
+		res, queryErr := client.Query(q)
+		if !assert.NoError(t, queryErr) {
+			return
 		}
 
-		if p.Address == pResult.Address {
-			t.Errorf("expected [%s] got [%s]", p.Address, pResult.Address)
+		var result Person
+		if err := res.Unmarshal(&result); err != nil {
+			t.Errorf(err.Error())
+		}
+
+		if p.Address == result.Address {
+			t.Errorf("expected [%s] got [%s]", p.Address, result.Address)
 		}
 	})
 
 	t.Run("Delete a Person", func(t *testing.T) {
-		q, _ := fauna.FQL(fmt.Sprintf(`%s.all().firstWhere(.name == ${name}).delete()`, coll), map[string]any{"name": p.Name})
-		res, queryErr := client.Query(q, &p)
-		if queryErr != nil {
-			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
+		q, _ := fauna.FQL(`${coll}.all().firstWhere(.name == ${name}).delete()`, map[string]any{"coll": collMod, "name": p.Name})
+		res, queryErr := client.Query(q)
+		if !assert.NoError(t, queryErr) {
+			return
+		}
+
+		var result Person
+		if err := res.Unmarshal(&result); err != nil {
+			t.Errorf(err.Error())
 		}
 	})
 
 	t.Run("Delete a Collection", func(t *testing.T) {
 		q, _ := fauna.FQL(`Collection.byName(${coll}).delete()`, map[string]any{"coll": coll})
-		res, queryErr := client.Query(q, nil)
-		if queryErr != nil {
-			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
-		}
+		_, queryErr := client.Query(q)
+		assert.NoError(t, queryErr)
 	})
 }
 
@@ -355,7 +320,7 @@ func TestHeaders(t *testing.T) {
 
 				// running a simple query just to invoke the request
 				q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
-				_, queryErr := client.Query(q, nil)
+				_, queryErr := client.Query(q)
 				if !tt.expectError && queryErr != nil {
 					t.Errorf("query failed: %s", queryErr.Error())
 				}
@@ -378,7 +343,7 @@ func TestHeaders(t *testing.T) {
 		expectedValue = "hero=Wolverine,team=X_Men"
 
 		q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
-		if _, queryErr := client.Query(q, nil, fauna.Tags(map[string]string{"hero": "Wolverine"})); queryErr != nil {
+		if _, queryErr := client.Query(q, fauna.Tags(map[string]string{"hero": "Wolverine"})); queryErr != nil {
 			t.Errorf("query failed: %s", queryErr.Error())
 		}
 
@@ -388,7 +353,7 @@ func TestHeaders(t *testing.T) {
 		expectedValue = "query-traceparent-id"
 
 		q, _ = fauna.FQL(`Math.abs(-5.123e3)`)
-		if _, queryErr := client.Query(q, nil, fauna.QueryTraceparent(expectedValue)); queryErr != nil {
+		if _, queryErr := client.Query(q, fauna.QueryTraceparent(expectedValue)); queryErr != nil {
 			t.Fatalf("failed to query with traceparent: %s", queryErr.Error())
 		}
 	})
@@ -429,6 +394,28 @@ func TestHeaders(t *testing.T) {
 	})
 }
 
+func TestQueryTags(t *testing.T) {
+	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+	t.Setenv(fauna.EnvFaunaSecret, "secret")
+
+	client, clientErr := fauna.NewDefaultClient()
+	if clientErr != nil {
+		t.Fatalf("should be able to init default client: %s", clientErr.Error())
+	}
+
+	tags := map[string]string{
+		"hello": "world",
+		"what":  "areyoudoing",
+	}
+
+	// running a simple query just to invoke the request
+	q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
+	res, queryErr := client.Query(q, fauna.Tags(tags))
+	if assert.NoError(t, queryErr) {
+		assert.Equal(t, tags, res.QueryTags)
+	}
+}
+
 func TestErrorHandling(t *testing.T) {
 	t.Run("authorization error", func(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "I'm a little teapot")
@@ -440,14 +427,13 @@ func TestErrorHandling(t *testing.T) {
 		}
 
 		q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
-		_, queryErr := client.Query(q, nil)
+		_, queryErr := client.Query(q)
 		if queryErr == nil {
 			t.Fatalf("expected an error")
 		}
 
-		if !errors.As(queryErr, &fauna.AuthenticationError{}) {
-			t.Errorf("wrong type: %T", queryErr)
-		}
+		var expectedErr *fauna.AuthenticationError
+		assert.ErrorAs(t, queryErr, &expectedErr)
 	})
 
 	t.Run("invalid query", func(t *testing.T) {
@@ -460,14 +446,13 @@ func TestErrorHandling(t *testing.T) {
 		}
 
 		q, _ := fauna.FQL(`SillyPants`)
-		_, queryErr := client.Query(q, nil)
+		_, queryErr := client.Query(q)
 		if queryErr == nil {
 			t.Fatalf("expected an error")
 		}
 
-		if !errors.As(queryErr, &fauna.QueryRuntimeError{}) {
-			t.Errorf("wrong type: %T", queryErr)
-		}
+		var expectedErr *fauna.QueryRuntimeError
+		assert.ErrorAs(t, queryErr, &expectedErr)
 	})
 
 	t.Run("service error", func(t *testing.T) {
@@ -482,26 +467,23 @@ func TestErrorHandling(t *testing.T) {
 		testCollection := "testing"
 
 		q, _ := fauna.FQL(`Collection.create({ name: ${arg1} })`, map[string]any{"arg1": testCollection})
-		res, queryErr := client.Query(q, nil)
-		if queryErr != nil {
-			t.Fatalf("error: %s\nresponse: %s", queryErr.Error(), res.Bytes)
+		_, queryErr := client.Query(q)
+		if !assert.NoError(t, queryErr) {
+			return
 		}
 
 		q, _ = fauna.FQL(`Collection.create({ name: ${arg1} })`, map[string]any{"arg1": testCollection})
-		res, queryErr = client.Query(q, nil)
+		res, queryErr := client.Query(q)
 		if queryErr == nil {
 			t.Logf("response: %v", res.Data)
 			t.Errorf("expected this to fail")
 		} else {
-			if !errors.As(queryErr, &fauna.QueryRuntimeError{}) {
-				t.Errorf("wrong type: %T", queryErr)
-			}
+			var expectedErr *fauna.QueryRuntimeError
+			assert.ErrorAs(t, queryErr, &expectedErr)
 		}
 
-		t.Logf("status: %d\nbody: %s", res.Raw.StatusCode, res.Bytes)
-
 		q, _ = fauna.FQL(`Collection.byName(${arg1}).delete()`, map[string]any{"arg1": testCollection})
-		_, queryErr = client.Query(q, nil)
+		_, queryErr = client.Query(q)
 		if queryErr != nil {
 			t.Fatalf("error: %s", queryErr.Error())
 		}

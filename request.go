@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type fqlRequest struct {
@@ -17,7 +18,32 @@ type fqlRequest struct {
 	Arguments map[string]any `fauna:"arguments"`
 }
 
-func (c *Client) do(request *fqlRequest) (*Response, error) {
+type queryResponse struct {
+	Header     http.Header
+	Data       json.RawMessage `json:"data"`
+	Error      *ServiceError   `json:"error,omitempty"`
+	Logging    []string        `json:"logging,omitempty"`
+	StaticType string          `json:"static_type"`
+	Stats      *Stats          `json:"stats,omitempty"`
+	Summary    string          `json:"summary"`
+	TxnTime    int64           `json:"txn_ts"`
+	Tags       string          `json:"query_tags"`
+}
+
+func (r *queryResponse) QueryTags() map[string]string {
+	ret := map[string]string{}
+
+	if r.Tags != "" {
+		for _, tag := range strings.Split(r.Tags, `,`) {
+			tokens := strings.Split(tag, `=`)
+			ret[tokens[0]] = tokens[1]
+		}
+	}
+
+	return ret
+}
+
+func (c *Client) do(request *fqlRequest) (*QuerySuccess, error) {
 	bytesOut, bytesErr := marshal(request)
 	if bytesErr != nil {
 		return nil, fmt.Errorf("marshal request failed: %w", bytesErr)
@@ -49,34 +75,38 @@ func (c *Client) do(request *fqlRequest) (*Response, error) {
 	}
 
 	r, doErr := c.http.Do(req)
-
 	if doErr != nil {
 		return nil, NetworkError(fmt.Errorf("network error: %w", doErr))
 	}
 
-	defer func() {
-		_ = req.Body.Close()
-	}()
-
-	var response Response
-	response.Raw = r
+	var res queryResponse
 
 	bin, readErr := io.ReadAll(r.Body)
 	if readErr != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", readErr)
 	}
 
-	response.Bytes = bin
-
-	if unmarshalErr := json.Unmarshal(bin, &response); unmarshalErr != nil {
-		return &response, fmt.Errorf("failed to umarmshal response: %w", unmarshalErr)
+	if unmarshalErr := json.Unmarshal(bin, &res); unmarshalErr != nil {
+		return nil, fmt.Errorf("failed to umarmshal response: %w", unmarshalErr)
 	}
 
-	c.lastTxnTime.sync(response.TxnTime)
+	c.lastTxnTime.sync(res.TxnTime)
+	res.Header = r.Header
 
-	if serviceErr := GetServiceError(r.StatusCode, response.Error, response.Summary); serviceErr != nil {
-		return &response, serviceErr
+	if serviceErr := getServiceError(r.StatusCode, &res); serviceErr != nil {
+		return nil, serviceErr
 	}
 
-	return &response, nil
+	data, decodeErr := decode(res.Data)
+	if decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode data: %w", decodeErr)
+	}
+
+	ret := &QuerySuccess{
+		QueryInfo:  newQueryInfo(&res),
+		Data:       data,
+		StaticType: res.StaticType,
+	}
+
+	return ret, nil
 }
