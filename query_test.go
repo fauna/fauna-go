@@ -10,7 +10,7 @@ type fqlSuccessCase struct {
 	testName string
 	query    string
 	args     map[string]any
-	wants    *QueryInterpolation
+	wants    *Query
 }
 
 func TestFQL(t *testing.T) {
@@ -26,7 +26,7 @@ func TestFQL(t *testing.T) {
 			"simple literal case",
 			"let x = 11",
 			nil,
-			&QueryInterpolation{
+			&Query{
 				fragments: []*queryFragment{{true, "let x = 11"}},
 			},
 		},
@@ -34,7 +34,7 @@ func TestFQL(t *testing.T) {
 			"simple literal case with brace",
 			"let x = { y: 11 }",
 			nil,
-			&QueryInterpolation{
+			&Query{
 				fragments: []*queryFragment{{true, "let x = { y: 11 }"}},
 			},
 		},
@@ -42,7 +42,7 @@ func TestFQL(t *testing.T) {
 			"template variable and fauna variable",
 			"let age = ${n1}\n\"Alice is #{age} years old.\"",
 			map[string]any{"n1": 5},
-			&QueryInterpolation{
+			&Query{
 				fragments: []*queryFragment{
 					{true, "let age = "},
 					{false, 5},
@@ -54,7 +54,7 @@ func TestFQL(t *testing.T) {
 			"template variable",
 			"let x = ${my_var}",
 			map[string]any{"my_var": testDino},
-			&QueryInterpolation{
+			&Query{
 				fragments: []*queryFragment{
 					{true, "let x = "},
 					{false, testDino},
@@ -67,7 +67,7 @@ func TestFQL(t *testing.T) {
 			map[string]any{
 				"inner": testInnerDino,
 			},
-			&QueryInterpolation{
+			&Query{
 				fragments: []*queryFragment{
 					{false, testInnerDino},
 					{true, "\nx { name }"},
