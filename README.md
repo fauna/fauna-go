@@ -29,7 +29,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/fauna/fauna-go/v10/fauna"
+	"github.com/fauna/fauna-go"
 )
 
 type Dog struct {
@@ -37,7 +37,10 @@ type Dog struct {
 }
 
 func main() {
-	client := fauna.NewFaunaClient("your-secret-here")
+	client, clientErr := fauna.NewDefaultClient()
+	if clientErr != nil {
+		panic(clientErr)
+	}
 
 	if _, err := client.Query(`Collection.create({ name: "Dogs" }`); err != nil {
 		panic(err)
@@ -76,7 +79,10 @@ func userByTin(tin string) (*fauna.Query, error) {
 }
 
 func main() {
-	client := fauna.NewFaunaClient("your-secret-here")
+	client, clientErr := fauna.NewDefaultClient()
+	if clientErr != nil {
+		panic(clientErr)
+	}
 
     byTin, err := userByTin("1234")
     if err != nil {
