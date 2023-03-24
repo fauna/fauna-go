@@ -40,7 +40,7 @@ type BusinessObj struct {
 	PtrRefField   *Ref                `fauna:"ptr_ref_field"`
 	RefField      Ref                 `fauna:"ref_field"`
 	NamedRefField NamedRef            `fauna:"named_ref_field"`
-	SetField      SetCollection       `fauna:"set_field"`
+	SetField      Page                `fauna:"set_field"`
 	ObjField      SubBusinessObj      `fauna:"obj_field"`
 	DocField      DocBusinessObj      `fauna:"doc_field"`
 	NamedDocField NamedDocBusinessObj `fauna:"named_doc_field"`
@@ -249,8 +249,8 @@ func TestEncodingFaunaStructs(t *testing.T) {
 		roundTripCheck(t, obj, `{"@ref":{"name":"Bar","coll":{"@mod":"Foo"}}}`)
 	})
 
-	t.Run("encodes SetCollection", func(t *testing.T) {
-		obj := SetCollection{[]any{"0", "1", "2"}, "foobarbaz"}
+	t.Run("encodes Page", func(t *testing.T) {
+		obj := Page{[]any{"0", "1", "2"}, "foobarbaz"}
 		roundTripCheck(t, obj, `{"@set":{"data":["0","1","2"],"after":"foobarbaz"}}`)
 	})
 }

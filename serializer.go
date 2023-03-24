@@ -77,7 +77,7 @@ type NamedRef struct {
 	Coll *Module `fauna:"coll"`
 }
 
-type SetCollection struct {
+type Page struct {
 	Data  []any  `fauna:"data"`
 	After string `fauna:"after"`
 }
@@ -334,7 +334,7 @@ func unboxSet(v map[string]any) (any, error) {
 				return nil, err
 			}
 
-			setC := SetCollection{Data: data}
+			setC := Page{Data: data}
 			if afterRaw, ok := v["after"]; ok {
 				if after, ok := afterRaw.(string); ok {
 					setC.After = after
@@ -405,7 +405,7 @@ func encode(v any, hint string) (any, error) {
 	case NamedRef:
 		return encodeFaunaStruct(typeTagRef, vt)
 
-	case SetCollection:
+	case Page:
 		return encodeFaunaStruct(typeTagSet, vt)
 
 	case time.Time:
