@@ -15,11 +15,11 @@ resources:
     type: git
     icon: github
     source:
-      uri: https://github.com/fauna/fauna-go
+      uri: git@github.com:fauna/fauna-go.git
       branch: main
       private_key: ((github-ssh-key))
-      # paths:
-      #  - version
+      paths:
+        - version
 
 jobs:
   - name: set-self
@@ -34,6 +34,7 @@ jobs:
     public: false
     plan:
       - get: fauna-go-repository
+        trigger: true
         passed:
           - set-self
 
@@ -43,10 +44,10 @@ jobs:
       - put: fauna-go-repository
         params:
           repository: fauna-go-repository
-          tag_prefix: v
-          tag_only: true
           # use contents of version file
-          tag: version
+          tag: fauna-go-repository/version
+          tag_prefix: v
+          only_tag: true
         on_success:
           put: notify
           params:
