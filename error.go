@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-const HttpStatusQueryTimeout = 440
+const httpStatusQueryTimeout = 440
 
 var queryCheckFailureCodes = map[string]struct{}{
 	"invalid_function_definition": {},
@@ -90,7 +90,7 @@ func getServiceError(httpStatus int, res *queryResponse) error {
 		return &AuthorizationError{res.Error}
 	case http.StatusTooManyRequests:
 		return &ThrottlingError{res.Error}
-	case HttpStatusQueryTimeout:
+	case httpStatusQueryTimeout:
 		return &QueryTimeoutError{res.Error}
 	case http.StatusInternalServerError:
 		return &ServiceInternalError{res.Error}
