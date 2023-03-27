@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eou pipeline
+set -eou pipefail
 
 cd ./fauna-go-repository
 
