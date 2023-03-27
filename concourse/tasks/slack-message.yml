@@ -14,5 +14,5 @@ outputs:
   - name: slack-message
 
 run:
-  path: ./fauna-python-repository/concourse/scripts/slack-message.sh
+  path: ./fauna-go-repository/concourse/scripts/slack-message.sh
 
