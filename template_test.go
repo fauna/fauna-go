@@ -8,7 +8,7 @@ import (
 
 type TemplateSuccessCase struct {
 	given string
-	wants *[]TemplatePart
+	wants *[]templatePart
 }
 
 type TemplateErrorCase struct {
@@ -20,7 +20,7 @@ func TestTemplate_ParseSuccess(t *testing.T) {
 	testCases := []TemplateSuccessCase{
 		{
 			"let x = ${my_var}",
-			&[]TemplatePart{
+			&[]templatePart{
 				{
 					"let x = ",
 					templateLiteral,
@@ -33,7 +33,7 @@ func TestTemplate_ParseSuccess(t *testing.T) {
 		},
 		{
 			"let x = ${my_var}\nlet y = ${my_var}\nx * y",
-			&[]TemplatePart{
+			&[]templatePart{
 				{
 					"let x = ",
 					templateLiteral,
@@ -58,7 +58,7 @@ func TestTemplate_ParseSuccess(t *testing.T) {
 		},
 		{
 			"${my_var} { .name }",
-			&[]TemplatePart{
+			&[]templatePart{
 				{
 					"my_var",
 					templateVariable,
@@ -71,7 +71,7 @@ func TestTemplate_ParseSuccess(t *testing.T) {
 		},
 		{
 			"let x = '$${not_a_var}'",
-			&[]TemplatePart{
+			&[]templatePart{
 				{
 					"let x = '$",
 					templateLiteral,
