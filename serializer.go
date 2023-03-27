@@ -656,12 +656,16 @@ func encodeQueryFragment(f *queryFragment) (any, error) {
 		return f.value, nil
 	}
 
-	const valLabel = "value"
-
 	ret, err := encode(f.value, "")
 	if err != nil {
 		return nil, err
 	}
 
-	return map[string]any{valLabel: ret}, nil
+	if _, ok := f.value.(*Query); ok {
+		return ret, nil
+
+	} else {
+		const valLabel = "value"
+		return map[string]any{valLabel: ret}, nil
+	}
 }
