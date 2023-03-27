@@ -75,7 +75,7 @@ func ExampleNewClient() {
 	// Output: 1200000
 }
 
-// ExampleComposedQuery query fauna running in a local Docker instance:
+// ExampleFQL query fauna running in a local Docker instance:
 //
 //	docker run --rm -p 8443:8443 fauna/faunadb:latest
 func ExampleFQL() {
@@ -103,11 +103,6 @@ func ExampleFQL() {
 		log.Fatalf("request failed: %s", queryErr.Error())
 	}
 
-	var result map[string]any
-	if err := res.Unmarshal(&result); err != nil {
-		log.Fatalf("%s", queryErr.Error())
-	}
-
-	fmt.Printf("%s", result)
+	fmt.Printf("%s", res.Data)
 	// Output: map[name:foo]
 }
