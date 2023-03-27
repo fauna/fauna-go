@@ -15,7 +15,7 @@ type Query struct {
 }
 
 func FQL(query string, args ...map[string]any) (*Query, error) {
-	template := NewTemplate(query)
+	template := newTemplate(query)
 	parts, err := template.Parse()
 
 	if err != nil {

@@ -22,7 +22,7 @@ type template struct {
 	re   *regexp.Regexp
 }
 
-func NewTemplate(text string) *template {
+func newTemplate(text string) *template {
 	return &template{
 		text: text,
 		re:   regexp.MustCompile(`\$(?:(?P<escaped>\$)|{(?P<braced>[_a-zA-Z0-9]*)}|(?P<invalid>))`),
