@@ -17,8 +17,9 @@ resources:
     source:
       uri: https://github.com/fauna/fauna-go
       branch: main
-      paths:
-        - version
+      private_key: ((github-ssh-key))
+      # paths:
+      #  - version
 
 jobs:
   - name: set-self
