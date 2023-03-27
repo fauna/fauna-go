@@ -16,7 +16,7 @@ resources:
     icon: github
     source:
       uri: https://github.com/fauna/fauna-go
-      branch: main
+      branch: pipeline-fixes
       private_key: ((github-ssh-key))
       paths:
         - version
