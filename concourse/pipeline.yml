@@ -34,6 +34,7 @@ jobs:
     public: false
     plan:
       - get: fauna-go-repository
+        trigger: true
         passed:
           - set-self
 
