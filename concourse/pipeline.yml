@@ -16,10 +16,10 @@ resources:
     icon: github
     source:
       uri: git@github.com:fauna/fauna-go.git
-      branch: pipeline-fixes
+      branch: main
       private_key: ((github-ssh-key))
-      # paths:
-      #  - version
+      paths:
+        - version
 
 jobs:
   - name: set-self
