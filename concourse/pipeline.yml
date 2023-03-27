@@ -38,7 +38,7 @@ jobs:
           - set-self
 
       - task: set-slack-message
-        file: fauna-go-repository/concourse/task/slack-message.yml
+        file: fauna-go-repository/concourse/tasks/slack-message.yml
 
       - put: fauna-go-repository
         params:
