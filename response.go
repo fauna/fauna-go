@@ -48,7 +48,7 @@ func newQueryInfo(res *queryResponse) *QueryInfo {
 	return &QueryInfo{
 		TxnTime:   res.TxnTime,
 		Summary:   res.Summary,
-		QueryTags: res.QueryTags(),
+		QueryTags: res.queryTags(),
 		Stats:     res.Stats,
 	}
 }
