@@ -21,22 +21,22 @@ func ExampleNewDefaultClient() {
 
 	client, clientErr := fauna.NewDefaultClient()
 	if clientErr != nil {
-		log.Fatalf("client should have been initialized: %s", clientErr.Error())
+		log.Fatalf("client should have been initialized: %s", clientErr)
 	}
 
 	query, qErr := fauna.FQL(`Math.abs(12e5)`, nil)
 	if qErr != nil {
-		log.Fatalf("query failed: %s", qErr.Error())
+		log.Fatalf("query failed: %s", qErr)
 	}
 
 	res, queryErr := client.Query(query)
 	if queryErr != nil {
-		log.Fatalf("request failed: %s", queryErr.Error())
+		log.Fatalf("request failed: %s", queryErr)
 	}
 
 	var result float32
 	if err := res.Unmarshal(&result); err != nil {
-		log.Fatalf("%s", err.Error())
+		log.Fatalf("%s", err)
 	}
 
 	fmt.Printf("%0.f", result)
@@ -58,17 +58,17 @@ func ExampleNewClient() {
 
 	query, qErr := fauna.FQL(`Math.abs(12e5)`, nil)
 	if qErr != nil {
-		log.Fatalf("query failed: %s", qErr.Error())
+		log.Fatalf("query failed: %s", qErr)
 	}
 
 	res, queryErr := client.Query(query)
 	if queryErr != nil {
-		log.Fatalf("request failed: %s", queryErr.Error())
+		log.Fatalf("request failed: %s", queryErr)
 	}
 
 	var result float32
 	if err := res.Unmarshal(&result); err != nil {
-		log.Fatalf("%s", queryErr.Error())
+		log.Fatalf("%s", queryErr)
 	}
 
 	fmt.Printf("%0.f", result)
@@ -85,17 +85,17 @@ func ExampleFQL() {
 
 	client, clientErr := fauna.NewDefaultClient()
 	if clientErr != nil {
-		log.Fatalf("client should have been initialized: %s", clientErr.Error())
+		log.Fatalf("client should have been initialized: %s", clientErr)
 	}
 
 	query, fqlErr := fauna.FQL(`2 + 2`, nil)
 	if fqlErr != nil {
-		log.Fatalf("query failed: %s", fqlErr.Error())
+		log.Fatalf("query failed: %s", fqlErr)
 	}
 
 	res, queryErr := client.Query(query)
 	if queryErr != nil {
-		log.Fatalf("request failed: %s", queryErr.Error())
+		log.Fatalf("request failed: %s", queryErr)
 	}
 
 	fmt.Printf("%d", res.Data)
@@ -109,17 +109,17 @@ func ExampleFQL_arguments() {
 
 	client, clientErr := fauna.NewDefaultClient()
 	if clientErr != nil {
-		log.Fatalf("client should have been initialized: %s", clientErr.Error())
+		log.Fatalf("client should have been initialized: %s", clientErr)
 	}
 
 	query, fqlErr := fauna.FQL(`${num} + 2`, map[string]any{"num": 2})
 	if fqlErr != nil {
-		log.Fatalf("query failed: %s", fqlErr.Error())
+		log.Fatalf("query failed: %s", fqlErr)
 	}
 
 	res, queryErr := client.Query(query)
 	if queryErr != nil {
-		log.Fatalf("request failed: %s", queryErr.Error())
+		log.Fatalf("request failed: %s", queryErr)
 	}
 
 	fmt.Printf("%d", res.Data)
@@ -133,7 +133,7 @@ func ExampleFQL_structs() {
 
 	client, clientErr := fauna.NewDefaultClient()
 	if clientErr != nil {
-		log.Fatalf("client should have been initialized: %s", clientErr.Error())
+		log.Fatalf("client should have been initialized: %s", clientErr)
 	}
 
 	type myObj struct {
@@ -144,12 +144,12 @@ func ExampleFQL_structs() {
 
 	query, fqlErr := fauna.FQL(`${obj}["value"] + 2`, map[string]any{"obj": arg})
 	if fqlErr != nil {
-		log.Fatalf("query failed: %s", fqlErr.Error())
+		log.Fatalf("query failed: %s", fqlErr)
 	}
 
 	res, queryErr := client.Query(query)
 	if queryErr != nil {
-		log.Fatalf("request failed: %s", queryErr.Error())
+		log.Fatalf("request failed: %s", queryErr)
 	}
 
 	fmt.Printf("%d", res.Data)
@@ -163,7 +163,7 @@ func ExampleFQL_unmarshal() {
 
 	client, clientErr := fauna.NewDefaultClient()
 	if clientErr != nil {
-		log.Fatalf("client should have been initialized: %s", clientErr.Error())
+		log.Fatalf("client should have been initialized: %s", clientErr)
 	}
 
 	type myObj struct {
@@ -173,18 +173,18 @@ func ExampleFQL_unmarshal() {
 	// Mock out an object that looks like our struct `myObj`.
 	query, fqlErr := fauna.FQL(`{"value": 4}`, nil)
 	if fqlErr != nil {
-		log.Fatalf("query failed: %s", fqlErr.Error())
+		log.Fatalf("query failed: %s", fqlErr)
 	}
 
 	res, queryErr := client.Query(query)
 	if queryErr != nil {
-		log.Fatalf("request failed: %s", queryErr.Error())
+		log.Fatalf("request failed: %s", queryErr)
 	}
 
 	// Unmarshal the resulting object into a `myObj` object.
 	var result myObj
 	if err := res.Unmarshal(&result); err != nil {
-		log.Fatalf("unmarshal failed: %s", queryErr.Error())
+		log.Fatalf("unmarshal failed: %s", queryErr)
 	}
 
 	fmt.Printf("%+v", result)
@@ -198,7 +198,7 @@ func ExampleFQL_composed() {
 
 	client, clientErr := fauna.NewDefaultClient()
 	if clientErr != nil {
-		log.Fatalf("client should have been initialized: %s", clientErr.Error())
+		log.Fatalf("client should have been initialized: %s", clientErr)
 	}
 
 	type myObj struct {
