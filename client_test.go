@@ -353,7 +353,7 @@ func TestHeaders(t *testing.T) {
 		expectedValue = "query-traceparent-id"
 
 		q, _ = fauna.FQL(`Math.abs(-5.123e3)`)
-		if _, queryErr := client.Query(q, fauna.QueryTraceparent(expectedValue)); queryErr != nil {
+		if _, queryErr := client.Query(q, fauna.Traceparent(expectedValue)); queryErr != nil {
 			t.Fatalf("failed to query with traceparent: %s", queryErr.Error())
 		}
 	})
