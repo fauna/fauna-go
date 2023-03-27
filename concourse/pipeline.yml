@@ -43,10 +43,10 @@ jobs:
       - put: fauna-go-repository
         params:
           repository: fauna-go-repository
-          tag_prefix: v
-          tag_only: true
           # use contents of version file
           tag: fauna-go-repository/version
+          tag_prefix: v
+          only_tag: true
         on_success:
           put: notify
           params:
