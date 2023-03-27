@@ -11,10 +11,10 @@ import (
 	"github.com/fauna/fauna-go"
 )
 
-// ExampleDefaultClient query fauna running in a local Docker instance:
+// ExampleNewDefaultClient query fauna running in a local Docker instance:
 //
 //	docker run --rm -p 8443:8443 fauna/faunadb:latest
-func ExampleDefaultClient() {
+func ExampleNewDefaultClient() {
 	// IMPORTANT: just for the purpose of example, don't actually hardcode secret
 	_ = os.Setenv(fauna.EnvFaunaSecret, "secret")
 	_ = os.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
