@@ -22,10 +22,6 @@ func TestDefaultClient(t *testing.T) {
 		return
 	}
 
-	t.Run("should have version", func(t *testing.T) {
-		assert.NotEmpty(t, fauna.DriverVersion)
-	})
-
 	t.Run("basic requests", func(t *testing.T) {
 		t.Run("String Length Request", func(t *testing.T) {
 			s := "foo"

@@ -19,10 +19,8 @@ import (
 	"golang.org/x/net/http2"
 )
 
-// DriverVersion semantic version of the driver
-//
 //go:embed version
-var DriverVersion string
+var driverVersion string
 
 const (
 	// EndpointDefault constant for Fauna Production endpoint
@@ -103,7 +101,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 		headers: map[string]string{
 			headerContentType:   "application/json; charset=utf-8",
 			headerDriver:        "go",
-			headerDriverVersion: strings.TrimSpace(DriverVersion),
+			headerDriverVersion: strings.TrimSpace(driverVersion),
 			headerRuntime: fmt.Sprintf(
 				"env=%s; os=%s; go=%s",
 				fingerprinting.Environment(),
