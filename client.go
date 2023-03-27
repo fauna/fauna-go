@@ -1,4 +1,4 @@
-// Package fauna HTTP client for fqlx
+// Package fauna provides a driver for Fauna FQL X
 package fauna
 
 import (
