@@ -18,8 +18,8 @@ resources:
       uri: git@github.com:fauna/fauna-go.git
       branch: pipeline-fixes
       private_key: ((github-ssh-key))
-      paths:
-        - version
+      # paths:
+      #  - version
 
 jobs:
   - name: set-self
