@@ -88,12 +88,7 @@ func ExampleFQL() {
 		log.Fatalf("client should have been initialized: %s", clientErr.Error())
 	}
 
-	type MyObj struct {
-		fauna.Document
-		Name string `fauna:"name"`
-	}
-
-	query, fqlErr := fauna.FQL("let x = ${my_obj}\nx { name }", map[string]any{"my_obj": &MyObj{Name: "foo"}})
+	query, fqlErr := fauna.FQL(`2 + 2`)
 	if fqlErr != nil {
 		log.Fatalf("query failed: %s", fqlErr.Error())
 	}
@@ -103,6 +98,6 @@ func ExampleFQL() {
 		log.Fatalf("request failed: %s", queryErr.Error())
 	}
 
-	fmt.Printf("%s", res.Data)
-	// Output: map[name:foo]
+	fmt.Printf("%d", res.Data)
+	// Output: 4
 }
