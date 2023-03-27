@@ -38,10 +38,10 @@ func FQL(query string, args ...map[string]any) (*Query, error) {
 	for _, part := range parts {
 
 		switch category := part.Category; category {
-		case TemplateLiteral:
+		case templateLiteral:
 			fragments = append(fragments, &queryFragment{true, part.Text})
 
-		case TemplateVariable:
+		case templateVariable:
 			if args == nil {
 				return nil, errors.New("found template variable, but args is nil")
 			}

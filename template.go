@@ -8,8 +8,8 @@ import (
 type templateCategory string
 
 const (
-	TemplateVariable templateCategory = "variable"
-	TemplateLiteral  templateCategory = "literal"
+	templateVariable templateCategory = "variable"
+	templateLiteral  templateCategory = "literal"
 )
 
 type TemplatePart struct {
@@ -58,14 +58,14 @@ func (t *template) Parse() ([]TemplatePart, error) {
 		if currentPosition < matchStartPos {
 			parts = append(parts, TemplatePart{
 				Text:     t.text[currentPosition:matchStartPos] + escaped,
-				Category: TemplateLiteral,
+				Category: templateLiteral,
 			})
 		}
 
 		if len(variable) > 0 {
 			parts = append(parts, TemplatePart{
 				Text:     variable,
-				Category: TemplateVariable,
+				Category: templateVariable,
 			})
 		}
 
@@ -73,7 +73,7 @@ func (t *template) Parse() ([]TemplatePart, error) {
 	}
 
 	if currentPosition < end {
-		parts = append(parts, TemplatePart{Text: t.text[currentPosition:], Category: TemplateLiteral})
+		parts = append(parts, TemplatePart{Text: t.text[currentPosition:], Category: templateLiteral})
 	}
 
 	return parts, nil

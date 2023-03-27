@@ -1,15 +1,14 @@
-package fauna_test
+package fauna
 
 import (
 	"testing"
 
-	"github.com/fauna/fauna-go"
 	"github.com/stretchr/testify/assert"
 )
 
 type TemplateSuccessCase struct {
 	given string
-	wants *[]fauna.TemplatePart
+	wants *[]TemplatePart
 }
 
 type TemplateErrorCase struct {
@@ -21,72 +20,72 @@ func TestTemplate_ParseSuccess(t *testing.T) {
 	testCases := []TemplateSuccessCase{
 		{
 			"let x = ${my_var}",
-			&[]fauna.TemplatePart{
+			&[]TemplatePart{
 				{
 					"let x = ",
-					fauna.TemplateLiteral,
+					templateLiteral,
 				},
 				{
 					"my_var",
-					fauna.TemplateVariable,
+					templateVariable,
 				},
 			},
 		},
 		{
 			"let x = ${my_var}\nlet y = ${my_var}\nx * y",
-			&[]fauna.TemplatePart{
+			&[]TemplatePart{
 				{
 					"let x = ",
-					fauna.TemplateLiteral,
+					templateLiteral,
 				},
 				{
 					"my_var",
-					fauna.TemplateVariable,
+					templateVariable,
 				},
 				{
 					"\nlet y = ",
-					fauna.TemplateLiteral,
+					templateLiteral,
 				},
 				{
 					"my_var",
-					fauna.TemplateVariable,
+					templateVariable,
 				},
 				{
 					"\nx * y",
-					fauna.TemplateLiteral,
+					templateLiteral,
 				},
 			},
 		},
 		{
 			"${my_var} { .name }",
-			&[]fauna.TemplatePart{
+			&[]TemplatePart{
 				{
 					"my_var",
-					fauna.TemplateVariable,
+					templateVariable,
 				},
 				{
 					" { .name }",
-					fauna.TemplateLiteral,
+					templateLiteral,
 				},
 			},
 		},
 		{
 			"let x = '$${not_a_var}'",
-			&[]fauna.TemplatePart{
+			&[]TemplatePart{
 				{
 					"let x = '$",
-					fauna.TemplateLiteral,
+					templateLiteral,
 				},
 				{
 					"{not_a_var}'",
-					fauna.TemplateLiteral,
+					templateLiteral,
 				},
 			},
 		},
 	}
 
 	for _, tc := range testCases {
-		parsed, err := fauna.NewTemplate(tc.given).Parse()
+		parsed, err := NewTemplate(tc.given).Parse()
 		if !assert.NoError(t, err) {
 			return
 		}
@@ -110,7 +109,7 @@ func TestTemplate_ParseFail(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		_, err := fauna.NewTemplate(tc.given).Parse()
+		_, err := NewTemplate(tc.given).Parse()
 		if assert.Error(t, err) {
 			assert.EqualError(t, err, tc.error)
 		}
