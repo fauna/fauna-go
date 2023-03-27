@@ -10,28 +10,25 @@ type queryFragment struct {
 	value   any
 }
 
+// Query represents a query to be sent to Fauna.
 type Query struct {
 	fragments []*queryFragment
 }
 
-func FQL(query string, args ...map[string]any) (*Query, error) {
+// FQL creates a [fauna.Query] from an FQL string and set of arguments.
+//
+// args are optional. If provided their keys must match with `${name}` sigils
+// in the query. FQL `${value} + 1` must have an argument called "value" in the
+// args map.
+//
+// The values of args can be any type, including [fauna.Query] to allow for
+// query composition.
+func FQL(query string, args map[string]any) (*Query, error) {
 	template := newTemplate(query)
 	parts, err := template.Parse()
 
 	if err != nil {
 		return nil, err
-	}
-
-	var qArgs map[string]any
-	if len(args) == 1 {
-		qArgs = args[0]
-	} else if len(args) > 1 {
-		qArgs = map[string]any{}
-		for _, a := range args {
-			for k, v := range a {
-				qArgs[k] = v
-			}
-		}
 	}
 
 	fragments := make([]*queryFragment, 0)
@@ -46,9 +43,7 @@ func FQL(query string, args ...map[string]any) (*Query, error) {
 				return nil, errors.New("found template variable, but args is nil")
 			}
 
-			arg, ok := qArgs[part.Text]
-
-			if ok {
+			if arg, ok := args[part.Text]; ok {
 				fragments = append(fragments, &queryFragment{false, arg})
 			} else {
 				return nil, fmt.Errorf("template variable %s not found in args", part.Text)
