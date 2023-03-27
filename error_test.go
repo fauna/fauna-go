@@ -1,9 +1,10 @@
 package fauna
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetServiceError(t *testing.T) {
@@ -103,10 +104,10 @@ func TestGetServiceError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			res := &queryResponse{Error: tt.args.serviceError, Summary: ""}
 			err := getServiceError(tt.args.httpStatus, res)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetServiceError() error = %v, wantErr %v", err, tt.wantErr)
-			} else if tt.wantErr && fmt.Sprintf("%T", err) != fmt.Sprintf("%T", tt.args.errType) {
-				t.Errorf("got [%T] wanted [%T]", err, tt.args.errType)
+			if tt.wantErr {
+				assert.ErrorAs(t, err, &tt.args.errType)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}

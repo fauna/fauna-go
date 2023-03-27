@@ -1,9 +1,10 @@
 package fauna
 
 import (
-	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type fqlSuccessCase struct {
@@ -78,18 +79,8 @@ func TestFQL(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.testName, func(t *testing.T) {
-			q, err := FQL(tc.query, tc.args)
-
-			if err != nil {
-				t.Fatalf("error constructing query: %s", err)
-			}
-
-			if err != nil {
-				t.Fatalf("error rendering query: %s", err)
-			}
-
-			if !reflect.DeepEqual(tc.wants, q) {
-				t.Errorf("(%s) expected %v but got %v", tc.testName, tc.wants, q)
+			if q, err := FQL(tc.query, tc.args); assert.NoError(t, err) {
+				assert.Equal(t, tc.wants, q)
 			}
 		})
 	}
