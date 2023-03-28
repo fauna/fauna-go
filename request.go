@@ -30,7 +30,7 @@ type queryResponse struct {
 	Tags       string          `json:"query_tags"`
 }
 
-func (r *queryResponse) QueryTags() map[string]string {
+func (r *queryResponse) queryTags() map[string]string {
 	ret := map[string]string{}
 
 	if r.Tags != "" {

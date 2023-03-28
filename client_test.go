@@ -55,7 +55,7 @@ func TestDefaultClient(t *testing.T) {
 		})
 
 		t.Run("Query with options", func(t *testing.T) {
-			q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
+			q, _ := fauna.FQL(`Math.abs(-5.123e3)`, nil)
 			res, queryErr := client.Query(q, fauna.Timeout(time.Second))
 			if assert.NoError(t, queryErr) {
 				t.Logf("summary: %s", res.Summary)
@@ -95,7 +95,7 @@ func TestNewClient(t *testing.T) {
 			return
 		}
 
-		q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
+		q, _ := fauna.FQL(`Math.abs(-5.123e3)`, nil)
 		if _, queryErr := client.Query(q); !assert.NoError(t, queryErr) {
 			return
 		}
@@ -115,7 +115,7 @@ func TestNewClient(t *testing.T) {
 			fauna.URL(fauna.EndpointLocal),
 			fauna.HTTPClient(http.DefaultClient),
 		)
-		q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
+		q, _ := fauna.FQL(`Math.abs(-5.123e3)`, nil)
 		_, queryErr := client.Query(q)
 		assert.NoError(t, queryErr)
 	})
@@ -276,7 +276,7 @@ func TestHeaders(t *testing.T) {
 				)
 
 				// running a simple query just to invoke the request
-				q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
+				q, _ := fauna.FQL(`Math.abs(-5.123e3)`, nil)
 				_, queryErr := client.Query(q)
 				if !tt.expectError {
 					assert.NoError(t, queryErr)
@@ -301,7 +301,7 @@ func TestHeaders(t *testing.T) {
 		currentHeader = fauna.HeaderTags
 		expectedValue = "hero=Wolverine,team=X_Men"
 
-		q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
+		q, _ := fauna.FQL(`Math.abs(-5.123e3)`, nil)
 		_, queryErr := client.Query(q, fauna.Tags(map[string]string{"hero": "Wolverine"}))
 		assert.NoError(t, queryErr)
 
@@ -310,7 +310,7 @@ func TestHeaders(t *testing.T) {
 		currentHeader = fauna.HeaderTraceparent
 		expectedValue = "query-traceparent-id"
 
-		q, _ = fauna.FQL(`Math.abs(-5.123e3)`)
+		q, _ = fauna.FQL(`Math.abs(-5.123e3)`, nil)
 		_, queryErr = client.Query(q, fauna.Traceparent(expectedValue))
 		assert.NoError(t, queryErr)
 	})
@@ -363,7 +363,7 @@ func TestQueryTags(t *testing.T) {
 	}
 
 	// running a simple query just to invoke the request
-	q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
+	q, _ := fauna.FQL(`Math.abs(-5.123e3)`, nil)
 	res, queryErr := client.Query(q, fauna.Tags(tags))
 	if assert.NoError(t, queryErr) {
 		assert.Equal(t, tags, res.QueryTags)
@@ -380,7 +380,7 @@ func TestErrorHandling(t *testing.T) {
 			return
 		}
 
-		q, _ := fauna.FQL(`Math.abs(-5.123e3)`)
+		q, _ := fauna.FQL(`Math.abs(-5.123e3)`, nil)
 		_, queryErr := client.Query(q)
 		if assert.NoError(t, queryErr) {
 			return
@@ -399,7 +399,7 @@ func TestErrorHandling(t *testing.T) {
 			return
 		}
 
-		q, _ := fauna.FQL(`SillyPants`)
+		q, _ := fauna.FQL(`SillyPants`, nil)
 		_, queryErr := client.Query(q)
 
 		if assert.Error(t, queryErr) {

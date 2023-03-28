@@ -41,7 +41,7 @@ func main() {
 		panic(clientErr)
 	}
 
-	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" }`)
+	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" }`, nil)
 	if _, err := client.Query(createColl); err != nil {
 		panic(err)
 	}
@@ -78,7 +78,7 @@ func main() {
 		panic(clientErr)
 	}
 
-	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" }`)
+	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" }`, nil)
 	if _, err := client.Query(createColl); err != nil {
 		panic(err)
 	}
