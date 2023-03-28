@@ -8,11 +8,11 @@ import (
 type templateCategory string
 
 const (
-	TemplateVariable templateCategory = "variable"
-	TemplateLiteral  templateCategory = "literal"
+	templateVariable templateCategory = "variable"
+	templateLiteral  templateCategory = "literal"
 )
 
-type TemplatePart struct {
+type templatePart struct {
 	Text     string
 	Category templateCategory
 }
@@ -22,7 +22,7 @@ type template struct {
 	re   *regexp.Regexp
 }
 
-func NewTemplate(text string) *template {
+func newTemplate(text string) *template {
 	return &template{
 		text: text,
 		re:   regexp.MustCompile(`\$(?:(?P<escaped>\$)|{(?P<braced>[_a-zA-Z0-9]*)}|(?P<invalid>))`),
@@ -30,7 +30,7 @@ func NewTemplate(text string) *template {
 }
 
 // Parse parses Text and returns a slice of template parts.
-func (t *template) Parse() ([]TemplatePart, error) {
+func (t *template) Parse() ([]templatePart, error) {
 	escapedIndex := t.re.SubexpIndex("escaped")
 	bracedIndex := t.re.SubexpIndex("braced")
 	invalidIndex := t.re.SubexpIndex("invalid")
@@ -40,7 +40,7 @@ func (t *template) Parse() ([]TemplatePart, error) {
 
 	matches := t.re.FindAllStringSubmatch(t.text, -1)
 	matchIndexes := t.re.FindAllStringSubmatchIndex(t.text, -1)
-	parts := make([]TemplatePart, 0)
+	parts := make([]templatePart, 0)
 
 	for i, m := range matches {
 		matchIndex := matchIndexes[i]
@@ -56,16 +56,16 @@ func (t *template) Parse() ([]TemplatePart, error) {
 		variable := m[bracedIndex]
 
 		if currentPosition < matchStartPos {
-			parts = append(parts, TemplatePart{
+			parts = append(parts, templatePart{
 				Text:     t.text[currentPosition:matchStartPos] + escaped,
-				Category: TemplateLiteral,
+				Category: templateLiteral,
 			})
 		}
 
 		if len(variable) > 0 {
-			parts = append(parts, TemplatePart{
+			parts = append(parts, templatePart{
 				Text:     variable,
-				Category: TemplateVariable,
+				Category: templateVariable,
 			})
 		}
 
@@ -73,7 +73,7 @@ func (t *template) Parse() ([]TemplatePart, error) {
 	}
 
 	if currentPosition < end {
-		parts = append(parts, TemplatePart{Text: t.text[currentPosition:], Category: TemplateLiteral})
+		parts = append(parts, templatePart{Text: t.text[currentPosition:], Category: templateLiteral})
 	}
 
 	return parts, nil

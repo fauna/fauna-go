@@ -501,16 +501,14 @@ func TestComposition(t *testing.T) {
 
 	t.Run("sub query", func(t *testing.T) {
 		encodedDoc := `{"fql":[
-      {"value":{
-        "fql":[
-          "let x = ",
-          {"value":{
-            "age":{"@int":"0"},
-            "birthdate":{"@time":"2023-02-24T00:00:00Z"},
-            "name":"Dino"
-          }}
-        ]
-      }},
+      {"fql":[
+        "let x = ",
+        {"value":{
+          "age":{"@int":"0"},
+          "birthdate":{"@time":"2023-02-24T00:00:00Z"},
+          "name":"Dino"
+        }}
+      ]},
       "\nx { name }"
     ]}`
 

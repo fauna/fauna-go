@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetServiceError(t *testing.T) {
+func TestGetErrFauna(t *testing.T) {
 	type args struct {
 		httpStatus   int
-		serviceError *ServiceError
+		serviceError *ErrFauna
 		errType      error
 	}
 	tests := []struct {
@@ -31,8 +31,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Query check error",
 			args: args{
 				httpStatus:   http.StatusBadRequest,
-				serviceError: &ServiceError{Code: "invalid_query", Message: ""},
-				errType:      &QueryCheckError{},
+				serviceError: &ErrFauna{Code: "invalid_query", Message: ""},
+				errType:      &ErrQueryCheck{},
 			},
 			wantErr: true,
 		},
@@ -40,8 +40,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Query runtime error",
 			args: args{
 				httpStatus:   http.StatusBadRequest,
-				serviceError: &ServiceError{Code: "", Message: ""},
-				errType:      &QueryRuntimeError{},
+				serviceError: &ErrFauna{Code: "", Message: ""},
+				errType:      &ErrQueryRuntime{},
 			},
 			wantErr: true,
 		},
@@ -49,8 +49,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Unauthorized",
 			args: args{
 				httpStatus:   http.StatusUnauthorized,
-				serviceError: &ServiceError{Code: "", Message: ""},
-				errType:      &AuthenticationError{},
+				serviceError: &ErrFauna{Code: "", Message: ""},
+				errType:      &ErrAuthentication{},
 			},
 			wantErr: true,
 		},
@@ -58,8 +58,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Access not granted",
 			args: args{
 				httpStatus:   http.StatusForbidden,
-				serviceError: &ServiceError{Code: "", Message: ""},
-				errType:      &AuthorizationError{},
+				serviceError: &ErrFauna{Code: "", Message: ""},
+				errType:      &ErrAuthorization{},
 			},
 			wantErr: true,
 		},
@@ -67,8 +67,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Too many requests",
 			args: args{
 				httpStatus:   http.StatusTooManyRequests,
-				serviceError: &ServiceError{Code: "", Message: ""},
-				errType:      &ThrottlingError{},
+				serviceError: &ErrFauna{Code: "", Message: ""},
+				errType:      &ErrThrottling{},
 			},
 			wantErr: true,
 		},
@@ -76,8 +76,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Query timeout",
 			args: args{
 				httpStatus:   440,
-				serviceError: &ServiceError{Code: "", Message: ""},
-				errType:      &QueryTimeoutError{},
+				serviceError: &ErrFauna{Code: "", Message: ""},
+				errType:      &ErrQueryTimeout{},
 			},
 			wantErr: true,
 		},
@@ -85,8 +85,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Internal error",
 			args: args{
 				httpStatus:   http.StatusInternalServerError,
-				serviceError: &ServiceError{Code: "", Message: ""},
-				errType:      &ServiceInternalError{},
+				serviceError: &ErrFauna{Code: "", Message: ""},
+				errType:      &ErrServiceInternal{},
 			},
 			wantErr: true,
 		},
@@ -94,8 +94,8 @@ func TestGetServiceError(t *testing.T) {
 			name: "Service timeout",
 			args: args{
 				httpStatus:   http.StatusServiceUnavailable,
-				serviceError: &ServiceError{Code: "", Message: ""},
-				errType:      &ServiceTimeoutError{},
+				serviceError: &ErrFauna{Code: "", Message: ""},
+				errType:      &ErrServiceTimeout{},
 			},
 			wantErr: true,
 		},
@@ -103,7 +103,7 @@ func TestGetServiceError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			res := &queryResponse{Error: tt.args.serviceError, Summary: ""}
-			err := getServiceError(tt.args.httpStatus, res)
+			err := getErrFauna(tt.args.httpStatus, res)
 			if tt.wantErr {
 				assert.ErrorAs(t, err, &tt.args.errType)
 			} else {

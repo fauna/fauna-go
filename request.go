@@ -21,7 +21,7 @@ type fqlRequest struct {
 type queryResponse struct {
 	Header     http.Header
 	Data       json.RawMessage `json:"data"`
-	Error      *ServiceError   `json:"error,omitempty"`
+	Error      *ErrFauna       `json:"error,omitempty"`
 	Logging    []string        `json:"logging,omitempty"`
 	StaticType string          `json:"static_type"`
 	Stats      *Stats          `json:"stats,omitempty"`
@@ -30,7 +30,7 @@ type queryResponse struct {
 	Tags       string          `json:"query_tags"`
 }
 
-func (r *queryResponse) QueryTags() map[string]string {
+func (r *queryResponse) queryTags() map[string]string {
 	ret := map[string]string{}
 
 	if r.Tags != "" {
@@ -76,7 +76,7 @@ func (c *Client) do(request *fqlRequest) (*QuerySuccess, error) {
 
 	r, doErr := c.http.Do(req)
 	if doErr != nil {
-		return nil, NetworkError(fmt.Errorf("network error: %w", doErr))
+		return nil, ErrNetwork(fmt.Errorf("network error: %w", doErr))
 	}
 
 	var res queryResponse
@@ -93,7 +93,7 @@ func (c *Client) do(request *fqlRequest) (*QuerySuccess, error) {
 	c.lastTxnTime.sync(res.TxnTime)
 	res.Header = r.Header
 
-	if serviceErr := getServiceError(r.StatusCode, &res); serviceErr != nil {
+	if serviceErr := getErrFauna(r.StatusCode, &res); serviceErr != nil {
 		return nil, serviceErr
 	}
 
