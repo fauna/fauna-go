@@ -382,7 +382,7 @@ func TestErrorHandling(t *testing.T) {
 			return
 		}
 
-		var expectedErr *fauna.AuthenticationError
+		var expectedErr *fauna.ErrAuthentication
 		assert.ErrorAs(t, queryErr, &expectedErr)
 	})
 
@@ -399,7 +399,7 @@ func TestErrorHandling(t *testing.T) {
 		_, queryErr := client.Query(q)
 
 		if assert.Error(t, queryErr) {
-			var expectedErr *fauna.QueryRuntimeError
+			var expectedErr *fauna.ErrQueryRuntime
 			assert.ErrorAs(t, queryErr, &expectedErr)
 		}
 	})
@@ -423,7 +423,7 @@ func TestErrorHandling(t *testing.T) {
 
 		q, _ = fauna.FQL(`Collection.create({ name: ${arg1} })`, map[string]any{"arg1": testCollection})
 		if _, queryErr := client.Query(q); assert.Error(t, queryErr) {
-			var expectedErr *fauna.QueryRuntimeError
+			var expectedErr *fauna.ErrQueryRuntime
 			assert.ErrorAs(t, queryErr, &expectedErr)
 		} else {
 			return
