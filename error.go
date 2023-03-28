@@ -14,71 +14,71 @@ var queryCheckFailureCodes = map[string]struct{}{
 	"invalid_type":                {},
 }
 
-// A ServiceError is the base of all errors and provides the underlying `code`,
+// A ErrFauna is the base of all errors and provides the underlying `code`,
 // `message`, and any [fauna.QueryInfo].
-type ServiceError struct {
+type ErrFauna struct {
 	*QueryInfo
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
 
-// Error provides the underlying error message.
-func (e ServiceError) Error() string {
+// provides the underlying error message.
+func (e ErrFauna) Error() string {
 	return e.Message
 }
 
-// A QueryRuntimeError is returned when the query fails due to a runtime error.
+// A ErrQueryRuntime is returned when the query fails due to a runtime error.
 // The `code` field will vary based on the specific error cause.
-type QueryRuntimeError struct {
-	*ServiceError
+type ErrQueryRuntime struct {
+	*ErrFauna
 }
 
-// A QueryCheckError is returned when the query fails one or more validation checks.
-type QueryCheckError struct {
-	*ServiceError
+// A ErrQueryCheck is returned when the query fails one or more validation checks.
+type ErrQueryCheck struct {
+	*ErrFauna
 }
 
-// A QueryTimeoutError is returned when the client specified timeout was
+// A ErrQueryTimeout is returned when the client specified timeout was
 // exceeded, but the timeout was set lower than the query's expected
 // processing time. This response is distinguished from [fauna.ServiceTimeoutError]
 // by the fact that a [fauna.QueryTimeoutError] response is considered a
 // successful response for the purpose of determining the service's availability.
-type QueryTimeoutError struct {
-	*ServiceError
+type ErrQueryTimeout struct {
+	*ErrFauna
 }
 
-// An AuthenticationError is returned when Fauna is unable to authenticate
+// An ErrAuthentication is returned when Fauna is unable to authenticate
 // the request due to an invalid or missing authentication token.
-type AuthenticationError struct {
-	*ServiceError
+type ErrAuthentication struct {
+	*ErrFauna
 }
 
-// An AuthorizationError is returned when a query attempts to access data the
+// An ErrAuthorization is returned when a query attempts to access data the
 // secret is not allowed to access.
-type AuthorizationError struct {
-	*ServiceError
+type ErrAuthorization struct {
+	*ErrFauna
 }
 
-// A ThrottlingError is returned when the query exceeded some capacity limit.
-type ThrottlingError struct {
-	*ServiceError
+// A ErrThrottling is returned when the query exceeded some capacity limit.
+type ErrThrottling struct {
+	*ErrFauna
 }
 
-// A ServiceInternalError is returned when an unexpected error occurs.
-type ServiceInternalError struct {
-	*ServiceError
+// A ErrServiceInternal is returned when an unexpected error occurs.
+type ErrServiceInternal struct {
+	*ErrFauna
 }
 
-// A ServiceTimeoutError is returned when an unexpected timeout occurs.
-type ServiceTimeoutError struct {
-	*ServiceError
+// A ErrServiceTimeout is returned when an unexpected timeout occurs.
+type ErrServiceTimeout struct {
+	*ErrFauna
 }
 
-// A NetworkError is returned when an unknown error is encounted when attempting
+// A ErrNetwork is returned when an unknown error is encounted when attempting
 // to send a request to Fauna.
-type NetworkError error
+type ErrNetwork error
 
-func getServiceError(httpStatus int, res *queryResponse) error {
+func getErrFauna(httpStatus int, res *queryResponse) error {
 	if res.Error != nil {
 		res.Error.QueryInfo = newQueryInfo(res)
 	}
@@ -86,34 +86,34 @@ func getServiceError(httpStatus int, res *queryResponse) error {
 	switch httpStatus {
 	case http.StatusBadRequest:
 		if res.Error == nil {
-			err := &QueryRuntimeError{&ServiceError{QueryInfo: newQueryInfo(res), Code: "", Message: ""}}
+			err := &ErrQueryRuntime{&ErrFauna{QueryInfo: newQueryInfo(res), Code: "", Message: ""}}
 			err.Message += "\n" + res.Summary
 			return err
 		}
 
 		if _, found := queryCheckFailureCodes[res.Error.Code]; found {
-			err := &QueryCheckError{res.Error}
+			err := &ErrQueryCheck{res.Error}
 			err.Message += "\n" + res.Summary
 			return err
 
 		} else {
-			err := &QueryRuntimeError{res.Error}
+			err := &ErrQueryRuntime{res.Error}
 			err.Message += "\n" + res.Summary
 			return err
 		}
 
 	case http.StatusUnauthorized:
-		return &AuthenticationError{res.Error}
+		return &ErrAuthentication{res.Error}
 	case http.StatusForbidden:
-		return &AuthorizationError{res.Error}
+		return &ErrAuthorization{res.Error}
 	case http.StatusTooManyRequests:
-		return &ThrottlingError{res.Error}
+		return &ErrThrottling{res.Error}
 	case httpStatusQueryTimeout:
-		return &QueryTimeoutError{res.Error}
+		return &ErrQueryTimeout{res.Error}
 	case http.StatusInternalServerError:
-		return &ServiceInternalError{res.Error}
+		return &ErrServiceInternal{res.Error}
 	case http.StatusServiceUnavailable:
-		return &ServiceTimeoutError{res.Error}
+		return &ErrServiceTimeout{res.Error}
 	}
 
 	return nil
