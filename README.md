@@ -36,19 +36,18 @@ func main() {
 		panic(clientErr)
 	}
 
-	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" }`, nil)
+	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" })`, nil)
 	if _, err := client.Query(createColl); err != nil {
 		panic(err)
 	}
 
-	createDog, _ := fauna.FQL(`Dogs.create({ name: name })`, map[string]any{"name": "Scout"})
+	createDog, _ := fauna.FQL(`Dogs.create({ name: ${name}})`, map[string]any{"name": "Scout"})
 	res, err := client.Query(createDog)
 	if err != nil {
 		panic(err)
 	}
 
-	scout := res.Data.(map[string]string)
-	fmt.Println(scout["name"])
+	fmt.Println(res.Data.(*fauna.Document).Data["name"])
 }
 ```
 
@@ -73,7 +72,7 @@ func main() {
 		panic(clientErr)
 	}
 
-	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" }`, nil)
+	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" })`, nil)
 	if _, err := client.Query(createColl); err != nil {
 		panic(err)
 	}
@@ -90,44 +89,7 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println(scout)
-}
-```
-
-### Composing Multiple Queries
-
-```go
-package main
-
-import (
-	"fmt"
-
-	"github.com/fauna/fauna-go"
-)
-
-func userByTin(tin string) (*fauna.Query, error) {
-	return fauna.FQL(`Users.byTin(${tin})`, map[string]any{"tin": tin})
-}
-
-func main() {
-	client, clientErr := fauna.NewDefaultClient()
-	if clientErr != nil {
-		panic(clientErr)
-	}
-
-	byTin, err := userByTin("1234")
-	if err != nil {
-		panic(err)
-	}
-
-	q, _ := fauna.FQL(`${user} { name }`, map[string]any{"user": byTin})
-	res, err := client.Query(q)
-	if err != nil {
-		panic(err)
-	}
-
-	data := res.Data.(map[string]string)
-	fmt.Println(data["name"])
+	fmt.Println(scout.Name)
 }
 ```
 
