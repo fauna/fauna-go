@@ -102,6 +102,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 			headerContentType:   "application/json; charset=utf-8",
 			headerDriver:        "go",
 			headerDriverVersion: strings.TrimSpace(driverVersion),
+			headerFormat:        "tagged",
 			headerRuntime: fmt.Sprintf(
 				"env=%s; os=%s; go=%s",
 				fingerprinting.Environment(),
@@ -174,7 +175,7 @@ func defaultHTTPClient(allowHTTP bool) *http.Client {
 	}
 
 	if allowHTTP {
-		dialerContext = func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+		dialerContext = func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
 			dialer := net.Dialer{}
 
 			return dialer.DialContext(ctx, network, addr)
