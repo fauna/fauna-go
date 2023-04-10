@@ -20,6 +20,7 @@ type ErrFauna struct {
 	*QueryInfo
 	Code    string `json:"code"`
 	Message string `json:"message"`
+	Abort   any    `json:"abort"`
 }
 
 // provides the underlying error message.
@@ -81,6 +82,14 @@ type ErrNetwork error
 func getErrFauna(httpStatus int, res *queryResponse) error {
 	if res.Error != nil {
 		res.Error.QueryInfo = newQueryInfo(res)
+
+		if res.Error.Abort != nil {
+			abort, err := convert(false, res.Error.Abort)
+			if err != nil {
+				return err
+			}
+			res.Error.Abort = abort
+		}
 	}
 
 	switch httpStatus {
