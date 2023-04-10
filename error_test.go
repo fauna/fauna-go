@@ -3,6 +3,7 @@ package fauna
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -111,4 +112,43 @@ func TestGetErrFauna(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestErrAbort(t *testing.T) {
+	t.Setenv(EnvFaunaEndpoint, EndpointLocal)
+	t.Setenv(EnvFaunaSecret, "secret")
+
+	client, clientErr := NewDefaultClient()
+	if !assert.NoError(t, clientErr) {
+		return
+	}
+
+	t.Run("abort field is null on non-abort", func(t *testing.T) {
+		query, _ := FQL(`foo"`, nil)
+		_, qErr := client.Query(query)
+		var expectedErr *ErrQueryCheck
+		if assert.ErrorAs(t, qErr, &expectedErr) {
+			assert.Nil(t, expectedErr.Abort)
+		}
+	})
+
+	t.Run("abort field can have value", func(t *testing.T) {
+		query, _ := FQL(`abort("foo")`, nil)
+		_, qErr := client.Query(query)
+		var expectedErr *ErrQueryRuntime
+		if assert.ErrorAs(t, qErr, &expectedErr) {
+			assert.Equal(t, "aborted", expectedErr.Code)
+			assert.Equal(t, "foo", expectedErr.Abort)
+		}
+	})
+
+	t.Run("abort field can have complex type", func(t *testing.T) {
+		query, _ := FQL(`abort(Time("2023-02-28T18:10:10.00001Z"))`, nil)
+		_, qErr := client.Query(query)
+		var expectedErr *ErrQueryRuntime
+		if assert.ErrorAs(t, qErr, &expectedErr) {
+			assert.Equal(t, "aborted", expectedErr.Code)
+			assert.Equal(t, time.Date(2023, 02, 28, 18, 10, 10, 10000, time.UTC), *expectedErr.Abort.(*time.Time))
+		}
+	})
 }
