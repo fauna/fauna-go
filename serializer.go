@@ -217,7 +217,7 @@ func unboxType(body map[string]any) (any, error) {
 			case typeTagRef:
 				return unboxRef(v.(map[string]any))
 			case typeTagSet:
-				return unboxSet(v.(map[string]any))
+				return unboxSet(v)
 			case typeTagDoc:
 				return unboxDoc(v.(map[string]any))
 			case typeTagObject:
@@ -329,8 +329,14 @@ func unboxDoc(v map[string]any) (any, error) {
 	return nil, fmt.Errorf("invalid doc %v", v)
 }
 
-func unboxSet(v map[string]any) (any, error) {
-	if dataI, ok := v["data"]; ok {
+func unboxSet(v any) (any, error) {
+	if set, ok := v.(string); ok {
+		setC := Page{After: set}
+		return &setC, nil
+	}
+
+	set := v.(map[string]any)
+	if dataI, ok := set["data"]; ok {
 		if dataRaw, ok := dataI.([]any); ok {
 			data, err := convertSlice(dataRaw)
 			if err != nil {
@@ -338,7 +344,7 @@ func unboxSet(v map[string]any) (any, error) {
 			}
 
 			setC := Page{Data: data}
-			if afterRaw, ok := v["after"]; ok {
+			if afterRaw, ok := set["after"]; ok {
 				if after, ok := afterRaw.(string); ok {
 					setC.After = after
 				}
