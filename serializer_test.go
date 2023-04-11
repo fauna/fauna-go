@@ -253,6 +253,16 @@ func TestEncodingFaunaStructs(t *testing.T) {
 		obj := Page{[]any{"0", "1", "2"}, "foobarbaz"}
 		roundTripCheck(t, obj, `{"@set":{"data":["0","1","2"],"after":"foobarbaz"}}`)
 	})
+
+	t.Run("decodes data-less set", func(t *testing.T) {
+		bs := []byte(`{"@set":"foobarbaz"}`)
+		var set any
+		unmarshalAndCheck(t, bs, &set)
+		if page, ok := set.(*Page); assert.True(t, ok) {
+			assert.Nil(t, page.Data)
+			assert.Equal(t, "foobarbaz", page.After)
+		}
+	})
 }
 
 func TestEncodingStructs(t *testing.T) {
