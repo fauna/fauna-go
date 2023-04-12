@@ -6,14 +6,6 @@ import (
 
 const httpStatusQueryTimeout = 440
 
-var queryCheckFailureCodes = map[string]struct{}{
-	"invalid_function_definition": {},
-	"invalid_identifier":          {},
-	"invalid_query":               {},
-	"invalid_syntax":              {},
-	"invalid_type":                {},
-}
-
 // A ErrFauna is the base of all errors and provides the underlying `code`,
 // `message`, and any [fauna.QueryInfo].
 type ErrFauna struct {
@@ -36,6 +28,18 @@ type ErrQueryRuntime struct {
 
 // A ErrQueryCheck is returned when the query fails one or more validation checks.
 type ErrQueryCheck struct {
+	*ErrFauna
+}
+
+// An ErrInvalidRequest is returned when the request body is not valid JSON, or
+// does not conform to the API specification
+type ErrInvalidRequest struct {
+	*ErrFauna
+}
+
+// An ErrAbort is returned when the `abort()` function was called, which will
+// return custom abort data in the error response.
+type ErrAbort struct {
 	*ErrFauna
 }
 
@@ -82,14 +86,6 @@ type ErrNetwork error
 func getErrFauna(httpStatus int, res *queryResponse) error {
 	if res.Error != nil {
 		res.Error.QueryInfo = newQueryInfo(res)
-
-		if res.Error.Abort != nil {
-			abort, err := convert(false, res.Error.Abort)
-			if err != nil {
-				return err
-			}
-			res.Error.Abort = abort
-		}
 	}
 
 	switch httpStatus {
@@ -100,13 +96,26 @@ func getErrFauna(httpStatus int, res *queryResponse) error {
 			return err
 		}
 
-		if _, found := queryCheckFailureCodes[res.Error.Code]; found {
+		switch res.Error.Code {
+		case "invalid_query":
 			err := &ErrQueryCheck{res.Error}
 			err.Message += "\n" + res.Summary
 			return err
-
-		} else {
+		case "invalid_argument":
 			err := &ErrQueryRuntime{res.Error}
+			err.Message += "\n" + res.Summary
+			return err
+		case "abort":
+			err := &ErrAbort{res.Error}
+			abort, cErr := convert(false, res.Error.Abort)
+			if cErr != nil {
+				return cErr
+			}
+			err.Abort = abort
+			err.Message += "\n" + res.Summary
+			return err
+		default:
+			err := &ErrInvalidRequest{res.Error}
 			err.Message += "\n" + res.Summary
 			return err
 		}
