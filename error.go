@@ -6,7 +6,7 @@ import (
 
 const httpStatusQueryTimeout = 440
 
-// A ErrFauna is the base of all errors and provides the underlying `code`,
+// An ErrFauna is the base of all errors and provides the underlying `code`,
 // `message`, and any [fauna.QueryInfo].
 type ErrFauna struct {
 	*QueryInfo
@@ -15,18 +15,18 @@ type ErrFauna struct {
 	Abort   any    `json:"abort"`
 }
 
-// provides the underlying error message.
+// Error provides the underlying error message.
 func (e ErrFauna) Error() string {
 	return e.Message
 }
 
-// A ErrQueryRuntime is returned when the query fails due to a runtime error.
+// An ErrQueryRuntime is returned when the query fails due to a runtime error.
 // The `code` field will vary based on the specific error cause.
 type ErrQueryRuntime struct {
 	*ErrFauna
 }
 
-// A ErrQueryCheck is returned when the query fails one or more validation checks.
+// An ErrQueryCheck is returned when the query fails one or more validation checks.
 type ErrQueryCheck struct {
 	*ErrFauna
 }
@@ -43,7 +43,7 @@ type ErrAbort struct {
 	*ErrFauna
 }
 
-// A ErrQueryTimeout is returned when the client specified timeout was
+// An ErrQueryTimeout is returned when the client specified timeout was
 // exceeded, but the timeout was set lower than the query's expected
 // processing time. This response is distinguished from [fauna.ServiceTimeoutError]
 // by the fact that a [fauna.QueryTimeoutError] response is considered a
@@ -64,22 +64,22 @@ type ErrAuthorization struct {
 	*ErrFauna
 }
 
-// A ErrThrottling is returned when the query exceeded some capacity limit.
+// An ErrThrottling is returned when the query exceeded some capacity limit.
 type ErrThrottling struct {
 	*ErrFauna
 }
 
-// A ErrServiceInternal is returned when an unexpected error occurs.
+// An ErrServiceInternal is returned when an unexpected error occurs.
 type ErrServiceInternal struct {
 	*ErrFauna
 }
 
-// A ErrServiceTimeout is returned when an unexpected timeout occurs.
+// An ErrServiceTimeout is returned when an unexpected timeout occurs.
 type ErrServiceTimeout struct {
 	*ErrFauna
 }
 
-// A ErrNetwork is returned when an unknown error is encounted when attempting
+// An ErrNetwork is returned when an unknown error is encounted when attempting
 // to send a request to Fauna.
 type ErrNetwork error
 
