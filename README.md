@@ -93,6 +93,46 @@ func main() {
 }
 ```
 
+### Composing Multiple Queries
+
+> **Note**: Sample code, not a working example
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/fauna/fauna-go"
+)
+
+func userByTin(tin string) (*fauna.Query, error) {
+	return fauna.FQL(`Users.byTin(${tin})`, map[string]any{"tin": tin})
+}
+
+func main() {
+	client, clientErr := fauna.NewDefaultClient()
+	if clientErr != nil {
+		panic(clientErr)
+	}
+
+	byTin, err := userByTin("1234")
+	if err != nil {
+		panic(err)
+	}
+
+	q, _ := fauna.FQL(`${user} { name }`, map[string]any{"user": byTin})
+	res, err := client.Query(q)
+	if err != nil {
+		panic(err)
+	}
+
+	data := res.Data.(map[string]string)
+
+    fmt.Println(data["name"])
+}
+```
+
 ## Contributing
 
 GitHub pull requests are very welcome.
