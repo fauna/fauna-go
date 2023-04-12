@@ -36,19 +36,18 @@ func main() {
 		panic(clientErr)
 	}
 
-	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" }`, nil)
+	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" })`, nil)
 	if _, err := client.Query(createColl); err != nil {
 		panic(err)
 	}
 
-	createDog, _ := fauna.FQL(`Dogs.create({ name: name })`, map[string]any{"name": "Scout"})
+	createDog, _ := fauna.FQL(`Dogs.create({ name: ${name}})`, map[string]any{"name": "Scout"})
 	res, err := client.Query(createDog)
 	if err != nil {
 		panic(err)
 	}
 
-	scout := res.Data.(map[string]string)
-	fmt.Println(scout["name"])
+	fmt.Println(res.Data.(*fauna.Document).Data["name"])
 }
 ```
 
@@ -73,7 +72,7 @@ func main() {
 		panic(clientErr)
 	}
 
-	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" }`, nil)
+	createColl, _ := fauna.FQL(`Collection.create({ name: "Dogs" })`, nil)
 	if _, err := client.Query(createColl); err != nil {
 		panic(err)
 	}
@@ -90,11 +89,13 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println(scout)
+	fmt.Println(scout.Name)
 }
 ```
 
 ### Composing Multiple Queries
+
+> **Note**: Sample code, not a working example
 
 ```go
 package main
