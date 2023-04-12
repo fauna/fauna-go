@@ -41,8 +41,26 @@ func TestGetErrFauna(t *testing.T) {
 			name: "Query runtime error",
 			args: args{
 				httpStatus:   http.StatusBadRequest,
-				serviceError: &ErrFauna{Code: "", Message: ""},
+				serviceError: &ErrFauna{Code: "invalid_argument", Message: ""},
 				errType:      &ErrQueryRuntime{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Invalid request error",
+			args: args{
+				httpStatus:   http.StatusBadRequest,
+				serviceError: &ErrFauna{Code: "invalid_request", Message: ""},
+				errType:      &ErrInvalidRequest{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Abort error",
+			args: args{
+				httpStatus:   http.StatusBadRequest,
+				serviceError: &ErrFauna{Code: "abort", Message: "", Abort: `{"@int":"1234"}`},
+				errType:      &ErrAbort{},
 			},
 			wantErr: true,
 		},
@@ -123,21 +141,12 @@ func TestErrAbort(t *testing.T) {
 		return
 	}
 
-	t.Run("abort field is null on non-abort", func(t *testing.T) {
-		query, _ := FQL(`foo"`, nil)
-		_, qErr := client.Query(query)
-		var expectedErr *ErrQueryCheck
-		if assert.ErrorAs(t, qErr, &expectedErr) {
-			assert.Nil(t, expectedErr.Abort)
-		}
-	})
-
 	t.Run("abort field can have value", func(t *testing.T) {
 		query, _ := FQL(`abort("foo")`, nil)
 		_, qErr := client.Query(query)
-		var expectedErr *ErrQueryRuntime
+		var expectedErr *ErrAbort
 		if assert.ErrorAs(t, qErr, &expectedErr) {
-			assert.Equal(t, "aborted", expectedErr.Code)
+			assert.Equal(t, "abort", expectedErr.Code)
 			assert.Equal(t, "foo", expectedErr.Abort)
 		}
 	})
@@ -145,9 +154,9 @@ func TestErrAbort(t *testing.T) {
 	t.Run("abort field can have complex type", func(t *testing.T) {
 		query, _ := FQL(`abort(Time("2023-02-28T18:10:10.00001Z"))`, nil)
 		_, qErr := client.Query(query)
-		var expectedErr *ErrQueryRuntime
+		var expectedErr *ErrAbort
 		if assert.ErrorAs(t, qErr, &expectedErr) {
-			assert.Equal(t, "aborted", expectedErr.Code)
+			assert.Equal(t, "abort", expectedErr.Code)
 			assert.Equal(t, time.Date(2023, 02, 28, 18, 10, 10, 10000, time.UTC), *expectedErr.Abort.(*time.Time))
 		}
 	})
