@@ -10,9 +10,16 @@ const httpStatusQueryTimeout = 440
 // `message`, and any [fauna.QueryInfo].
 type ErrFauna struct {
 	*QueryInfo
-	Code    string `json:"code"`
+	Code               string                 `json:"code"`
+	Message            string                 `json:"message"`
+	Abort              any                    `json:"abort"`
+	ConstraintFailures []ErrConstraintFailure `json:"constraint_failures"`
+}
+
+type ErrConstraintFailure struct {
 	Message string `json:"message"`
-	Abort   any    `json:"abort"`
+	Name    string `json:"name,omitempty"`
+	Paths   []any  `json:"paths,omitempty"`
 }
 
 // provides the underlying error message.
@@ -101,7 +108,7 @@ func getErrFauna(httpStatus int, res *queryResponse) error {
 			err := &ErrQueryCheck{res.Error}
 			err.Message += "\n" + res.Summary
 			return err
-		case "invalid_argument":
+		case "invalid_argument", "constraint_failure":
 			err := &ErrQueryRuntime{res.Error}
 			err.Message += "\n" + res.Summary
 			return err

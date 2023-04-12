@@ -161,3 +161,23 @@ func TestErrAbort(t *testing.T) {
 		}
 	})
 }
+
+func TestErrConstraint(t *testing.T) {
+	t.Setenv(EnvFaunaEndpoint, EndpointLocal)
+	t.Setenv(EnvFaunaSecret, "secret")
+
+	client, clientErr := NewDefaultClient()
+	if !assert.NoError(t, clientErr) {
+		return
+	}
+
+	t.Run("constraint failures get decoded", func(t *testing.T) {
+		query, _ := FQL(`Function.create({"name": "double", "body": "x => x * 2"})`, nil)
+		_, qErr := client.Query(query)
+		var expectedErr *ErrQueryRuntime
+		if assert.ErrorAs(t, qErr, &expectedErr) {
+			assert.Len(t, expectedErr.ConstraintFailures, 1)
+			assert.Equal(t, "The identifier `double` is reserved.", expectedErr.ConstraintFailures[0].Message)
+		}
+	})
+}
