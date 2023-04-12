@@ -128,7 +128,6 @@ func main() {
 	}
 
 	data := res.Data.(map[string]string)
-
     fmt.Println(data["name"])
 }
 ```
