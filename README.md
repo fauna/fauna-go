@@ -1,12 +1,15 @@
 > **Warning**
-> This driver is in beta release and not recommended for production use. It operates with the Fauna database service via an API which is also in beta release, and is not recommended for production use. This driver is not compatible with v4 or earlier versions of Fauna. If you would like to participate in the private beta program please contact product@fauna.com.
+> This driver is in beta release and not recommended for production use. It operates with the Fauna database service via an API which is also in beta release, and is not recommended for production use. This driver is not compatible with v4 or earlier versions of Fauna. Please feel free to contact product@fauna.com to learn about our special Early Access program for FQL X.
 
-# Fauna Go Driver
+# A Golang driver for [Fauna](https://fauna.com/).
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/fauna/fauna-go)](https://goreportcard.com/report/github.com/fauna/fauna-go)
 [![Go Reference](https://pkg.go.dev/badge/github.com/fauna/fauna-go.svg)](https://pkg.go.dev/github.com/fauna/fauna-go)
 [![License](https://img.shields.io/badge/license-MPL_2.0-blue.svg?maxAge=2592000)](https://raw.githubusercontent.com/fauna/fauna-go/main/LICENSE)
 
-A Golang driver for [Fauna](https://fauna.com/).
+See the [Fauna Documentation](https://fqlx-beta--fauna-docs.netlify.app/fqlx/beta/) for additional information how to configure and query your databases.
+
+This driver can only be used with FQL X, and is not compatible with earlier versions of FQL. To query your databases with earlier API versions, see the [faunadb](https://github.com/fauna/faunadb-go) version.
 
 ## Supported Go Versions
 
