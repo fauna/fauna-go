@@ -98,8 +98,6 @@ func main() {
 
 ### Composing Multiple Queries
 
-> **Note**: Sample code, not a working example
-
 ```go
 package main
 
@@ -109,8 +107,9 @@ import (
 	"github.com/fauna/fauna-go"
 )
 
-func userByTin(tin string) (*fauna.Query, error) {
-	return fauna.FQL(`Users.byTin(${tin})`, map[string]any{"tin": tin})
+func addTwo(x int) *fauna.Query {
+	q, _ := fauna.FQL(`${x} + 2`, map[string]any{"x": x})
+	return q
 }
 
 func main() {
@@ -119,19 +118,14 @@ func main() {
 		panic(clientErr)
 	}
 
-	byTin, err := userByTin("1234")
-	if err != nil {
-		panic(err)
-	}
-
-	q, _ := fauna.FQL(`${user} { name }`, map[string]any{"user": byTin})
+	q, _ := fauna.FQL(`${y} + 4`, map[string]any{"y": addTwo(2)})
 	res, err := client.Query(q)
 	if err != nil {
 		panic(err)
 	}
 
-	data := res.Data.(map[string]string)
-	fmt.Println(data["name"])
+	data := res.Data.(int64)
+	fmt.Println(data) // 8
 }
 ```
 
