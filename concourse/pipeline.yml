@@ -78,6 +78,15 @@ jobs:
                 AWS_ACCESS_KEY_ID: ((drivers-platform-tests/aws-access-key-id))
                 AWS_SECRET_ACCESS_KEY: ((drivers-platform-tests/aws-secret-key))
 
+            - task: netlify-tests
+              image: testtools-image
+              file: testtools-repo/fauna-driver-platform-tests/concourse/tasks/golang-netlify-tests.yml
+              params:
+                GIT_COMMIT: ((.:git-commit))
+                FAUNA_SECRET: ((drivers-platform-tests/fauna-secret))
+                NETLIFY_ACCOUNT: ((drivers-platform-tests/netlify-account))
+                NETLIFY_AUTH_TOKEN: ((drivers-platform-tests/netlify-auth-token))
+
             - task: vercel-tests
               image: testtools-image
               file: testtools-repo/fauna-driver-platform-tests/concourse/tasks/golang-vercel-tests.yml
