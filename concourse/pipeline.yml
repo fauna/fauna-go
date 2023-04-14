@@ -21,6 +21,23 @@ resources:
       paths:
         - version
 
+  - name: testtools-repo
+    type: git
+    icon: github
+    source:
+      uri: git@github.com:fauna/testtools.git
+      branch: main
+      private_key: ((github-ssh-key))
+
+  - name: testtools-image
+    type: registry-image
+    icon: docker
+    source:
+      repository: devex-dx-drivers-platform-tests
+      aws_access_key_id: ((prod-images-aws-access-key-id))
+      aws_secret_access_key: ((prod-images-aws-secret-key))
+      aws_region: us-east-2
+
 jobs:
   - name: set-self
     plan:
@@ -29,14 +46,63 @@ jobs:
       - set_pipeline: self
         file: fauna-go-repository/concourse/pipeline.yml
 
-  - name: release
+  - name: test
     serial: true
-    public: false
     plan:
       - get: fauna-go-repository
         trigger: true
         passed:
           - set-self
+
+      - get: testtools-repo
+      - get: testtools-image
+
+      - load_var: git-commit
+        reveal: true
+        file: fauna-go-repository/.git/ref
+
+      - in_parallel:
+          fail_fast: false
+          steps:
+            - task: unit-and-integration-tests
+              file: fauna-go-repository/concourse/tasks/tests.yml
+              privileged: true
+
+            - task: aws-lambda-tests
+              image: testtools-image
+              file: testtools-repo/fauna-driver-platform-tests/concourse/tasks/golang-aws-lambda-tests.yml
+              params:
+                GIT_COMMIT: ((.:git-commit))
+                FAUNA_SECRET: ((drivers-platform-tests/fauna-secret))
+                AWS_LAMBDA_ROLE_ARN: ((drivers-platform-tests/aws-lambda-role-arn))
+                AWS_ACCESS_KEY_ID: ((drivers-platform-tests/aws-access-key-id))
+                AWS_SECRET_ACCESS_KEY: ((drivers-platform-tests/aws-secret-key))
+
+            - task: netlify-tests
+              image: testtools-image
+              file: testtools-repo/fauna-driver-platform-tests/concourse/tasks/golang-netlify-tests.yml
+              params:
+                GIT_COMMIT: ((.:git-commit))
+                FAUNA_SECRET: ((drivers-platform-tests/fauna-secret))
+                NETLIFY_ACCOUNT: ((drivers-platform-tests/netlify-account))
+                NETLIFY_AUTH_TOKEN: ((drivers-platform-tests/netlify-auth-token))
+
+            - task: vercel-tests
+              image: testtools-image
+              file: testtools-repo/fauna-driver-platform-tests/concourse/tasks/golang-vercel-tests.yml
+              params:
+                GIT_COMMIT: ((.:git-commit))
+                FAUNA_SECRET: ((drivers-platform-tests/fauna-secret))
+                VERCEL_TOKEN: ((drivers-platform-tests/vercel-token))
+
+
+  - name: release
+    serial: true
+    public: false
+    plan:
+      - get: fauna-go-repository
+        passed:
+          - test
 
       - task: set-slack-message
         file: fauna-go-repository/concourse/tasks/slack-message.yml
