@@ -54,17 +54,17 @@ type Module struct {
 }
 
 type Document struct {
-	ID   string     `fauna:"id"`
-	Coll *Module    `fauna:"coll"`
-	TS   *time.Time `fauna:"ts"`
-	Data map[string]any
+	ID   string         `fauna:"id"`
+	Coll *Module        `fauna:"coll"`
+	TS   *time.Time     `fauna:"ts"`
+	Data map[string]any `fauna:"-"`
 }
 
 type NamedDocument struct {
-	Name string     `fauna:"name"`
-	Coll *Module    `fauna:"coll"`
-	TS   *time.Time `fauna:"ts"`
-	Data map[string]any
+	Name string         `fauna:"name"`
+	Coll *Module        `fauna:"coll"`
+	TS   *time.Time     `fauna:"ts"`
+	Data map[string]any `fauna:"-"`
 }
 
 type Ref struct {
@@ -86,7 +86,7 @@ func mapDecoder(into any) (*mapstructure.Decoder, error) {
 	return mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName:              "fauna",
 		Result:               into,
-		IgnoreUntaggedFields: true,
+		IgnoreUntaggedFields: false,
 		ErrorUnused:          false,
 		ErrorUnset:           false,
 		DecodeHook:           unmarshalDoc,
@@ -604,12 +604,12 @@ func encodeStruct(s any) (any, error) {
 			}
 		}
 
-		tag, found := structField.Tag.Lookup(fieldTag)
-		if !found {
+		tag := structField.Tag.Get(fieldTag)
+		tags := strings.Split(tag, ",")
+
+		if len(tags) > 0 && tags[0] == "-" {
 			continue
 		}
-
-		tags := strings.Split(tag, ",")
 
 		typeHint := ""
 		if len(tags) > 1 {

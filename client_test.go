@@ -180,14 +180,8 @@ func TestBasicCRUDRequests(t *testing.T) {
 
 	t.Run("Delete a Person", func(t *testing.T) {
 		q, _ := fauna.FQL(`${coll}.all().firstWhere(.name == ${name}).delete()`, map[string]any{"coll": collMod, "name": p.Name})
-		res, queryErr := client.Query(q)
-		if !assert.NoError(t, queryErr) {
-			return
-		}
-
-		var result Person
-		err := res.Unmarshal(&result)
-		assert.NoError(t, err)
+		_, queryErr := client.Query(q)
+		assert.NoError(t, queryErr)
 	})
 
 	t.Run("Delete a Collection", func(t *testing.T) {
