@@ -18,7 +18,7 @@ type SubBusinessObj struct {
 	IntField          int            `fauna:"int_field"`
 	DoubleField       float64        `fauna:"double_field"`
 
-	IgnoredField2 string
+	IgnoredField2 string `fauna:"-"`
 }
 
 type DocBusinessObj struct {
@@ -45,7 +45,7 @@ type BusinessObj struct {
 	DocField      DocBusinessObj      `fauna:"doc_field"`
 	NamedDocField NamedDocBusinessObj `fauna:"named_doc_field"`
 
-	IgnoredField string
+	IgnoredField string `fauna:"-"`
 }
 
 func marshalAndCheck(t *testing.T, obj any) []byte {
@@ -268,7 +268,7 @@ func TestEncodingFaunaStructs(t *testing.T) {
 func TestEncodingStructs(t *testing.T) {
 	t.Run("encodes using struct field names", func(t *testing.T) {
 		obj := struct {
-			Field string `fauna:""`
+			Field string
 		}{"foo"}
 		roundTripCheck(t, obj, `{"Field":"foo"}`)
 	})
@@ -298,10 +298,10 @@ func TestEncodingStructs(t *testing.T) {
 		roundTripCheck(t, obj, `{"field_name":{"@date":"2023-02-28"}}`)
 	})
 
-	t.Run("ignores untagged fields", func(t *testing.T) {
+	t.Run("ignores fields", func(t *testing.T) {
 		obj := struct {
-			Field        string `fauna:""`
-			IgnoredField string
+			Field        string
+			IgnoredField string `fauna:"-"`
 		}{
 			Field:        "foo",
 			IgnoredField: "",
@@ -313,10 +313,10 @@ func TestEncodingStructs(t *testing.T) {
 		var obj struct {
 			GrandParent struct {
 				Parent struct {
-					Child   string `fauna:""`
-					Sibling string `fauna:""`
-				} `fauna:""`
-			} `fauna:""`
+					Child   string
+					Sibling string
+				}
+			}
 		}
 		obj.GrandParent.Parent.Child = "foo"
 		obj.GrandParent.Parent.Sibling = "bar"
@@ -327,13 +327,13 @@ func TestEncodingStructs(t *testing.T) {
 
 func TestEncodingPointers(t *testing.T) {
 	type checkStruct struct {
-		Field string `fauna:""`
+		Field string
 	}
 
 	var obj struct {
-		NilPtrField *checkStruct `fauna:""`
-		PtrField    *checkStruct `fauna:""`
-		Field       checkStruct  `fauna:""`
+		NilPtrField *checkStruct
+		PtrField    *checkStruct
+		Field       checkStruct
 	}
 	obj.NilPtrField = nil
 	obj.PtrField = &checkStruct{"foo"}
