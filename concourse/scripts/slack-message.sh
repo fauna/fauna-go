@@ -5,5 +5,5 @@ cd ./fauna-go-repository
 
 PACKAGE_VERSION=$(cat version)
 
-echo "fauna-go@${PACKAGE_VERSION} has been released <!subteam^S03CV3GLMCZ>" > ../slack-message/publish
+echo "fauna-go@${PACKAGE_VERSION} has been released <!subteam^S0562QFL21M>" > ../slack-message/publish
 
