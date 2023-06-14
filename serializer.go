@@ -68,6 +68,16 @@ type NamedDocument struct {
 	Data map[string]any `fauna:"-"`
 }
 
+type NullDocument struct {
+	Ref   *Ref    `fauna:"ref"`
+	Cause *string `fauna:"cause"`
+}
+
+type NullNamedDocument struct {
+	Ref   *NamedRef `fauna:"ref"`
+	Cause *string   `fauna:"cause"`
+}
+
 type Ref struct {
 	ID   string  `fauna:"id"`
 	Coll *Module `fauna:"coll"`
