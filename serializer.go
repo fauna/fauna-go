@@ -26,23 +26,24 @@ const (
 type typeTag string
 
 const (
-	typeTagInt    typeTag = "@int"
-	typeTagLong   typeTag = "@long"
-	typeTagDouble typeTag = "@double"
-	typeTagDate   typeTag = "@date"
-	typeTagTime   typeTag = "@time"
-	typeTagDoc    typeTag = "@doc"
-	typeTagRef    typeTag = "@ref"
-	typeTagSet    typeTag = "@set"
-	typeTagMod    typeTag = "@mod"
-	typeTagObject typeTag = "@object"
+	typeTagInt     typeTag = "@int"
+	typeTagLong    typeTag = "@long"
+	typeTagDouble  typeTag = "@double"
+	typeTagDate    typeTag = "@date"
+	typeTagTime    typeTag = "@time"
+	typeTagDoc     typeTag = "@doc"
+	typeTagNullDoc typeTag = "@nulldoc"
+	typeTagRef     typeTag = "@ref"
+	typeTagSet     typeTag = "@set"
+	typeTagMod     typeTag = "@mod"
+	typeTagObject  typeTag = "@object"
 )
 
 func keyConflicts(key string) bool {
 	switch typeTag(key) {
 	case typeTagInt, typeTagLong, typeTagDouble,
 		typeTagDate, typeTagTime,
-		typeTagDoc, typeTagMod, typeTagObject:
+		typeTagDoc, typeTagNullDoc, typeTagMod, typeTagObject:
 		return true
 	default:
 		return false
