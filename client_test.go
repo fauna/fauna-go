@@ -57,6 +57,100 @@ func TestDefaultClient(t *testing.T) {
 				t.Logf("summary: %s", res.Summary)
 			}
 		})
+
+		t.Run("Paginate Query", func(t *testing.T) {
+			colName := "PaginationTest"
+			colMod := &fauna.Module{Name: colName}
+
+			deleteQuery, _ := fauna.FQL(`Collection.byName(${coll})?.delete()`, map[string]any{"coll": colName})
+			_, deleteErr := client.Query(deleteQuery)
+			if deleteErr != nil {
+				t.Logf("failed to cleanup collection: %t", deleteErr)
+			}
+
+			q, _ := fauna.FQL(`Collection.create({ name: ${name} })`, map[string]any{"name": colName})
+			_, createErr := client.Query(q)
+			if !assert.NoError(t, createErr) {
+				t.FailNow()
+			}
+
+			t.Run("a lot of items", func(t *testing.T) {
+				totalTestItems := 200
+				// create items
+				for i := 0; i < totalTestItems; i++ {
+					createCollectionQuery, createItemErr := fauna.FQL(`${mod}.create({ value: ${i} })`, map[string]any{
+						"mod": colMod,
+						"i":   i,
+					})
+					if !assert.NoError(t, createItemErr) {
+						t.FailNow()
+					}
+
+					res, err := client.Query(createCollectionQuery)
+					if !assert.NoError(t, err) {
+						t.FailNow()
+					}
+					assert.NotZero(t, res.Stats.WriteOps)
+				}
+
+				// get items query
+				query, queryErr := fauna.FQL(`${mod}.all()`, map[string]any{"mod": colMod})
+				if !assert.NoError(t, queryErr) {
+					t.FailNow()
+				}
+
+				// paginate items
+				pages := 0
+				itemsSeen := 0
+
+				paginator := client.Paginate(query)
+				for {
+					res, err := paginator.Next()
+					if !assert.NoError(t, err) || !assert.NotNil(t, res) {
+						t.FailNow()
+					}
+
+					pages += 1
+					itemsSeen += len(res.Data)
+
+					if !paginator.HasNext() {
+						break
+					}
+				}
+
+				assert.Equal(t, totalTestItems, itemsSeen)
+			})
+
+			t.Run("an incomplete page", func(t *testing.T) {
+				query, queryErr := fauna.FQL(`[1,2,3,4]`, map[string]any{"mod": colMod})
+				if !assert.NoError(t, queryErr) {
+					t.FailNow()
+				}
+
+				// try to paginate a query that doesn't have Pages
+				pages := 0
+				paginator := client.Paginate(query)
+				for {
+					res, err := paginator.Next()
+					if !assert.NoError(t, err) || !assert.NotNil(t, res) {
+						t.FailNow()
+					}
+
+					pages += 1
+
+					if !assert.NotEmpty(t, res.Data) {
+						t.FailNow()
+					}
+
+					if !paginator.HasNext() {
+						break
+					}
+				}
+
+				assert.Equal(t, 1, pages)
+
+			})
+		})
 	})
 }
 

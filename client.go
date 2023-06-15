@@ -137,6 +137,68 @@ func (c *Client) Query(fql *Query, opts ...QueryOptFn) (*QuerySuccess, error) {
 	return c.do(req)
 }
 
+// Paginate invoke fql with pagination optionally set multiple [QueryOptFn]
+func (c *Client) Paginate(fql *Query, opts ...QueryOptFn) *QueryIterator {
+	return &QueryIterator{
+		client: c,
+		fql:    fql,
+		opts:   opts,
+	}
+}
+
+// QueryIterator is a [fauna.Client] iterator for paginated queries
+type QueryIterator struct {
+	client *Client
+	fql    *Query
+	opts   []QueryOptFn
+}
+
+// Next returns the next page of results
+func (q *QueryIterator) Next() (*Page, error) {
+	res, queryErr := q.client.Query(q.fql, q.opts...)
+	if queryErr != nil {
+		return nil, queryErr
+	}
+
+	nextPage := func(after string) error {
+		if after == "" {
+			q.fql = nil
+			return nil
+		}
+
+		var fqlErr error
+		q.fql, fqlErr = FQL(`Set.paginate(${after})`, map[string]any{"after": after})
+
+		return fqlErr
+	}
+
+	if page, ok := res.Data.(*Page); ok { // First page
+		nextPage(page.After)
+
+		return page, nil
+	}
+
+	var page Page
+	if results, isPage := res.Data.(map[string]any); isPage {
+		if after, hasAfter := results["after"].(string); hasAfter {
+			page = Page{After: after, Data: results["data"].([]any)}
+		} else {
+			page = Page{After: "", Data: results["data"].([]any)}
+		}
+	} else {
+		page = Page{After: "", Data: []any{res.Data}}
+	}
+
+	nextPage(page.After)
+
+	return &page, nil
+}
+
+// HasNext returns whether there is another page of results
+func (q *QueryIterator) HasNext() bool {
+	return q.fql != nil
+}
+
 // SetLastTxnTime update the last txn time for the [fauna.Client]
 // This has no effect if earlier than stored timestamp.
 //
