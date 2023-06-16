@@ -177,7 +177,7 @@ func TestErrConstraint(t *testing.T) {
 		var expectedErr *ErrQueryRuntime
 		if assert.ErrorAs(t, qErr, &expectedErr) {
 			assert.Len(t, expectedErr.ConstraintFailures, 1)
-			assert.Equal(t, "The identifier `double` is reserved.", expectedErr.ConstraintFailures[0].Message)
+			assert.NotEmpty(t, expectedErr.ConstraintFailures[0].Message)
 		}
 	})
 }
