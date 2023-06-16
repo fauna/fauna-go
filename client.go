@@ -160,20 +160,10 @@ func (q *QueryIterator) Next() (*Page, error) {
 		return nil, queryErr
 	}
 
-	nextPage := func(after string) error {
-		if after == "" {
-			q.fql = nil
-			return nil
-		}
-
-		var fqlErr error
-		q.fql, fqlErr = FQL(`Set.paginate(${after})`, map[string]any{"after": after})
-
-		return fqlErr
-	}
-
 	if page, ok := res.Data.(*Page); ok { // First page
-		nextPage(page.After)
+		if pageErr := q.nextPage(page.After); pageErr != nil {
+			return nil, pageErr
+		}
 
 		return page, nil
 	}
@@ -189,9 +179,23 @@ func (q *QueryIterator) Next() (*Page, error) {
 		page = Page{After: "", Data: []any{res.Data}}
 	}
 
-	nextPage(page.After)
+	if pageErr := q.nextPage(page.After); pageErr != nil {
+		return nil, pageErr
+	}
 
 	return &page, nil
+}
+
+func (q *QueryIterator) nextPage(after string) error {
+	if after == "" {
+		q.fql = nil
+		return nil
+	}
+
+	var fqlErr error
+	q.fql, fqlErr = FQL(`Set.paginate(${after})`, map[string]any{"after": after})
+
+	return fqlErr
 }
 
 // HasNext returns whether there is another page of results
