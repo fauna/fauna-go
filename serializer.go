@@ -26,24 +26,23 @@ const (
 type typeTag string
 
 const (
-	typeTagInt     typeTag = "@int"
-	typeTagLong    typeTag = "@long"
-	typeTagDouble  typeTag = "@double"
-	typeTagDate    typeTag = "@date"
-	typeTagTime    typeTag = "@time"
-	typeTagDoc     typeTag = "@doc"
-	typeTagNullDoc typeTag = "@nulldoc"
-	typeTagRef     typeTag = "@ref"
-	typeTagSet     typeTag = "@set"
-	typeTagMod     typeTag = "@mod"
-	typeTagObject  typeTag = "@object"
+	typeTagInt    typeTag = "@int"
+	typeTagLong   typeTag = "@long"
+	typeTagDouble typeTag = "@double"
+	typeTagDate   typeTag = "@date"
+	typeTagTime   typeTag = "@time"
+	typeTagDoc    typeTag = "@doc"
+	typeTagRef    typeTag = "@ref"
+	typeTagSet    typeTag = "@set"
+	typeTagMod    typeTag = "@mod"
+	typeTagObject typeTag = "@object"
 )
 
 func keyConflicts(key string) bool {
 	switch typeTag(key) {
 	case typeTagInt, typeTagLong, typeTagDouble,
 		typeTagDate, typeTagTime,
-		typeTagDoc, typeTagNullDoc, typeTagMod, typeTagObject:
+		typeTagDoc, typeTagMod, typeTagObject:
 		return true
 	default:
 		return false
@@ -69,13 +68,13 @@ type NamedDocument struct {
 }
 
 type NullDocument struct {
-	Ref   *Ref    `fauna:"ref"`
-	Cause *string `fauna:"cause"`
+	Ref   *Ref   `fauna:"ref"`
+	Cause string `fauna:"cause"`
 }
 
 type NullNamedDocument struct {
 	Ref   *NamedRef `fauna:"ref"`
-	Cause *string   `fauna:"cause"`
+	Cause string    `fauna:"cause"`
 }
 
 type Ref struct {
@@ -275,6 +274,18 @@ func getIDorName(v map[string]any) (id string, name string) {
 	return
 }
 
+func getExistsCause(v map[string]any) (exists bool, cause string) {
+	if existsRaw, ok := v["exists"]; ok {
+		exists = existsRaw.(bool)
+		if causeRaw, hasCause := v["cause"]; hasCause {
+			cause = causeRaw.(string)
+			return exists, cause
+		}
+	}
+
+	return true, ""
+}
+
 func unboxRef(v map[string]any) (any, error) {
 	mod, err := getColl(v)
 	if err != nil {
@@ -283,6 +294,22 @@ func unboxRef(v map[string]any) (any, error) {
 
 	if mod != nil {
 		id, name := getIDorName(v)
+		if exists, cause := getExistsCause(v); !exists {
+			if id != "" {
+				return &NullDocument{
+					Ref:   &Ref{id, mod},
+					Cause: cause,
+				}, nil
+			}
+
+			if name != "" {
+				return &NullNamedDocument{
+					Ref:   &NamedRef{name, mod},
+					Cause: cause,
+				}, nil
+			}
+		}
+
 		if id != "" {
 			return &Ref{id, mod}, nil
 		}
@@ -290,6 +317,7 @@ func unboxRef(v map[string]any) (any, error) {
 		if name != "" {
 			return &NamedRef{name, mod}, nil
 		}
+
 	}
 
 	return nil, fmt.Errorf("invalid ref %v", v)
@@ -419,11 +447,13 @@ func encode(v any, hint string) (any, error) {
 	case Module:
 		return encodeMod(vt)
 
-	case Ref:
+	case Ref,
+		NamedRef:
 		return encodeFaunaStruct(typeTagRef, vt)
 
-	case NamedRef:
-		return encodeFaunaStruct(typeTagRef, vt)
+	case NullDocument,
+		NullNamedDocument:
+		return encodeStruct(v)
 
 	case Page:
 		return encodeFaunaStruct(typeTagSet, vt)
@@ -568,6 +598,38 @@ func encodeStruct(s any) (any, error) {
 
 	for i := 0; i < fields; i++ {
 		structField := elem.Type().Field(i)
+
+		if structField.Anonymous && (structField.Name == "NullDocument") {
+			doc := elem.Field(i).Interface().(NullDocument)
+
+			if doc.Ref != nil {
+				out["cause"] = doc.Cause
+
+				if ref, err := encode(doc.Ref, ""); err != nil {
+					return nil, err
+				} else {
+					out["ref"] = ref
+				}
+
+				continue
+			}
+		}
+
+		if structField.Anonymous && (structField.Name == "NullNamedDocument") {
+			doc := elem.Field(i).Interface().(NullNamedDocument)
+
+			if doc.Ref != nil {
+				out["cause"] = doc.Cause
+
+				if ref, err := encode(doc.Ref, ""); err != nil {
+					return nil, err
+				} else {
+					out["ref"] = ref
+				}
+
+				continue
+			}
+		}
 
 		if structField.Anonymous && structField.Name == "Document" {
 			doc := elem.Field(i).Interface().(Document)
