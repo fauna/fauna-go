@@ -276,7 +276,7 @@ func getIDorName(v map[string]any) (id string, name string) {
 
 func getExistsCause(v map[string]any) (exists bool, cause string) {
 	if existsRaw, hasExists := v["exists"]; hasExists {
-		if exists = existsRaw.(bool); exists == false {
+		if exists = existsRaw.(bool); !exists {
 			if causeRaw, hasCause := v["cause"]; hasCause {
 				return exists, causeRaw.(string)
 			}
