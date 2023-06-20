@@ -403,8 +403,8 @@ func TestErrorHandling(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
 		client, clientErr := fauna.NewDefaultClient()
-		if assert.NoError(t, clientErr) {
-			return
+		if !assert.NoError(t, clientErr) {
+			t.FailNow()
 		}
 
 		testCollection := "testing"
@@ -422,6 +422,20 @@ func TestErrorHandling(t *testing.T) {
 		} else {
 			return
 		}
+
+		t.Run("returns a NullDoc", func(t *testing.T) {
+			nullDocQuery, nullDocQueryErr := fauna.FQL(`${coll}.byId('123')`, map[string]any{"coll": &fauna.Module{Name: testCollection}})
+			if !assert.NoError(t, nullDocQueryErr) {
+				t.FailNow()
+			}
+
+			res, err := client.Query(nullDocQuery)
+			if !assert.NoError(t, err) {
+				t.FailNow()
+			}
+
+			assert.IsType(t, &fauna.NullDocument{}, res.Data)
+		})
 
 		q, _ = fauna.FQL(`Collection.byName(${arg1}).delete()`, map[string]any{"arg1": testCollection})
 		_, queryErr = client.Query(q)
