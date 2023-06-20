@@ -135,6 +135,7 @@ func TestGetErrFauna(t *testing.T) {
 func TestErrAbort(t *testing.T) {
 	t.Setenv(EnvFaunaEndpoint, EndpointLocal)
 	t.Setenv(EnvFaunaSecret, "secret")
+	t.Setenv(EnvAllowHTTP, "1")
 
 	client, clientErr := NewDefaultClient()
 	if !assert.NoError(t, clientErr) {
@@ -165,6 +166,7 @@ func TestErrAbort(t *testing.T) {
 func TestErrConstraint(t *testing.T) {
 	t.Setenv(EnvFaunaEndpoint, EndpointLocal)
 	t.Setenv(EnvFaunaSecret, "secret")
+	t.Setenv(EnvAllowHTTP, "1")
 
 	client, clientErr := NewDefaultClient()
 	if !assert.NoError(t, clientErr) {

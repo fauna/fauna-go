@@ -16,6 +16,7 @@ import (
 func TestDefaultClient(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 	t.Setenv(fauna.EnvFaunaSecret, "secret")
+	t.Setenv(fauna.EnvAllowHTTP, "1")
 
 	client, clientErr := fauna.NewDefaultClient()
 	if !assert.NoError(t, clientErr) {
@@ -63,6 +64,7 @@ func TestDefaultClient(t *testing.T) {
 func TestNewClient(t *testing.T) {
 	t.Run("default client", func(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
+		t.Setenv(fauna.EnvAllowHTTP, "1")
 		_, clientErr := fauna.NewDefaultClient()
 		assert.NoError(t, clientErr)
 	})
@@ -79,6 +81,7 @@ func TestNewClient(t *testing.T) {
 
 	t.Run("has transaction time", func(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
+		t.Setenv(fauna.EnvAllowHTTP, "1")
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
 		client, clientErr := fauna.NewDefaultClient()
@@ -119,6 +122,7 @@ func TestNewClient(t *testing.T) {
 
 func TestBasicCRUDRequests(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaSecret, "secret")
+	t.Setenv(fauna.EnvAllowHTTP, "1")
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 	client, err := fauna.NewDefaultClient()
 	if !assert.NoError(t, err) {
@@ -341,6 +345,7 @@ func TestHeaders(t *testing.T) {
 func TestQueryTags(t *testing.T) {
 	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 	t.Setenv(fauna.EnvFaunaSecret, "secret")
+	t.Setenv(fauna.EnvAllowHTTP, "1")
 
 	client, clientErr := fauna.NewDefaultClient()
 	if !assert.NoError(t, clientErr) {
@@ -382,6 +387,7 @@ func TestErrorHandling(t *testing.T) {
 
 	t.Run("invalid query", func(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
+		t.Setenv(fauna.EnvAllowHTTP, "1")
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
 		client, clientErr := fauna.NewDefaultClient()
@@ -400,6 +406,7 @@ func TestErrorHandling(t *testing.T) {
 
 	t.Run("service error", func(t *testing.T) {
 		t.Setenv(fauna.EnvFaunaSecret, "secret")
+		t.Setenv(fauna.EnvAllowHTTP, "1")
 		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
 
 		client, clientErr := fauna.NewDefaultClient()

@@ -32,6 +32,8 @@ const (
 	EnvFaunaEndpoint = "FAUNA_ENDPOINT"
 	// EnvFaunaSecret environment variable for Fauna Client authentication
 	EnvFaunaSecret = "FAUNA_SECRET"
+	// EnvAllowHTTP environment variable to allow Fauna Client to use non-secure HTTP
+	EnvAllowHTTP = "FAUNA_ALLOW_UNSAFE_HTTP"
 
 	// DefaultHttpReadIdleTimeout Fauna Client default HTTP read idle timeout
 	DefaultHttpReadIdleTimeout = time.Minute * 3
@@ -86,7 +88,7 @@ func NewDefaultClient() (*Client, error) {
 	return NewClient(
 		secret,
 		URL(url),
-		HTTPClient(defaultHTTPClient(true)),
+		HTTPClient(defaultHTTPClient()),
 		Context(context.TODO()),
 	), nil
 }
@@ -96,7 +98,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	client := &Client{
 		ctx:    context.TODO(),
 		secret: secret,
-		http:   defaultHTTPClient(true),
+		http:   defaultHTTPClient(),
 		url:    EndpointDefault,
 		headers: map[string]string{
 			headerContentType:   "application/json; charset=utf-8",
@@ -165,7 +167,7 @@ func (c *Client) String() string {
 	return c.url
 }
 
-func defaultHTTPClient(allowHTTP bool) *http.Client {
+func defaultHTTPClient() *http.Client {
 	dialerContext := func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
 		dialer := tls.Dialer{
 			Config: cfg,
@@ -174,6 +176,7 @@ func defaultHTTPClient(allowHTTP bool) *http.Client {
 		return dialer.DialContext(ctx, network, addr)
 	}
 
+	_, allowHTTP := os.LookupEnv(EnvAllowHTTP)
 	if allowHTTP {
 		dialerContext = func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
 			dialer := net.Dialer{}

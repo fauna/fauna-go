@@ -18,6 +18,7 @@ func ExampleNewDefaultClient() {
 	// IMPORTANT: just for the purpose of example, don't actually hardcode secret
 	_ = os.Setenv(fauna.EnvFaunaSecret, "secret")
 	_ = os.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+	_ = os.Setenv(fauna.EnvAllowHTTP, "1")
 
 	client, clientErr := fauna.NewDefaultClient()
 	if clientErr != nil {
