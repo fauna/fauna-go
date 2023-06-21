@@ -31,19 +31,29 @@ type NamedDocBusinessObj struct {
 	ExtraField string `fauna:"extra_field"`
 }
 
+type NullDocBusinessObj struct {
+	NullDocument
+}
+
+type NullNamedDocBusinessObj struct {
+	NullNamedDocument
+}
+
 type BusinessObj struct {
-	IntField      int                 `fauna:"int_field"`
-	LongField     int64               `fauna:"long_field"`
-	DoubleField   float64             `fauna:"double_field"`
-	PtrModField   *Module             `fauna:"ptr_mod_field"`
-	ModField      Module              `fauna:"mod_field"`
-	PtrRefField   *Ref                `fauna:"ptr_ref_field"`
-	RefField      Ref                 `fauna:"ref_field"`
-	NamedRefField NamedRef            `fauna:"named_ref_field"`
-	SetField      Page                `fauna:"set_field"`
-	ObjField      SubBusinessObj      `fauna:"obj_field"`
-	DocField      DocBusinessObj      `fauna:"doc_field"`
-	NamedDocField NamedDocBusinessObj `fauna:"named_doc_field"`
+	IntField          int                     `fauna:"int_field"`
+	LongField         int64                   `fauna:"long_field"`
+	DoubleField       float64                 `fauna:"double_field"`
+	PtrModField       *Module                 `fauna:"ptr_mod_field"`
+	ModField          Module                  `fauna:"mod_field"`
+	PtrRefField       *Ref                    `fauna:"ptr_ref_field"`
+	RefField          Ref                     `fauna:"ref_field"`
+	NamedRefField     NamedRef                `fauna:"named_ref_field"`
+	SetField          Page                    `fauna:"set_field"`
+	ObjField          SubBusinessObj          `fauna:"obj_field"`
+	DocField          DocBusinessObj          `fauna:"doc_field"`
+	NamedDocField     NamedDocBusinessObj     `fauna:"named_doc_field"`
+	NullDocField      NullDocBusinessObj      `fauna:"nulldoc_field"`
+	NullNamedDocField NullNamedDocBusinessObj `fauna:"nulldoc_named_field"`
 
 	IgnoredField string `fauna:"-"`
 }
@@ -86,6 +96,8 @@ func TestRoundtrip(t *testing.T) {
       "ts": {"@time":"2023-02-28T18:10:10.00001Z"},
       "extra_field": "foobar"
     }},
+	"nulldoc_field": {"@ref":{"id":"1234","coll":{"@mod":"Foo:123"},"exists":false,"cause":"foobar"}},
+	"nulldoc_named_field": {"@ref":{"name":"FooBar","coll":{"@mod":"Foo"},"exists":false,"cause":"foobar"}},
     "obj_field": {"@object": {
       "string_field": "foobarbaz",
       "bool_field": true,
@@ -252,6 +264,11 @@ func TestEncodingFaunaStructs(t *testing.T) {
 	t.Run("encodes Page", func(t *testing.T) {
 		obj := Page{[]any{"0", "1", "2"}, "foobarbaz"}
 		roundTripCheck(t, obj, `{"@set":{"data":["0","1","2"],"after":"foobarbaz"}}`)
+	})
+
+	t.Run("encode NullDoc", func(t *testing.T) {
+		obj := NullDocument{Cause: "Foo", Ref: &Ref{ID: "1234", Coll: &Module{"Foo"}}}
+		roundTripCheck(t, obj, `{"cause": "Foo", "ref": {"@ref":{"id":"1234","coll":{"@mod":"Foo"}}}}`)
 	})
 
 	t.Run("decodes data-less set", func(t *testing.T) {

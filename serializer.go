@@ -67,6 +67,16 @@ type NamedDocument struct {
 	Data map[string]any `fauna:"-"`
 }
 
+type NullDocument struct {
+	Ref   *Ref   `fauna:"ref"`
+	Cause string `fauna:"cause"`
+}
+
+type NullNamedDocument struct {
+	Ref   *NamedRef `fauna:"ref"`
+	Cause string    `fauna:"cause"`
+}
+
 type Ref struct {
 	ID   string  `fauna:"id"`
 	Coll *Module `fauna:"coll"`
@@ -264,6 +274,18 @@ func getIDorName(v map[string]any) (id string, name string) {
 	return
 }
 
+func getExistsCause(v map[string]any) (exists bool, cause string) {
+	if existsRaw, hasExists := v["exists"]; hasExists {
+		if exists = existsRaw.(bool); !exists {
+			if causeRaw, hasCause := v["cause"]; hasCause {
+				return exists, causeRaw.(string)
+			}
+		}
+	}
+
+	return true, ""
+}
+
 func unboxRef(v map[string]any) (any, error) {
 	mod, err := getColl(v)
 	if err != nil {
@@ -272,6 +294,22 @@ func unboxRef(v map[string]any) (any, error) {
 
 	if mod != nil {
 		id, name := getIDorName(v)
+		if exists, cause := getExistsCause(v); !exists {
+			if id != "" {
+				return &NullDocument{
+					Ref:   &Ref{id, mod},
+					Cause: cause,
+				}, nil
+			}
+
+			if name != "" {
+				return &NullNamedDocument{
+					Ref:   &NamedRef{name, mod},
+					Cause: cause,
+				}, nil
+			}
+		}
+
 		if id != "" {
 			return &Ref{id, mod}, nil
 		}
@@ -279,6 +317,7 @@ func unboxRef(v map[string]any) (any, error) {
 		if name != "" {
 			return &NamedRef{name, mod}, nil
 		}
+
 	}
 
 	return nil, fmt.Errorf("invalid ref %v", v)
@@ -408,11 +447,13 @@ func encode(v any, hint string) (any, error) {
 	case Module:
 		return encodeMod(vt)
 
-	case Ref:
+	case Ref,
+		NamedRef:
 		return encodeFaunaStruct(typeTagRef, vt)
 
-	case NamedRef:
-		return encodeFaunaStruct(typeTagRef, vt)
+	case NullDocument,
+		NullNamedDocument:
+		return encodeStruct(v)
 
 	case Page:
 		return encodeFaunaStruct(typeTagSet, vt)
@@ -557,6 +598,38 @@ func encodeStruct(s any) (any, error) {
 
 	for i := 0; i < fields; i++ {
 		structField := elem.Type().Field(i)
+
+		if structField.Anonymous && (structField.Name == "NullDocument") {
+			doc := elem.Field(i).Interface().(NullDocument)
+
+			if doc.Ref != nil {
+				out["cause"] = doc.Cause
+
+				if ref, err := encode(doc.Ref, ""); err != nil {
+					return nil, err
+				} else {
+					out["ref"] = ref
+				}
+
+				continue
+			}
+		}
+
+		if structField.Anonymous && (structField.Name == "NullNamedDocument") {
+			doc := elem.Field(i).Interface().(NullNamedDocument)
+
+			if doc.Ref != nil {
+				out["cause"] = doc.Cause
+
+				if ref, err := encode(doc.Ref, ""); err != nil {
+					return nil, err
+				} else {
+					out["ref"] = ref
+				}
+
+				continue
+			}
+		}
 
 		if structField.Anonymous && structField.Name == "Document" {
 			doc := elem.Field(i).Interface().(Document)
