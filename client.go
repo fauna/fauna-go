@@ -86,7 +86,7 @@ func NewDefaultClient() (*Client, error) {
 	return NewClient(
 		secret,
 		URL(url),
-		HTTPClient(defaultHTTPClient(true)),
+		HTTPClient(defaultHTTPClient(url == EndpointLocal)),
 		Context(context.TODO()),
 	), nil
 }
@@ -96,7 +96,7 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 	client := &Client{
 		ctx:    context.TODO(),
 		secret: secret,
-		http:   defaultHTTPClient(true),
+		http:   defaultHTTPClient(false),
 		url:    EndpointDefault,
 		headers: map[string]string{
 			headerContentType:   "application/json; charset=utf-8",
