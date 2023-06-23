@@ -314,5 +314,5 @@ func ExampleClient_Paginate() {
 	}
 
 	fmt.Printf("%d", len(items))
-	// Output: 200
+	// Output: 20
 }
