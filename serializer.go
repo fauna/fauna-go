@@ -92,6 +92,10 @@ type Page struct {
 	After string `fauna:"after"`
 }
 
+func (p Page) Unmarshal(into any) error {
+	return decodeInto(p.Data, into)
+}
+
 func mapDecoder(into any) (*mapstructure.Decoder, error) {
 	return mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName:              "fauna",

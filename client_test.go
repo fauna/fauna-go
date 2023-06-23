@@ -105,13 +105,23 @@ func TestDefaultClient(t *testing.T) {
 
 				paginator := client.Paginate(query)
 				for {
-					res, err := paginator.Next()
-					if !assert.NoError(t, err) || !assert.NotNil(t, res) {
+					page, err := paginator.Next()
+					if !assert.NoError(t, err) || !assert.NotNil(t, page) {
 						t.FailNow()
 					}
 
 					pages += 1
-					itemsSeen += len(res.Data)
+					itemsSeen += len(page.Data)
+
+					t.Run("can unmarshal pages", func(t *testing.T) {
+						var modItems []struct {
+							Value int `fauna:"value"`
+						}
+						marshalErr := page.Unmarshal(&modItems)
+						assert.NoError(t, marshalErr)
+
+						assert.NotZero(t, modItems[1].Value) // use the first index to avoid zero
+					})
 
 					if !paginator.HasNext() {
 						break
