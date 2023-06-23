@@ -232,3 +232,87 @@ func ExampleFQL_composed() {
 	fmt.Printf("%+v", res.Data)
 	// Output: 16
 }
+
+func ExampleClient_Paginate() {
+	// IMPORTANT: just for the purpose of example, don't actually hardcode secret
+	_ = os.Setenv(fauna.EnvFaunaSecret, "secret")
+	_ = os.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+
+	client, clientErr := fauna.NewDefaultClient()
+	if clientErr != nil {
+		log.Fatalf("client should have been initialized: %s", clientErr)
+	}
+
+	collectionName := "pagination_sandbox"
+
+	// create a collection
+	deleteQuery, deleteQueryErr := fauna.FQL(`Collection.byName(${coll})?.delete()`, map[string]any{"coll": collectionName})
+	if deleteQueryErr != nil {
+		log.Fatalf("failed to construct delete query")
+	}
+
+	if _, deleteErr := client.Query(deleteQuery); deleteErr != nil {
+		log.Fatalf("failed to clean up collection: %t", deleteErr)
+	}
+
+	createQuery, createQueryErr := fauna.FQL(`Collection.create({ name: ${name} })`, map[string]any{"name": collectionName})
+	if createQueryErr != nil {
+		log.Fatalf("failed to construct create query")
+	}
+	if _, createErr := client.Query(createQuery); createErr != nil {
+		log.Fatalf("failed to create collection: %t", createErr)
+	}
+
+	// seed collection
+	collectionModule := &fauna.Module{Name: collectionName}
+	// update Output comment at the bottom if you change this
+	totalTestItems := 20
+
+	for i := 0; i < totalTestItems; i++ {
+		createCollectionQuery, createItemQueryErr := fauna.FQL(`${mod}.create({ value: ${i} })`, map[string]any{
+			"mod": collectionModule,
+			"i":   i,
+		})
+		if createItemQueryErr != nil {
+			log.Fatalf("failed to construct create item query: %t", createItemQueryErr)
+		}
+
+		if _, createItemErr := client.Query(createCollectionQuery); createItemErr != nil {
+			log.Fatalf("failed to create seed item: %t", createItemErr)
+		}
+	}
+
+	// paginate collection
+	paginationQuery, paginationQueryErr := fauna.FQL(`${mod}.all()`, map[string]any{"mod": collectionModule})
+	if paginationQueryErr != nil {
+		log.Fatalf("failed to construct pagination query: %t", paginationQueryErr)
+	}
+
+	type Item struct {
+		Value int `fauna:"value"`
+	}
+
+	var items []Item
+
+	paginator := client.Paginate(paginationQuery)
+	for {
+		page, pageErr := paginator.Next()
+		if pageErr != nil {
+			log.Fatalf("pagination failed: %t", pageErr)
+		}
+
+		var pageItems []Item
+		if marshalErr := page.Unmarshal(&pageItems); marshalErr != nil {
+			log.Fatalf("failed to unmarshal page: %t", marshalErr)
+		}
+
+		items = append(items, pageItems...)
+
+		if !paginator.HasNext() {
+			break
+		}
+	}
+
+	fmt.Printf("%d", len(items))
+	// Output: 200
+}
