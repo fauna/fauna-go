@@ -27,35 +27,9 @@ func (e ErrFauna) Error() string {
 	return e.Message
 }
 
-// An ErrQueryRuntime is returned when the query fails due to a runtime error.
-// The `code` field will vary based on the specific error cause.
-type ErrQueryRuntime struct {
-	*ErrFauna
-}
-
-// An ErrQueryCheck is returned when the query fails one or more validation checks.
-type ErrQueryCheck struct {
-	*ErrFauna
-}
-
-// An ErrInvalidRequest is returned when the request body is not valid JSON, or
-// does not conform to the API specification
-type ErrInvalidRequest struct {
-	*ErrFauna
-}
-
 // An ErrAbort is returned when the `abort()` function was called, which will
 // return custom abort data in the error response.
 type ErrAbort struct {
-	*ErrFauna
-}
-
-// An ErrQueryTimeout is returned when the client specified timeout was
-// exceeded, but the timeout was set lower than the query's expected
-// processing time. This response is distinguished from [fauna.ServiceTimeoutError]
-// by the fact that a [fauna.QueryTimeoutError] response is considered a
-// successful response for the purpose of determining the service's availability.
-type ErrQueryTimeout struct {
 	*ErrFauna
 }
 
@@ -71,8 +45,39 @@ type ErrAuthorization struct {
 	*ErrFauna
 }
 
-// An ErrThrottling is returned when the query exceeded some capacity limit.
-type ErrThrottling struct {
+// ErrContendedTransaction is returned when a transaction is aborted due
+// to concurrent modification.
+type ErrContendedTransaction struct {
+	*ErrFauna
+}
+
+// An ErrInvalidRequest is returned when the request body is not valid JSON, or
+// does not conform to the API specification
+type ErrInvalidRequest struct {
+	*ErrFauna
+}
+
+// An ErrNetwork is returned when an unknown error is encounted when attempting
+// to send a request to Fauna.
+type ErrNetwork error
+
+// An ErrQueryCheck is returned when the query fails one or more validation checks.
+type ErrQueryCheck struct {
+	*ErrFauna
+}
+
+// An ErrQueryRuntime is returned when the query fails due to a runtime error.
+// The `code` field will vary based on the specific error cause.
+type ErrQueryRuntime struct {
+	*ErrFauna
+}
+
+// An ErrQueryTimeout is returned when the client specified timeout was
+// exceeded, but the timeout was set lower than the query's expected
+// processing time. This response is distinguished from [fauna.ServiceTimeoutError]
+// by the fact that a [fauna.QueryTimeoutError] response is considered a
+// successful response for the purpose of determining the service's availability.
+type ErrQueryTimeout struct {
 	*ErrFauna
 }
 
@@ -86,9 +91,10 @@ type ErrServiceTimeout struct {
 	*ErrFauna
 }
 
-// An ErrNetwork is returned when an unknown error is encounted when attempting
-// to send a request to Fauna.
-type ErrNetwork error
+// An ErrThrottling is returned when the query exceeded some capacity limit.
+type ErrThrottling struct {
+	*ErrFauna
+}
 
 func getErrFauna(httpStatus int, res *queryResponse) error {
 	if res.Error != nil {
@@ -126,6 +132,9 @@ func getErrFauna(httpStatus int, res *queryResponse) error {
 			err.Message += "\n" + res.Summary
 			return err
 		}
+
+	case http.StatusConflict:
+		return &ErrContendedTransaction{res.Error}
 
 	case http.StatusUnauthorized:
 		return &ErrAuthentication{res.Error}

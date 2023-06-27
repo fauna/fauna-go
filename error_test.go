@@ -118,6 +118,15 @@ func TestGetErrFauna(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "Contended transaction",
+			args: args{
+				httpStatus:   http.StatusConflict,
+				serviceError: &ErrFauna{Code: "contended_transaction", Message: "Transaction was aborted due to detection of concurrent modification."},
+				errType:      &ErrContendedTransaction{},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
