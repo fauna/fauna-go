@@ -3,10 +3,8 @@ package fauna
 
 import (
 	"context"
-	"crypto/tls"
 	_ "embed"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -16,7 +14,6 @@ import (
 	"time"
 
 	"github.com/fauna/fauna-go/internal/fingerprinting"
-	"golang.org/x/net/http2"
 )
 
 //go:embed version
@@ -33,8 +30,8 @@ const (
 	// EnvFaunaSecret environment variable for Fauna Client authentication
 	EnvFaunaSecret = "FAUNA_SECRET"
 
-	// DefaultHttpReadIdleTimeout Fauna Client default HTTP read idle timeout
-	DefaultHttpReadIdleTimeout = time.Minute * 3
+	// DefaultHttpTimeout Fauna Client default HTTP timeout
+	DefaultHttpTimeout = time.Minute * 3
 
 	// Headers consumers might want to use
 
@@ -84,17 +81,18 @@ func NewDefaultClient() (*Client, error) {
 	return NewClient(
 		secret,
 		URL(url),
-		HTTPClient(defaultHTTPClient(url == EndpointLocal)),
-		Context(context.TODO()),
 	), nil
 }
 
 // NewClient initialize a new [fauna.Client] with custom settings
 func NewClient(secret string, configFns ...ClientConfigFn) *Client {
+	httpClient := http.DefaultClient
+	httpClient.Timeout = DefaultHttpTimeout
+
 	client := &Client{
 		ctx:    context.TODO(),
 		secret: secret,
-		http:   defaultHTTPClient(false),
+		http:   httpClient,
 		url:    EndpointDefault,
 		headers: map[string]string{
 			headerContentType: "application/json; charset=utf-8",
@@ -227,34 +225,6 @@ func (c *Client) GetLastTxnTime() int64 {
 // only returns the URL to prevent logging potentially sensitive headers.
 func (c *Client) String() string {
 	return c.url
-}
-
-func defaultHTTPClient(allowHTTP bool) *http.Client {
-	dialerContext := func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-		dialer := tls.Dialer{
-			Config: cfg,
-		}
-
-		return dialer.DialContext(ctx, network, addr)
-	}
-
-	if allowHTTP {
-		dialerContext = func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
-			dialer := net.Dialer{}
-
-			return dialer.DialContext(ctx, network, addr)
-		}
-	}
-
-	return &http.Client{
-		Transport: &http2.Transport{
-			DialTLSContext:   dialerContext,
-			AllowHTTP:        allowHTTP,
-			ReadIdleTimeout:  DefaultHttpReadIdleTimeout,
-			PingTimeout:      time.Second * 3,
-			WriteByteTimeout: time.Second * 5,
-		},
-	}
 }
 
 func (c *Client) setHeader(key, val string) {
