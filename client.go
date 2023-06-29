@@ -51,10 +51,8 @@ const (
 	headerAuthorization = "Authorization"
 	headerContentType   = "Content-Type"
 	headerDriver        = "X-Driver"
-	headerDriverVersion = "X-Driver-Version"
-	headerRuntime       = "X-Runtime"
+	headerDriverEnv     = "X-Driver-Env"
 	headerFormat        = "X-Format"
-	headerFaunaBuild    = "X-Faunadb-Build"
 )
 
 // Client is the Fauna Client.
@@ -99,16 +97,16 @@ func NewClient(secret string, configFns ...ClientConfigFn) *Client {
 		http:   defaultHTTPClient(false),
 		url:    EndpointDefault,
 		headers: map[string]string{
-			headerContentType:   "application/json; charset=utf-8",
-			headerDriver:        "go",
-			headerDriverVersion: strings.TrimSpace(driverVersion),
-			headerFormat:        "tagged",
-			headerRuntime: fmt.Sprintf(
-				"env=%s; os=%s; go=%s",
+			headerContentType: "application/json; charset=utf-8",
+			headerDriver:      "go",
+			headerDriverEnv: fmt.Sprintf(
+				"driver=go-%s; runtime=%s env=%s; os=%s",
+				strings.TrimSpace(driverVersion),
+				fingerprinting.Version(),
 				fingerprinting.Environment(),
 				fingerprinting.EnvironmentOS(),
-				fingerprinting.Version(),
 			),
+			headerFormat: "tagged",
 		},
 		lastTxnTime:         txnTime{},
 		typeCheckingEnabled: false,
