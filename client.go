@@ -80,14 +80,9 @@ func NewDefaultClient() (*Client, error) {
 		url = EndpointDefault
 	}
 
-	client := http.DefaultClient
-	client.Timeout = DefaultHttpTimeout
-
 	return NewClient(
 		secret,
 		URL(url),
-		HTTPClient(client),
-		Context(context.TODO()),
 	), nil
 }
 
