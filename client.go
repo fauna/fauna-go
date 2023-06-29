@@ -30,6 +30,9 @@ const (
 	// EnvFaunaSecret environment variable for Fauna Client authentication
 	EnvFaunaSecret = "FAUNA_SECRET"
 
+	// DefaultHttpTimeout Fauna Client default HTTP timeout
+	DefaultHttpTimeout = time.Minute * 3
+
 	// Headers consumers might want to use
 
 	HeaderLastTxnTs            = "X-Last-Txn-Ts"
@@ -77,20 +80,26 @@ func NewDefaultClient() (*Client, error) {
 		url = EndpointDefault
 	}
 
+	client := http.DefaultClient
+	client.Timeout = DefaultHttpTimeout
+
 	return NewClient(
 		secret,
 		URL(url),
-		HTTPClient(http.DefaultClient),
+		HTTPClient(client),
 		Context(context.TODO()),
 	), nil
 }
 
 // NewClient initialize a new [fauna.Client] with custom settings
 func NewClient(secret string, configFns ...ClientConfigFn) *Client {
+	httpClient := http.DefaultClient
+	httpClient.Timeout = DefaultHttpTimeout
+
 	client := &Client{
 		ctx:    context.TODO(),
 		secret: secret,
-		http:   http.DefaultClient,
+		http:   httpClient,
 		url:    EndpointDefault,
 		headers: map[string]string{
 			headerContentType:   "application/json; charset=utf-8",
