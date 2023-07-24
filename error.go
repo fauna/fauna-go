@@ -33,6 +33,11 @@ type ErrAbort struct {
 	*ErrFauna
 }
 
+// Unmarshal decodes the Abort property into the provided object.
+func (e *ErrAbort) Unmarshal(into any) error {
+	return decodeInto(e.Abort, into)
+}
+
 // An ErrAuthentication is returned when Fauna is unable to authenticate
 // the request due to an invalid or missing authentication token.
 type ErrAuthentication struct {
