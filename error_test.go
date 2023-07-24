@@ -160,13 +160,24 @@ func TestErrAbort(t *testing.T) {
 		}
 	})
 
-	t.Run("abort field can have complex type", func(t *testing.T) {
-		query, _ := FQL(`abort(Time("2023-02-28T18:10:10.00001Z"))`, nil)
+	t.Run("ErrAbort handles object and allows unmarshalling", func(t *testing.T) {
+		query, _ := FQL(`abort({ msg: "abrasive message", aborted_at: Time("2023-02-28T18:10:10.00001Z")})`, nil)
 		_, qErr := client.Query(query)
+
+		type CustomAbort struct {
+			Message   string    `fauna:"msg"`
+			AbortedAt time.Time `fauna:"aborted_at"`
+		}
+
+		var customAbort CustomAbort
+
 		var expectedErr *ErrAbort
 		if assert.ErrorAs(t, qErr, &expectedErr) {
 			assert.Equal(t, "abort", expectedErr.Code)
-			assert.Equal(t, time.Date(2023, 02, 28, 18, 10, 10, 10000, time.UTC), *expectedErr.Abort.(*time.Time))
+			err := expectedErr.Unmarshal(&customAbort)
+			assert.NoError(t, err)
+			assert.Equal(t, customAbort.AbortedAt, time.Date(2023, 02, 28, 18, 10, 10, 10000, time.UTC))
+			assert.Equal(t, customAbort.Message, "abrasive message")
 		}
 	})
 }
