@@ -32,6 +32,9 @@ type QueryInfo struct {
 	// prefix RYOW guarantee.
 	TxnTime int64
 
+	// SchemaVersion that was used for the query execution.
+	SchemaVersion int64
+
 	// Summary is a comprehensive, human readable summary of any errors, warnings
 	// and/or logs returned from the query.
 	Summary string
@@ -46,10 +49,11 @@ type QueryInfo struct {
 
 func newQueryInfo(res *queryResponse) *QueryInfo {
 	return &QueryInfo{
-		TxnTime:   res.TxnTime,
-		Summary:   res.Summary,
-		QueryTags: res.queryTags(),
-		Stats:     res.Stats,
+		TxnTime:       res.TxnTime,
+		SchemaVersion: res.SchemaVersion,
+		Summary:       res.Summary,
+		QueryTags:     res.queryTags(),
+		Stats:         res.Stats,
 	}
 }
 

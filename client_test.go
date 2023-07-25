@@ -58,6 +58,33 @@ func TestDefaultClient(t *testing.T) {
 			}
 		})
 
+		t.Run("Returns a Schema Version", func(t *testing.T) {
+			collName := "SchemaVersionTestCol"
+			collMod := &fauna.Module{Name: collName}
+
+			deleteQuery, _ := fauna.FQL(`Collection.byName(${coll})?.delete()`, map[string]any{"coll": collName})
+			_, deleteErr := client.Query(deleteQuery)
+			if !assert.NoError(t, deleteErr) {
+				t.Logf("failed to cleanup collection: %t", deleteErr)
+			}
+
+			q, _ := fauna.FQL(`Collection.create({ name: ${name} })`, map[string]any{"name": collName})
+			res, queryErr := client.Query(q)
+			if !assert.NoError(t, queryErr) {
+				t.FailNow()
+			}
+
+			expectedSchemaVersion := res.TxnTime
+
+			q, _ = fauna.FQL(`${mod}.all()`, map[string]any{"mod": collMod})
+			res, queryErr = client.Query(q)
+			if !assert.NoError(t, queryErr) {
+				t.FailNow()
+			}
+
+			assert.Equal(t, expectedSchemaVersion, res.SchemaVersion)
+		})
+
 		t.Run("Paginate Query", func(t *testing.T) {
 			colName := "PaginationTest"
 			colMod := &fauna.Module{Name: colName}
