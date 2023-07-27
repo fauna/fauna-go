@@ -39,7 +39,7 @@ const (
 	HeaderLinearized           = "X-Linearized"
 	HeaderMaxContentionRetries = "X-Max-Contention-Retries"
 	HeaderTags                 = "X-Query-Tags"
-	HeaderTimeoutMs            = "X-Timeout-Ms"
+	HeaderQueryTimeoutMs       = "X-Query-Timeout-Ms"
 	HeaderTraceparent          = "Traceparent"
 	HeaderTypecheck            = "X-Typecheck"
 

@@ -331,7 +331,7 @@ func TestHeaders(t *testing.T) {
 			{
 				name: "timeout should be 1m",
 				args: args{
-					header:    fauna.HeaderTimeoutMs,
+					header:    fauna.HeaderQueryTimeoutMs,
 					headerOpt: fauna.QueryTimeout(time.Minute),
 				},
 				want: fmt.Sprintf("%d", time.Minute.Milliseconds()),
