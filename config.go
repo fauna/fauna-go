@@ -61,7 +61,7 @@ func MaxContentionRetries(i int) ClientConfigFn {
 // QueryTimeout set header on the [fauna.Client]
 func QueryTimeout(d time.Duration) ClientConfigFn {
 	return func(c *Client) {
-		c.setHeader(HeaderTimeoutMs, fmt.Sprintf("%v", d.Milliseconds()))
+		c.setHeader(HeaderQueryTimeoutMs, fmt.Sprintf("%v", d.Milliseconds()))
 	}
 }
 
@@ -109,7 +109,7 @@ func Traceparent(id string) QueryOptFn {
 // Timeout set the query timeout on a single [Client.Query]
 func Timeout(dur time.Duration) QueryOptFn {
 	return func(req *fqlRequest) {
-		req.Headers[HeaderTimeoutMs] = fmt.Sprintf("%d", dur.Milliseconds())
+		req.Headers[HeaderQueryTimeoutMs] = fmt.Sprintf("%d", dur.Milliseconds())
 	}
 }
 
