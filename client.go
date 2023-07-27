@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -29,9 +30,6 @@ const (
 	EnvFaunaEndpoint = "FAUNA_ENDPOINT"
 	// EnvFaunaSecret environment variable for Fauna Client authentication
 	EnvFaunaSecret = "FAUNA_SECRET"
-
-	// DefaultHttpTimeout Fauna Client default HTTP timeout
-	DefaultHttpTimeout = time.Minute * 3
 
 	// Headers consumers might want to use
 
@@ -80,32 +78,80 @@ func NewDefaultClient() (*Client, error) {
 
 	return NewClient(
 		secret,
+		DefaultTimeouts(),
 		URL(url),
 	), nil
 }
 
+type Timeouts struct {
+	// The timeout of each query. This controls the maximum amount of time Fauna will
+	// execute your query before marking it failed.
+	QueryTimeout time.Duration
+
+	// Time beyond `QueryTimeout` at which the client will abort a request if it has not received a response.
+	// The default is 5s, which should account for network latency for most clients. The value must be greater
+	// than zero. The closer to zero the value is, the more likely the client is to abort the request before the
+	// server can report a legitimate response or error.
+	ClientBufferTimeout time.Duration
+
+	// ConnectionTimeout amount of time to wait for the connection to complete.
+	ConnectionTimeout time.Duration
+
+	// IdleConnectionTimeout is the maximum amount of time an idle (keep-alive) connection will
+	// remain idle before closing itself.
+	IdleConnectionTimeout time.Duration
+}
+
+// DefaultTimeouts suggested timeouts for the default [fauna.Client]
+func DefaultTimeouts() Timeouts {
+	return Timeouts{
+		QueryTimeout:          time.Second * 5,
+		ClientBufferTimeout:   time.Second * 5,
+		ConnectionTimeout:     time.Second * 5,
+		IdleConnectionTimeout: time.Second * 5,
+	}
+}
+
 // NewClient initialize a new [fauna.Client] with custom settings
-func NewClient(secret string, configFns ...ClientConfigFn) *Client {
-	httpClient := http.DefaultClient
-	httpClient.Timeout = DefaultHttpTimeout
+func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *Client {
+	dialer := net.Dialer{
+		Timeout: timeouts.ConnectionTimeout,
+	}
+
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			Proxy:             http.ProxyFromEnvironment,
+			DialContext:       dialer.DialContext,
+			ForceAttemptHTTP2: true,
+			MaxIdleConns:      20,
+			IdleConnTimeout:   timeouts.IdleConnectionTimeout,
+		},
+		Timeout: timeouts.QueryTimeout + timeouts.ClientBufferTimeout,
+	}
+
+	defaultHeaders := map[string]string{
+		headerContentType: "application/json; charset=utf-8",
+		headerDriver:      "go",
+		headerDriverEnv: fmt.Sprintf(
+			"driver=go-%s; runtime=%s env=%s; os=%s",
+			strings.TrimSpace(driverVersion),
+			fingerprinting.Version(),
+			fingerprinting.Environment(),
+			fingerprinting.EnvironmentOS(),
+		),
+		headerFormat: "tagged",
+	}
+
+	if timeouts.QueryTimeout > 0 {
+		defaultHeaders[HeaderTimeoutMs] = fmt.Sprintf("%v", timeouts.QueryTimeout.Milliseconds())
+	}
 
 	client := &Client{
-		ctx:    context.TODO(),
-		secret: secret,
-		http:   httpClient,
-		url:    EndpointDefault,
-		headers: map[string]string{
-			headerContentType: "application/json; charset=utf-8",
-			headerDriver:      "go",
-			headerDriverEnv: fmt.Sprintf(
-				"driver=go-%s; runtime=%s env=%s; os=%s",
-				strings.TrimSpace(driverVersion),
-				fingerprinting.Version(),
-				fingerprinting.Environment(),
-				fingerprinting.EnvironmentOS(),
-			),
-			headerFormat: "tagged",
-		},
+		ctx:                 context.TODO(),
+		secret:              secret,
+		http:                httpClient,
+		url:                 EndpointDefault,
+		headers:             defaultHeaders,
 		lastTxnTime:         txnTime{},
 		typeCheckingEnabled: false,
 	}
