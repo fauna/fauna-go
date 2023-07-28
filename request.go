@@ -19,15 +19,16 @@ type fqlRequest struct {
 }
 
 type queryResponse struct {
-	Header     http.Header
-	Data       json.RawMessage `json:"data"`
-	Error      *ErrFauna       `json:"error,omitempty"`
-	Logging    []string        `json:"logging,omitempty"`
-	StaticType string          `json:"static_type"`
-	Stats      *Stats          `json:"stats,omitempty"`
-	Summary    string          `json:"summary"`
-	TxnTime    int64           `json:"txn_ts"`
-	Tags       string          `json:"query_tags"`
+	Header        http.Header
+	Data          json.RawMessage `json:"data"`
+	Error         *ErrFauna       `json:"error,omitempty"`
+	Logging       []string        `json:"logging,omitempty"`
+	SchemaVersion int64           `json:"schema_version"`
+	StaticType    string          `json:"static_type"`
+	Stats         *Stats          `json:"stats,omitempty"`
+	Summary       string          `json:"summary"`
+	TxnTime       int64           `json:"txn_ts"`
+	Tags          string          `json:"query_tags"`
 }
 
 func (r *queryResponse) queryTags() map[string]string {
