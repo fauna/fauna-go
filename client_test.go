@@ -172,7 +172,7 @@ func TestNewClient(t *testing.T) {
 	})
 
 	t.Run("stringify", func(t *testing.T) {
-		client := fauna.NewClient("secret", fauna.URL(fauna.EndpointLocal))
+		client := fauna.NewClient("secret", fauna.DefaultTimeouts(), fauna.URL(fauna.EndpointLocal))
 		assert.Equal(t, client.String(), fauna.EndpointLocal, "client toString should be equal to the endpoint to ensure we don't expose secrets")
 	})
 
@@ -212,6 +212,7 @@ func TestNewClient(t *testing.T) {
 	t.Run("custom HTTP client", func(t *testing.T) {
 		client := fauna.NewClient(
 			"secret",
+			fauna.DefaultTimeouts(),
 			fauna.URL(fauna.EndpointLocal),
 			fauna.HTTPClient(http.DefaultClient),
 		)
@@ -364,6 +365,7 @@ func TestHeaders(t *testing.T) {
 
 				client := fauna.NewClient(
 					"secret",
+					fauna.DefaultTimeouts(),
 					fauna.URL(fauna.EndpointLocal),
 					fauna.HTTPClient(testingClient),
 					tt.args.headerOpt,
@@ -384,6 +386,7 @@ func TestHeaders(t *testing.T) {
 	t.Run("can set headers on Query", func(t *testing.T) {
 		client := fauna.NewClient(
 			"secret",
+			fauna.DefaultTimeouts(),
 			fauna.URL(fauna.EndpointLocal),
 			fauna.HTTPClient(testingClient),
 			fauna.QueryTags(map[string]string{
@@ -415,6 +418,7 @@ func TestHeaders(t *testing.T) {
 
 		client := fauna.NewClient(
 			"secret",
+			fauna.DefaultTimeouts(),
 			fauna.URL(fauna.EndpointLocal),
 			fauna.HTTPClient(testingClient),
 			fauna.Linearized(true),
@@ -433,6 +437,7 @@ func TestHeaders(t *testing.T) {
 	t.Run("supports empty headers", func(t *testing.T) {
 		client := fauna.NewClient(
 			"secret",
+			fauna.DefaultTimeouts(),
 			fauna.URL(fauna.EndpointLocal),
 			fauna.AdditionalHeaders(map[string]string{
 				"shouldBeEmpty": "",

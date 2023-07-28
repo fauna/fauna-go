@@ -50,6 +50,7 @@ func ExampleNewClient() {
 	client := fauna.NewClient(
 		// IMPORTANT: just for the purpose of example, don't actually hardcode secret
 		"secret",
+		fauna.DefaultTimeouts(),
 		fauna.HTTPClient(http.DefaultClient),
 		fauna.URL(fauna.EndpointLocal),
 		fauna.Context(context.Background()),
