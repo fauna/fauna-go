@@ -143,7 +143,7 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 	}
 
 	if timeouts.QueryTimeout > 0 {
-		defaultHeaders[HeaderTimeoutMs] = fmt.Sprintf("%v", timeouts.QueryTimeout.Milliseconds())
+		defaultHeaders[HeaderQueryTimeoutMs] = fmt.Sprintf("%v", timeouts.QueryTimeout.Milliseconds())
 	}
 
 	client := &Client{
