@@ -10,6 +10,7 @@ const httpStatusQueryTimeout = 440
 // `message`, and any [fauna.QueryInfo].
 type ErrFauna struct {
 	*QueryInfo
+	StatusCode         int                    `json:"-"`
 	Code               string                 `json:"code"`
 	Message            string                 `json:"message"`
 	Abort              any                    `json:"abort"`
@@ -62,7 +63,7 @@ type ErrInvalidRequest struct {
 	*ErrFauna
 }
 
-// An ErrNetwork is returned when an unknown error is encounted when attempting
+// An ErrNetwork is returned when an unknown error is encountered when attempting
 // to send a request to Fauna.
 type ErrNetwork error
 
@@ -104,12 +105,18 @@ type ErrThrottling struct {
 func getErrFauna(httpStatus int, res *queryResponse) error {
 	if res.Error != nil {
 		res.Error.QueryInfo = newQueryInfo(res)
+		res.Error.StatusCode = httpStatus
 	}
 
 	switch httpStatus {
 	case http.StatusBadRequest:
 		if res.Error == nil {
-			err := &ErrQueryRuntime{&ErrFauna{QueryInfo: newQueryInfo(res), Code: "", Message: ""}}
+			err := &ErrQueryRuntime{&ErrFauna{
+				QueryInfo:  newQueryInfo(res),
+				Code:       "",
+				Message:    "",
+				StatusCode: httpStatus,
+			}}
 			err.Message += "\n" + res.Summary
 			return err
 		}

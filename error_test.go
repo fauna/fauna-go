@@ -134,6 +134,7 @@ func TestGetErrFauna(t *testing.T) {
 			err := getErrFauna(tt.args.httpStatus, res)
 			if tt.wantErr {
 				assert.ErrorAs(t, err, &tt.args.errType)
+				assert.NotZero(t, res.Error.StatusCode)
 			} else {
 				assert.NoError(t, err)
 			}
