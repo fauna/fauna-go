@@ -129,6 +129,66 @@ func main() {
 }
 ```
 
+## Client Configuration
+
+### Timeouts
+
+#### Query Timeout
+
+The timeout of each query. This controls the maximum amount of time Fauna will execute your query before marking it failed.
+
+```go
+package main
+
+import "github.com/fauna/fauna-go"
+
+func main() {
+	client := NewClient("mysecret", Timeouts{QueryTimeout: 20 * time.Second})
+}
+```
+
+#### Client Buffer Timeout
+
+Time beyond `QueryTimeout` at which the client will abort a request if it has not received a response. The default is 5s, which should account for network latency for most clients. The value must be greater than zero. The closer to zero the value is, the more likely the client is to abort the request before the server can report a legitimate response or error.
+
+```go
+package main
+
+import "github.com/fauna/fauna-go"
+
+func main() {
+	client := NewClient("mysecret", Timeouts{ClientBufferTimeout: 20 * time.Second})
+}
+```
+
+#### Connection Timeout
+
+The amount of time to wait for the connection to complete.
+
+```go
+package main
+
+import "github.com/fauna/fauna-go"
+
+func main() {
+	client := NewClient("mysecret", Timeouts{ConnectionTimeout: 10 * time.Second})
+}
+```
+
+#### Idle Connection Timeout
+
+The maximum amount of time an idle (keep-alive) connection will remain idle before closing itself.
+
+```go
+package main
+
+import "github.com/fauna/fauna-go"
+
+func main() {
+	client := NewClient("mysecret", Timeouts{IdleConnectionTimeout: 10 * time.Second})
+}
+```
+
 ## Contributing
 
 GitHub pull requests are very welcome.
