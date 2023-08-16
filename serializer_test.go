@@ -499,6 +499,60 @@ func TestEncodingDocuments(t *testing.T) {
 		bs := marshalAndCheck(t, expected)
 		assert.JSONEq(t, encodedDoc, string(bs))
 	})
+
+	t.Run("Raw Document", func(t *testing.T) {
+		doc := []byte(`{"@doc":{
+      "id": "1234",
+      "coll": {"@mod":"Foo"},
+      "ts": {"@time":"2023-02-28T18:10:10.000010Z"}
+    }}`)
+
+		ts := time.Date(2023, 02, 28, 18, 10, 10, 10000, time.UTC)
+		expected := Document{
+			ID:   "1234",
+			Coll: &Module{"Foo"},
+			TS:   &ts,
+		}
+
+		var got Document
+		unmarshalAndCheck(t, doc, &got)
+		assert.Equal(t, expected, got)
+
+		encodedDoc := `{"@doc":{
+    "id": "1234",
+    "coll": {"@mod":"Foo"},
+    "ts": {"@time":"2023-02-28T18:10:10.00001Z"}
+  }}`
+		bs := marshalAndCheck(t, expected)
+		assert.JSONEq(t, encodedDoc, string(bs))
+	})
+
+	t.Run("Raw NamedDocument", func(t *testing.T) {
+		doc := []byte(`{"@doc":{
+      "name": "mydoc",
+      "coll": {"@mod":"Foo"},
+      "ts": {"@time":"2023-02-28T18:10:10.000010Z"}
+    }}`)
+
+		ts := time.Date(2023, 02, 28, 18, 10, 10, 10000, time.UTC)
+		expected := NamedDocument{
+			Name: "mydoc",
+			Coll: &Module{"Foo"},
+			TS:   &ts,
+		}
+
+		var got NamedDocument
+		unmarshalAndCheck(t, doc, &got)
+		assert.Equal(t, expected, got)
+
+		encodedDoc := `{"@doc":{
+      "name": "mydoc",
+      "coll": {"@mod":"Foo"},
+      "ts": {"@time":"2023-02-28T18:10:10.00001Z"}
+    }}`
+		bs := marshalAndCheck(t, expected)
+		assert.JSONEq(t, encodedDoc, string(bs))
+	})
 }
 
 func TestComposition(t *testing.T) {
