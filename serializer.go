@@ -455,6 +455,10 @@ func encode(v any, hint string) (any, error) {
 		NamedRef:
 		return encodeFaunaStruct(typeTagRef, vt)
 
+	case Document,
+		NamedDocument:
+		return encodeFaunaStruct(typeTagDoc, vt)
+
 	case NullDocument,
 		NullNamedDocument:
 		return encodeStruct(v)
