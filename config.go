@@ -31,6 +31,18 @@ func AdditionalHeaders(headers map[string]string) ClientConfigFn {
 	}
 }
 
+// MaxAttempts sets the maximum number of times the [fauna.Client]
+// will attempt to run a query, retrying if appropriate.
+func MaxAttempts(attempts int) ClientConfigFn {
+	return func(c *Client) { c.maxAttempts = attempts }
+}
+
+// MaxBackoff sets the maximum duration the [fauna.Client] will wait
+// before retrying.
+func MaxBackoff(backoff time.Duration) ClientConfigFn {
+	return func(c *Client) { c.maxBackoff = backoff }
+}
+
 // DefaultTypecheck set header on the [fauna.Client]
 // Enable or disable typechecking of the query before evaluation. If
 // not set, Fauna will use the value of the "typechecked" flag on

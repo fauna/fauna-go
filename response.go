@@ -23,6 +23,9 @@ type Stats struct {
 
 	// StorageBytesWrite is the amount of data written to storage, in bytes.
 	StorageBytesWrite int `json:"storage_bytes_write"`
+
+	// Attempts is the number of times the client attempted to run the query.
+	Attempts int `json:"_"`
 }
 
 // QueryInfo provides access to information about the query.

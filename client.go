@@ -5,6 +5,9 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"io"
+	"math"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -48,6 +51,9 @@ const (
 	headerDriver        = "X-Driver"
 	headerDriverEnv     = "X-Driver-Env"
 	headerFormat        = "X-Format"
+
+	retryMaxAttemptsDefault = 3
+	retryMaxBackoffDefault  = time.Second * 20
 )
 
 // Client is the Fauna Client.
@@ -60,6 +66,9 @@ type Client struct {
 
 	http *http.Client
 	ctx  context.Context
+
+	maxAttempts int
+	maxBackoff  time.Duration
 }
 
 // NewDefaultClient initialize a [fauna.Client] with recommend default settings
@@ -154,6 +163,8 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 		headers:             defaultHeaders,
 		lastTxnTime:         txnTime{},
 		typeCheckingEnabled: false,
+		maxAttempts:         retryMaxAttemptsDefault,
+		maxBackoff:          retryMaxBackoffDefault,
 	}
 
 	// set options to override defaults
@@ -162,6 +173,40 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 	}
 
 	return client
+}
+
+func (c *Client) doWithRetry(req *http.Request, attemptNumber int) (attempts int, r *http.Response, err error) {
+	attempts = attemptNumber
+	r, err = c.http.Do(req)
+	if err != nil {
+		return
+	}
+
+	if attemptNumber <= c.maxAttempts {
+		switch r.StatusCode {
+		case http.StatusBadGateway, http.StatusTooManyRequests:
+			defer r.Body.Close()
+			if _, err = io.Copy(io.Discard, io.LimitReader(r.Body, 4096)); err != nil {
+				return
+			}
+
+			time.Sleep(c.backoff(attemptNumber))
+			_, r, err = c.doWithRetry(req, attemptNumber+1)
+		}
+	}
+
+	return
+}
+
+func (c *Client) backoff(attempt int) (sleep time.Duration) {
+	jitter := rand.Float64()
+	mult := math.Pow(2, float64(attempt)) * jitter
+	sleep = time.Duration(mult) * time.Second
+
+	if sleep > c.maxBackoff {
+		sleep = c.maxBackoff
+	}
+	return
 }
 
 // Query invoke fql optionally set multiple [QueryOptFn]

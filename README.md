@@ -140,7 +140,7 @@ package main
 import "github.com/fauna/fauna-go"
 
 func main() {
-	client := NewClient("mysecret", Timeouts{QueryTimeout: 20 * time.Second})
+	client := fauna.NewClient("mysecret", fauna.Timeouts{QueryTimeout: 20 * time.Second})
 }
 ```
 
@@ -154,7 +154,7 @@ package main
 import "github.com/fauna/fauna-go"
 
 func main() {
-	client := NewClient("mysecret", Timeouts{ClientBufferTimeout: 20 * time.Second})
+	client := fauna.NewClient("mysecret", fauna.Timeouts{ClientBufferTimeout: 20 * time.Second})
 }
 ```
 
@@ -168,7 +168,7 @@ package main
 import "github.com/fauna/fauna-go"
 
 func main() {
-	client := NewClient("mysecret", Timeouts{ConnectionTimeout: 10 * time.Second})
+	client := fauna.NewClient("mysecret", fauna.Timeouts{ConnectionTimeout: 10 * time.Second})
 }
 ```
 
@@ -182,7 +182,43 @@ package main
 import "github.com/fauna/fauna-go"
 
 func main() {
-	client := NewClient("mysecret", Timeouts{IdleConnectionTimeout: 10 * time.Second})
+	client := fauna.NewClient("mysecret", fauna.Timeouts{IdleConnectionTimeout: 10 * time.Second})
+}
+```
+
+### Retries
+
+By default the client will automatically retry a query if the request results in an HTTP status code 429 or 502. Retries use an exponential backoff. The maximum number of retries and maximum wait time before a retry can be configured on the client.
+
+#### Maximum Attempts
+
+The maximum number of times the client will try a query. The default is 3.
+
+```go
+package main
+
+import "github.com/fauna/fauna-go"
+
+func main() {
+	client := fauna.NewClient("mysecret", fauna.DefaultTimeouts(), fauna.MaxAttempts(1))
+}
+```
+
+#### Maximum Backoff Time
+
+The maximum amount of time to wait before retrying a query. Retries will use an exponential backoff up to this value. The default is 20 seconds.
+
+```go
+package main
+
+import (
+    "time"
+
+    "github.com/fauna/fauna-go"
+)
+
+func main() {
+	client := fauna.NewClient("mysecret", fauna.DefaultTimeouts(), fauna.MaxBackoff(10 * time.Second))
 }
 ```
 
