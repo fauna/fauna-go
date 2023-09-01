@@ -75,7 +75,7 @@ func (c *Client) do(request *fqlRequest) (*QuerySuccess, error) {
 		req.Header.Set(k, v)
 	}
 
-	r, doErr := c.http.Do(req)
+	attempts, r, doErr := c.doWithRetry(req, 0)
 	if doErr != nil {
 		return nil, ErrNetwork(fmt.Errorf("network error: %w", doErr))
 	}
@@ -108,6 +108,7 @@ func (c *Client) do(request *fqlRequest) (*QuerySuccess, error) {
 		Data:       data,
 		StaticType: res.StaticType,
 	}
+	ret.Stats.Attempts = attempts
 
 	return ret, nil
 }
