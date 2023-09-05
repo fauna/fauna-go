@@ -184,7 +184,7 @@ func (c *Client) doWithRetry(req *http.Request, attemptNumber int) (attempts int
 
 	if attemptNumber <= c.maxAttempts {
 		switch r.StatusCode {
-		case http.StatusBadGateway, http.StatusTooManyRequests:
+		case http.StatusTooManyRequests:
 			defer r.Body.Close()
 			if _, err = io.Copy(io.Discard, io.LimitReader(r.Body, 4096)); err != nil {
 				return
