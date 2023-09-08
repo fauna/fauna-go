@@ -188,7 +188,7 @@ func main() {
 
 ### Retries
 
-By default the client will automatically retry a query if the request results in an HTTP status code 429 or 502. Retries use an exponential backoff. The maximum number of retries and maximum wait time before a retry can be configured on the client.
+By default the client will automatically retry a query if the request results in an HTTP status code 429. Retries use an exponential backoff. The maximum number of retries and maximum wait time before a retry can be configured on the client.
 
 #### Maximum Attempts
 
