@@ -18,8 +18,6 @@ resources:
       uri: git@github.com:fauna/fauna-go.git
       branch: main
       private_key: ((github-ssh-key))
-      paths:
-        - version
 
   - name: testtools-repo
     type: git
