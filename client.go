@@ -182,13 +182,14 @@ func (c *Client) doWithRetry(req *http.Request) (attempts int, r *http.Response,
 	if err != nil {
 		return attempts, r, rerr
 	}
+
 	cerr := req.Body.Close()
+	if cerr != nil {
+		return attempts, r, cerr
+	}
 
 	for {
 		shouldRetry := false
-		if err != nil {
-			return attempts, r, cerr
-		}
 
 		// Ensure we have a fresh body for the request
 		req2.Body = io.NopCloser(bytes.NewReader(body))
