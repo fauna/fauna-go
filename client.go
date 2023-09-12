@@ -179,7 +179,7 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 func (c *Client) doWithRetry(req *http.Request) (attempts int, r *http.Response, err error) {
 	req2 := req.Clone(req.Context())
 	body, rerr := io.ReadAll(req.Body)
-	if err != nil {
+	if rerr != nil {
 		return attempts, r, rerr
 	}
 
