@@ -102,9 +102,14 @@ type ErrThrottling struct {
 	*ErrFauna
 }
 
-func getErrFauna(httpStatus int, res *queryResponse) error {
+func getErrFauna(httpStatus int, res *queryResponse, attempts int) error {
 	if res.Error != nil {
 		res.Error.QueryInfo = newQueryInfo(res)
+
+		if res.Error.QueryInfo.Stats != nil {
+			res.Error.QueryInfo.Stats.Attempts = attempts
+		}
+
 		res.Error.StatusCode = httpStatus
 	}
 

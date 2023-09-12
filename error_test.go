@@ -131,7 +131,7 @@ func TestGetErrFauna(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			res := &queryResponse{Error: tt.args.serviceError, Summary: ""}
-			err := getErrFauna(tt.args.httpStatus, res)
+			err := getErrFauna(tt.args.httpStatus, res, 1)
 			if tt.wantErr {
 				assert.ErrorAs(t, err, &tt.args.errType)
 				assert.NotZero(t, res.Error.StatusCode)

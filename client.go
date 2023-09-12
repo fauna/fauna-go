@@ -2,6 +2,7 @@
 package fauna
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"fmt"
@@ -175,26 +176,61 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 	return client
 }
 
-func (c *Client) doWithRetry(req *http.Request, attemptNumber int) (attempts int, r *http.Response, err error) {
-	attempts = attemptNumber
-	r, err = c.http.Do(req)
-	if err != nil {
-		return
+func (c *Client) doWithRetry(req *http.Request) (attempts int, r *http.Response, err error) {
+	req2 := req.Clone(req.Context())
+	body, rerr := io.ReadAll(req.Body)
+	if rerr != nil {
+		return attempts, r, rerr
 	}
 
-	if attemptNumber <= c.maxAttempts {
-		switch r.StatusCode {
-		case http.StatusTooManyRequests:
-			defer r.Body.Close()
-			if _, err = io.Copy(io.Discard, io.LimitReader(r.Body, 4096)); err != nil {
+	cerr := req.Body.Close()
+	if cerr != nil {
+		return attempts, r, cerr
+	}
+
+	for {
+		shouldRetry := false
+
+		// Ensure we have a fresh body for the request
+		req2.Body = io.NopCloser(bytes.NewReader(body))
+		r, err = c.http.Do(req2)
+		attempts++
+		if err != nil {
+			return
+		}
+
+		if r != nil {
+			switch r.StatusCode {
+			case http.StatusTooManyRequests:
+				shouldRetry = true
+			}
+		}
+
+		if attempts >= c.maxAttempts || !shouldRetry {
+			return attempts, r, err
+		}
+
+		// We're going to retry, so drain the response
+		if r != nil {
+			err = c.drainResponse(r.Body)
+			if err != nil {
 				return
 			}
+		}
 
-			time.Sleep(c.backoff(attemptNumber))
-			_, r, err = c.doWithRetry(req, attemptNumber+1)
+		timer := time.NewTimer(c.backoff(attempts))
+		select {
+		case <-req.Context().Done():
+			timer.Stop()
+			return attempts, r, req.Context().Err()
+		case <-timer.C:
 		}
 	}
+}
 
+func (c *Client) drainResponse(body io.ReadCloser) (err error) {
+	defer body.Close()
+	_, err = io.Copy(io.Discard, io.LimitReader(body, 4096))
 	return
 }
 
