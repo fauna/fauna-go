@@ -75,7 +75,7 @@ func (c *Client) do(request *fqlRequest) (*QuerySuccess, error) {
 		req.Header.Set(k, v)
 	}
 
-	attempts, r, doErr := c.doWithRetry(req, 0)
+	attempts, r, doErr := c.doWithRetry(req)
 	if doErr != nil {
 		return nil, ErrNetwork(fmt.Errorf("network error: %w", doErr))
 	}
@@ -94,7 +94,7 @@ func (c *Client) do(request *fqlRequest) (*QuerySuccess, error) {
 	c.lastTxnTime.sync(res.TxnTime)
 	res.Header = r.Header
 
-	if serviceErr := getErrFauna(r.StatusCode, &res); serviceErr != nil {
+	if serviceErr := getErrFauna(r.StatusCode, &res, attempts); serviceErr != nil {
 		return nil, serviceErr
 	}
 
