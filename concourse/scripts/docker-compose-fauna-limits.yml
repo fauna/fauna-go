@@ -1,0 +1,25 @@
+version: "3.8"
+
+networks:
+  limit-net:
+    external: true
+    name: limit-net
+
+services:
+  query-limits-tests:
+    image: golang:1.21-alpine
+    entrypoint: ["/bin/sh", "-c"]
+    volumes:
+      - "../..:/tmp/app"
+    working_dir: "/tmp/app"
+    environment:
+      FAUNA_ENDPOINT: ${FAUNA_ENDPOINT:-http://fauna-limits:8443}
+      QUERY_LIMITS_DB: ${QUERY_LIMITS_DB}
+      QUERY_LIMITS_COLL: ${QUERY_LIMITS_COLL}
+    networks:
+      - limit-net
+    command:
+    - |
+      apk add build-base
+      CGO_ENABLED=0 go build .
+      go test -v client_query_limits_test.go
