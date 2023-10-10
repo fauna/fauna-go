@@ -10,20 +10,23 @@ import (
 )
 
 func TestClientRetriesWithQueryLimits(t *testing.T) {
-	t.Setenv(fauna.EnvFaunaSecret, "secret")
-	dbName := os.Getenv("QUERY_LIMITS_DB")
-	collName := os.Getenv("QUERY_LIMITS_COLL")
-
-	t.Logf("%s, %s", dbName, collName)
-
-	client, clientErr := fauna.NewDefaultClient()
-	if !assert.NoError(t, clientErr) {
-		return
-	}
-
 	t.Run("Query limits succeed on retry", func(t *testing.T) {
-		if dbName == "" || collName == "" {
-			t.Skip("Skipping query limits test due to missing env var")
+		dbName, dbNameSet := os.LookupEnv("QUERY_LIMITS_DB")
+		collName, collNameSet := os.LookupEnv("QUERY_LIMITS_COLL")
+
+		// If run in a pipeline, these will be empty strings, so check both
+		if (!dbNameSet || !collNameSet) ||
+			(dbName == "" || collName == "") {
+			t.Skip("Skipping query limits test due to missing env var(s)")
+		}
+
+		if _, found := os.LookupEnv(fauna.EnvFaunaSecret); !found {
+			t.Setenv(fauna.EnvFaunaSecret, "secret")
+		}
+
+		client, clientErr := fauna.NewDefaultClient()
+		if !assert.NoError(t, clientErr) {
+			return
 		}
 
 		type secretObj struct {
