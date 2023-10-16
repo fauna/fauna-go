@@ -38,17 +38,6 @@ const (
 	typeTagObject typeTag = "@object"
 )
 
-func keyConflicts(key string) bool {
-	switch typeTag(key) {
-	case typeTagInt, typeTagLong, typeTagDouble,
-		typeTagDate, typeTagTime,
-		typeTagDoc, typeTagMod, typeTagObject:
-		return true
-	default:
-		return false
-	}
-}
-
 type Module struct {
 	Name string
 }
@@ -433,14 +422,153 @@ func unboxDouble(v string) (any, error) {
 }
 
 func marshal(v any) ([]byte, error) {
-	if enc, err := encode(v, ""); err != nil {
+	if enc, err := encode(v, "", false); err != nil {
 		return nil, err
 	} else {
 		return json.Marshal(enc)
 	}
 }
 
-func encode(v any, hint string) (any, error) {
+func encode(v any, hint string, isValue bool) (any, error) {
+	const valLabel = "value"
+	const objLabel = "object"
+	const arrLabel = "array"
+
+	switch v.(type) {
+	case *queryFragment, *Query, fqlRequest:
+		return encodeInner(v, hint, isValue)
+
+	case Module,
+		Ref,
+		NamedRef,
+		Document,
+		NamedDocument,
+		NullDocument,
+		NullNamedDocument,
+		Page,
+		time.Time:
+		// wrap in value
+		r, err := encodeInner(v, hint, true)
+		if err != nil {
+			return nil, err
+		}
+
+		if isValue {
+			return r, nil
+		} else {
+			return map[string]any{valLabel: r}, nil
+		}
+	}
+
+	switch value := reflect.ValueOf(v); value.Kind() {
+	case reflect.Ptr:
+		if value.IsNil() {
+			return nil, nil
+		}
+		return encode(reflect.Indirect(value).Interface(), hint, isValue)
+
+	case reflect.Map:
+		r, err := encodeInner(v, hint, isValue)
+		if err != nil {
+			return nil, err
+		}
+
+		if isValue {
+			return r, nil
+		} else {
+			return map[string]any{objLabel: r}, nil
+		}
+
+	case reflect.Struct:
+		fields := reflect.TypeOf(v).NumField()
+		var ref any
+
+		// When a struct is composed with a Fauna Document type, we need to encode its Ref wrapped with a value tag.
+		for i := 0; i < fields; i++ {
+			structField := value.Type().Field(i)
+
+			if structField.Anonymous {
+				if structField.Name == "NullDocument" {
+					doc := value.Field(i).Interface().(NullDocument)
+					ref = doc.Ref
+					break
+				}
+
+				if structField.Name == "Document" {
+					doc := value.Field(i).Interface().(Document)
+					ref = Ref{
+						ID:   doc.ID,
+						Coll: doc.Coll,
+					}
+					break
+				}
+
+				if structField.Name == "NullNamedDocument" {
+					doc := value.Field(i).Interface().(NullNamedDocument)
+					ref = doc.Ref
+					break
+				}
+
+				if structField.Name == "NamedDocument" {
+					doc := value.Field(i).Interface().(NamedDocument)
+					ref = NamedRef{
+						Name: doc.Name,
+						Coll: doc.Coll,
+					}
+					break
+				}
+			}
+		}
+
+		if ref != nil {
+			r, err := encodeInner(ref, hint, true)
+			if err != nil {
+				return nil, err
+			}
+
+			return map[string]any{valLabel: r}, nil
+		} else {
+			r, err := encodeInner(v, hint, isValue)
+			if err != nil {
+				return nil, err
+			}
+
+			if isValue {
+				return r, nil
+			} else {
+				return map[string]any{objLabel: r}, nil
+			}
+		}
+
+	case reflect.Slice:
+		// wrap in array
+		r, err := encodeInner(v, hint, isValue)
+		if err != nil {
+			return nil, err
+		}
+
+		if isValue {
+			return r, nil
+		} else {
+			return map[string]any{arrLabel: r}, nil
+		}
+
+	default:
+		// wrap in value
+		r, err := encodeInner(v, hint, true)
+		if err != nil {
+			return nil, err
+		}
+
+		if isValue {
+			return r, nil
+		} else {
+			return map[string]any{valLabel: r}, nil
+		}
+	}
+}
+
+func encodeInner(v any, hint string, isValue bool) (any, error) {
 	switch vt := v.(type) {
 	case *queryFragment:
 		return encodeQueryFragment(vt)
@@ -453,31 +581,43 @@ func encode(v any, hint string) (any, error) {
 
 	case Ref,
 		NamedRef:
-		return encodeFaunaStruct(typeTagRef, vt)
+		return encodeFaunaStruct(typeTagRef, vt, isValue)
 
-	case Document,
-		NamedDocument:
-		return encodeFaunaStruct(typeTagDoc, vt)
+	case Document:
+		ref := Ref{
+			ID:   vt.ID,
+			Coll: vt.Coll,
+		}
+		return encodeFaunaStruct(typeTagRef, ref, isValue)
 
-	case NullDocument,
-		NullNamedDocument:
-		return encodeStruct(v)
+	case NamedDocument:
+		ref := NamedRef{
+			Name: vt.Name,
+			Coll: vt.Coll,
+		}
+		return encodeFaunaStruct(typeTagRef, ref, isValue)
+
+	case NullDocument:
+		return encodeFaunaStruct(typeTagRef, *vt.Ref, isValue)
+
+	case NullNamedDocument:
+		return encodeFaunaStruct(typeTagRef, *vt.Ref, isValue)
 
 	case Page:
-		return encodeFaunaStruct(typeTagSet, vt)
+		return encodeFaunaStruct(typeTagSet, vt, isValue)
 
 	case time.Time:
 		return encodeTime(vt, hint)
 
 	case fqlRequest:
-		query, err := encode(vt.Query, hint)
+		query, err := encode(vt.Query, hint, isValue)
 		if err != nil {
 			return nil, err
 		}
 
 		out := map[string]any{"query": query}
 		if len(vt.Arguments) > 0 {
-			if args, err := encodeMap(reflect.ValueOf(vt.Arguments)); err != nil {
+			if args, err := encodeMap(reflect.ValueOf(vt.Arguments), isValue); err != nil {
 				return nil, err
 			} else {
 				out["arguments"] = args
@@ -508,16 +648,16 @@ func encode(v any, hint string) (any, error) {
 		if value.IsNil() {
 			return nil, nil
 		}
-		return encode(reflect.Indirect(value).Interface(), hint)
+		return encode(reflect.Indirect(value).Interface(), hint, isValue)
 
 	case reflect.Struct:
-		return encodeStruct(v)
+		return encodeStruct(v, isValue)
 
 	case reflect.Map:
-		return encodeMap(value)
+		return encodeMap(value, isValue)
 
 	case reflect.Slice:
-		return encodeSlice(value)
+		return encodeSlice(value, isValue)
 	}
 
 	return v, nil
@@ -545,16 +685,15 @@ func encodeMod(m Module) (any, error) {
 	return map[typeTag]string{typeTagMod: m.Name}, nil
 }
 
-func encodeFaunaStruct(tag typeTag, s any) (any, error) {
-	if doc, err := encodeStruct(s); err != nil {
+func encodeFaunaStruct(tag typeTag, s any, isValue bool) (any, error) {
+	if doc, err := encodeStruct(s, isValue); err != nil {
 		return nil, err
 	} else {
 		return map[typeTag]any{tag: doc}, nil
 	}
 }
 
-func encodeMap(mv reflect.Value) (any, error) {
-	hasConflictingKey := false
+func encodeMap(mv reflect.Value, isValue bool) (any, error) {
 	out := make(map[string]any)
 
 	mi := mv.MapRange()
@@ -563,30 +702,23 @@ func encodeMap(mv reflect.Value) (any, error) {
 			return mv.Interface(), nil
 		}
 
-		if enc, err := encode(mi.Value().Interface(), ""); err != nil {
+		if enc, err := encode(mi.Value().Interface(), "", isValue); err != nil {
 			return nil, err
 		} else {
 
 			key := mi.Key().String()
-			if keyConflicts(key) {
-				hasConflictingKey = true
-			}
 			out[key] = enc
 		}
 	}
 
-	if hasConflictingKey {
-		return map[typeTag]any{typeTagObject: out}, nil
-	} else {
-		return out, nil
-	}
+	return out, nil
 }
 
-func encodeSlice(sv reflect.Value) (any, error) {
+func encodeSlice(sv reflect.Value, isValue bool) (any, error) {
 	sLen := sv.Len()
 	out := make([]any, sLen)
 	for i := 0; i < sLen; i++ {
-		if enc, err := encode(sv.Index(i).Interface(), ""); err != nil {
+		if enc, err := encode(sv.Index(i).Interface(), "", isValue); err != nil {
 			return nil, err
 		} else {
 			out[i] = enc
@@ -596,9 +728,7 @@ func encodeSlice(sv reflect.Value) (any, error) {
 	return out, nil
 }
 
-func encodeStruct(s any) (any, error) {
-	hasConflictingKey := false
-	isDoc := false
+func encodeStruct(s any, isValue bool) (any, error) {
 	out := make(map[string]any)
 
 	elem := reflect.ValueOf(s)
@@ -606,84 +736,6 @@ func encodeStruct(s any) (any, error) {
 
 	for i := 0; i < fields; i++ {
 		structField := elem.Type().Field(i)
-
-		if structField.Anonymous && (structField.Name == "NullDocument") {
-			doc := elem.Field(i).Interface().(NullDocument)
-
-			if doc.Ref != nil {
-				out["cause"] = doc.Cause
-
-				if ref, err := encode(doc.Ref, ""); err != nil {
-					return nil, err
-				} else {
-					out["ref"] = ref
-				}
-
-				continue
-			}
-		}
-
-		if structField.Anonymous && (structField.Name == "NullNamedDocument") {
-			doc := elem.Field(i).Interface().(NullNamedDocument)
-
-			if doc.Ref != nil {
-				out["cause"] = doc.Cause
-
-				if ref, err := encode(doc.Ref, ""); err != nil {
-					return nil, err
-				} else {
-					out["ref"] = ref
-				}
-
-				continue
-			}
-		}
-
-		if structField.Anonymous && structField.Name == "Document" {
-			doc := elem.Field(i).Interface().(Document)
-			// if the relevant fields are present, consider this an @doc and encode it as such
-			if doc.ID != "" && doc.Coll != nil && doc.TS != nil {
-				out["id"] = doc.ID
-
-				if coll, err := encode(doc.Coll, ""); err != nil {
-					return nil, err
-				} else {
-					out["coll"] = coll
-				}
-
-				if ts, err := encode(doc.TS, "time"); err != nil {
-					return nil, err
-				} else {
-					out["ts"] = ts
-				}
-
-				isDoc = true
-				continue
-			}
-		}
-
-		if structField.Anonymous && structField.Name == "NamedDocument" {
-			doc := elem.Field(i).Interface().(NamedDocument)
-			// if the relevant fields are present, consider this an @doc and encode it as such
-			if doc.Name != "" && doc.Coll != nil && doc.TS != nil {
-				out["name"] = doc.Name
-
-				if coll, err := encode(doc.Coll, ""); err != nil {
-					return nil, err
-				} else {
-					out["coll"] = coll
-				}
-
-				if ts, err := encode(doc.TS, "time"); err != nil {
-					return nil, err
-				} else {
-					out["ts"] = ts
-				}
-
-				isDoc = true
-				continue
-			}
-		}
 
 		tag := structField.Tag.Get(fieldTag)
 		tags := strings.Split(tag, ",")
@@ -697,7 +749,7 @@ func encodeStruct(s any) (any, error) {
 			typeHint = tags[1]
 		}
 
-		if enc, err := encode(elem.Field(i).Interface(), typeHint); err != nil {
+		if enc, err := encode(elem.Field(i).Interface(), typeHint, isValue); err != nil {
 			return nil, err
 		} else {
 			name := tags[0]
@@ -705,19 +757,8 @@ func encodeStruct(s any) (any, error) {
 				name = structField.Name
 			}
 
-			if keyConflicts(name) {
-				hasConflictingKey = true
-			}
 			out[name] = enc
 		}
-	}
-
-	if isDoc {
-		return map[typeTag]any{typeTagDoc: out}, nil
-	}
-
-	if hasConflictingKey {
-		return map[typeTag]any{typeTagObject: out}, nil
 	}
 
 	return out, nil
@@ -728,7 +769,7 @@ func encodeQuery(q *Query) (any, error) {
 
 	rendered := make([]any, len(q.fragments))
 	for i, f := range q.fragments {
-		if r, err := encode(f, ""); err != nil {
+		if r, err := encode(f, "", false); err != nil {
 			return nil, err
 		} else {
 			rendered[i] = r
@@ -743,16 +784,5 @@ func encodeQueryFragment(f *queryFragment) (any, error) {
 		return f.value, nil
 	}
 
-	ret, err := encode(f.value, "")
-	if err != nil {
-		return nil, err
-	}
-
-	if _, ok := f.value.(*Query); ok {
-		return ret, nil
-
-	} else {
-		const valLabel = "value"
-		return map[string]any{valLabel: ret}, nil
-	}
+	return encode(f.value, "", false)
 }

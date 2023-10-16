@@ -234,6 +234,60 @@ func ExampleFQL_composed() {
 	// Output: 16
 }
 
+func ExampleFQL_composed_slice_with_query() {
+	// IMPORTANT: just for the purpose of example, don't actually hardcode secret
+	_ = os.Setenv(fauna.EnvFaunaSecret, "secret")
+	_ = os.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+
+	client, clientErr := fauna.NewDefaultClient()
+	if clientErr != nil {
+		log.Fatalf("client should have been initialized: %s", clientErr)
+	}
+
+	subq1, _ := fauna.FQL(`1 + 1`, nil)
+	subq2, _ := fauna.FQL(`2 + 2`, nil)
+	subq3, _ := fauna.FQL(`${obj}`, map[string]any{"obj": []any{subq1, subq2}})
+	arg := []any{subq1, subq2, subq3}
+
+	// Build a query to pull a value from some object. This could be document already
+	// in Fauna.
+	query, gvqErr := fauna.FQL(`${obj}`, map[string]any{"obj": arg})
+	if gvqErr != nil {
+		log.Fatalf("query failed: %s", gvqErr)
+	}
+
+	res, queryErr := client.Query(query, fauna.Typecheck(true))
+	if queryErr != nil {
+		log.Fatalf("request failed: %s", queryErr)
+	}
+
+	fmt.Printf("%+v", res.Data)
+	// Output: [2 4 [2 4]]
+}
+
+func ExampleFQL_composed_struct_with_query() {
+	// IMPORTANT: just for the purpose of example, don't actually hardcode secret
+	_ = os.Setenv(fauna.EnvFaunaSecret, "secret")
+	_ = os.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+
+	client, clientErr := fauna.NewDefaultClient()
+	if clientErr != nil {
+		log.Fatalf("client should have been initialized: %s", clientErr)
+	}
+
+	subq, _ := fauna.FQL("{let i = 42\ni}", nil)
+	arg := map[string]any{"value": subq}
+	query, _ := fauna.FQL(`${obj}["value"]`, map[string]any{"obj": arg})
+
+	res, queryErr := client.Query(query, fauna.Typecheck(true))
+	if queryErr != nil {
+		log.Fatalf("request failed: %s", queryErr)
+	}
+
+	fmt.Printf("%+v", res.Data)
+	// Output: 42
+}
+
 func ExampleClient_Paginate() {
 	// IMPORTANT: just for the purpose of example, don't actually hardcode secret
 	_ = os.Setenv(fauna.EnvFaunaSecret, "secret")
