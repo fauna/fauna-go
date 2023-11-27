@@ -293,6 +293,7 @@ func ExampleClient_Paginate() {
 		Value int `fauna:"value"`
 	}
 
+	var readOps int
 	var items []Item
 
 	paginator := client.Paginate(paginationQuery)
@@ -301,6 +302,8 @@ func ExampleClient_Paginate() {
 		if pageErr != nil {
 			log.Fatalf("pagination failed: %t", pageErr)
 		}
+
+		readOps = readOps + page.Stats.ReadOps
 
 		var pageItems []Item
 		if marshalErr := page.Unmarshal(&pageItems); marshalErr != nil {
@@ -314,6 +317,6 @@ func ExampleClient_Paginate() {
 		}
 	}
 
-	fmt.Printf("%d", len(items))
-	// Output: 20
+	fmt.Printf("Items: %d, ReadOps: %d", len(items), readOps)
+	// Output: Items: 20, ReadOps: 36
 }

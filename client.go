@@ -283,30 +283,28 @@ func (q *QueryIterator) Next() (*Page, error) {
 		return nil, queryErr
 	}
 
-	if page, ok := res.Data.(*Page); ok { // First page
-		if pageErr := q.nextPage(page.After); pageErr != nil {
-			return nil, pageErr
-		}
+	var page *Page
 
-		return page, nil
-	}
-
-	var page Page
-	if results, isPage := res.Data.(map[string]any); isPage {
+	// Set.paginate does not return a @set, so the first response will be a *Page,
+	// but subsequent responses will be { data: ..., after: ... }
+	if p, ok := res.Data.(*Page); ok { // First page
+		page = p
+	} else if results, isMaybePage := res.Data.(map[string]any); isMaybePage {
 		if after, hasAfter := results["after"].(string); hasAfter {
-			page = Page{After: after, Data: results["data"].([]any)}
+			page = &Page{After: after, Data: results["data"].([]any)}
 		} else {
-			page = Page{After: "", Data: results["data"].([]any)}
+			page = &Page{After: "", Data: results["data"].([]any)}
 		}
 	} else {
-		page = Page{After: "", Data: []any{res.Data}}
+		page = &Page{After: "", Data: []any{res.Data}}
 	}
 
 	if pageErr := q.nextPage(page.After); pageErr != nil {
 		return nil, pageErr
 	}
 
-	return &page, nil
+	page.Stats = res.Stats
+	return page, nil
 }
 
 func (q *QueryIterator) nextPage(after string) error {
