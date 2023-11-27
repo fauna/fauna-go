@@ -90,7 +90,7 @@ type NamedRef struct {
 type Page struct {
 	After string `fauna:"after"`
 	Data  []any  `fauna:"data"`
-	Stats *Stats
+	Stats *Stats `fauna:"-"`
 }
 
 func (p Page) Unmarshal(into any) error {
