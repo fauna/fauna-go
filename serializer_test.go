@@ -73,95 +73,67 @@ func unmarshalAndCheck(t *testing.T, bs []byte, obj any) {
 	}
 }
 
-func TestRoundtrip(t *testing.T) {
-	var businessObjDoc = []byte(`{
-    "int_field": {"@int":"1234"},
-    "long_field": {"@long":"123456"},
-    "double_field": {"@double":"123.456"},
-    "ptr_mod_field": {"@mod":"PtrFoo"},
-    "mod_field": {"@mod":"Foo"},
-    "ptr_ref_field": {"@ref":{"id":"1234","coll":{"@mod":"PtrFoo"}}},
-    "ref_field": {"@ref":{"id":"1234","coll":{"@mod":"Foo:123"}}},
-    "named_ref_field": {"@ref":{"name":"FooBar","coll":{"@mod":"Foo"}}},
-    "set_field": {"@set":{"data":[0,1,2,3],"after":"foobarbaz"}},
-    "doc_field": {"@doc": {
-      "id": "1234",
-      "coll": {"@mod":"Foo"},
-      "ts": {"@time":"2023-02-28T18:10:10.00001Z"},
-      "extra_field": "foobar"
-    }},
-    "named_doc_field": {"@doc": {
-      "name": "mydoc",
-      "coll": {"@mod":"Foo"},
-      "ts": {"@time":"2023-02-28T18:10:10.00001Z"},
-      "extra_field": "foobar"
-    }},
-	"nulldoc_field": {"@ref":{"id":"1234","coll":{"@mod":"Foo:123"},"exists":false,"cause":"foobar"}},
-	"nulldoc_named_field": {"@ref":{"name":"FooBar","coll":{"@mod":"Foo"},"exists":false,"cause":"foobar"}},
-    "obj_field": {"@object": {
-      "string_field": "foobarbaz",
-      "bool_field": true,
-      "map_field": {"foo":"bar","baz":"buz"},
-      "single_key_map_field": {"foo":"bar"},
-      "slice_field": [1,2,3,4],
-      "tuple_field": ["one",2,3.0],
-      "int_field": 1234,
-      "double_field": 1234.567
-    }}
-  }`)
-
-	obj := &BusinessObj{}
-	unmarshalAndCheck(t, businessObjDoc, obj)
-
-	bs := marshalAndCheck(t, obj)
-
-	obj2 := &BusinessObj{}
-	unmarshalAndCheck(t, bs, obj2)
-
-	assert.Equal(t, obj, obj2)
+func encodeCheck(t *testing.T, test any, expected string) {
+	bs := marshalAndCheck(t, test)
+	assert.JSONEq(t, expected, string(bs))
 }
 
-func roundTripCheck(t *testing.T, test any, expected string) {
-	bs := marshalAndCheck(t, test)
-	if assert.JSONEq(t, expected, string(bs)) {
-		decoded := reflect.New(reflect.TypeOf(test)).Interface()
-		unmarshalAndCheck(t, bs, decoded)
-		dec := reflect.Indirect(reflect.ValueOf(decoded)).Interface()
-		assert.EqualValues(t, test, dec)
-	}
+func decodeCheck(t *testing.T, test string, expected any) {
+	b := []byte(test)
+	decoded := reflect.New(reflect.TypeOf(expected)).Interface()
+	unmarshalAndCheck(t, b, decoded)
+	dec := reflect.Indirect(reflect.ValueOf(decoded)).Interface()
+	assert.EqualValues(t, expected, dec)
 }
 
 func TestEncodingPrimitives(t *testing.T) {
 	t.Run("encode string", func(t *testing.T) {
-		roundTripCheck(t, "foo", `"foo"`)
+		encodeCheck(t, "foo", `{ "value": "foo"}`)
+		decodeCheck(t, `"foo"`, "foo")
 	})
 
 	t.Run("encode bools", func(t *testing.T) {
-		roundTripCheck(t, true, `true`)
-		roundTripCheck(t, false, `false`)
+		encodeCheck(t, true, `{"value": true}`)
+		encodeCheck(t, false, `{"value": false}`)
+
+		decodeCheck(t, `true`, true)
+		decodeCheck(t, `false`, false)
 	})
 
 	t.Run("encode ints", func(t *testing.T) {
-		roundTripCheck(t, int(10), `{"@int":"10"}`)
-		roundTripCheck(t, int8(10), `{"@int":"10"}`)
-		roundTripCheck(t, int16(10), `{"@int":"10"}`)
-		roundTripCheck(t, int32(10), `{"@int":"10"}`)
+		encodeCheck(t, int(10), `{"value":{"@int":"10"}}`)
+		encodeCheck(t, int8(10), `{"value":{"@int":"10"}}`)
+		encodeCheck(t, int16(10), `{"value":{"@int":"10"}}`)
+		encodeCheck(t, int32(10), `{"value":{"@int":"10"}}`)
+		encodeCheck(t, int(-10), `{"value":{"@int":"-10"}}`)
+		encodeCheck(t, int8(-10), `{"value":{"@int":"-10"}}`)
+		encodeCheck(t, int16(-10), `{"value":{"@int":"-10"}}`)
+		encodeCheck(t, int32(-10), `{"value":{"@int":"-10"}}`)
+		encodeCheck(t, 2147483647, `{"value":{"@int":"2147483647"}}`)
+		encodeCheck(t, -2147483648, `{"value":{"@int":"-2147483648"}}`)
 
-		roundTripCheck(t, int(-10), `{"@int":"-10"}`)
-		roundTripCheck(t, int8(-10), `{"@int":"-10"}`)
-		roundTripCheck(t, int16(-10), `{"@int":"-10"}`)
-		roundTripCheck(t, int32(-10), `{"@int":"-10"}`)
-
-		roundTripCheck(t, 2147483647, `{"@int":"2147483647"}`)
-		roundTripCheck(t, -2147483648, `{"@int":"-2147483648"}`)
+		decodeCheck(t, `{"@int":"10"}`, int(10))
+		decodeCheck(t, `{"@int":"10"}`, int8(10))
+		decodeCheck(t, `{"@int":"10"}`, int16(10))
+		decodeCheck(t, `{"@int":"10"}`, int32(10))
+		decodeCheck(t, `{"@int":"-10"}`, int(-10))
+		decodeCheck(t, `{"@int":"-10"}`, int8(-10))
+		decodeCheck(t, `{"@int":"-10"}`, int16(-10))
+		decodeCheck(t, `{"@int":"-10"}`, int32(-10))
+		decodeCheck(t, `{"@int":"2147483647"}`, 2147483647)
+		decodeCheck(t, `{"@int":"-2147483648"}`, -2147483648)
 	})
 
 	t.Run("encode longs", func(t *testing.T) {
-		roundTripCheck(t, 2147483648, `{"@long":"2147483648"}`)
-		roundTripCheck(t, -2147483649, `{"@long":"-2147483649"}`)
+		encodeCheck(t, 2147483648, `{"value":{"@long":"2147483648"}}`)
+		encodeCheck(t, -2147483649, `{"value":{"@long":"-2147483649"}}`)
+		encodeCheck(t, 9223372036854775807, `{"value":{"@long":"9223372036854775807"}}`)
+		encodeCheck(t, -9223372036854775808, `{"value":{"@long":"-9223372036854775808"}}`)
 
-		roundTripCheck(t, 9223372036854775807, `{"@long":"9223372036854775807"}`)
-		roundTripCheck(t, -9223372036854775808, `{"@long":"-9223372036854775808"}`)
+		decodeCheck(t, `{"@long":"2147483648"}`, 2147483648)
+		decodeCheck(t, `{"@long":"-2147483649"}`, -2147483649)
+		decodeCheck(t, `{"@long":"9223372036854775807"}`, 9223372036854775807)
+		decodeCheck(t, `{"@long":"-9223372036854775808"}`, -9223372036854775808)
 	})
 
 	t.Run("fail on numbers that are too big", func(t *testing.T) {
@@ -171,18 +143,21 @@ func TestEncodingPrimitives(t *testing.T) {
 	})
 
 	t.Run("encode floats", func(t *testing.T) {
-		roundTripCheck(t, 100.0, `{"@double":"100"}`)
-		roundTripCheck(t, -100.1, `{"@double":"-100.1"}`)
-		roundTripCheck(t, 9.999999999999, `{"@double":"9.999999999999"}`)
+		encodeCheck(t, 100.0, `{"value":{"@double":"100"}}`)
+		encodeCheck(t, -100.1, `{"value":{"@double":"-100.1"}}`)
+		encodeCheck(t, 9.999999999999, `{"value":{"@double":"9.999999999999"}}`)
+
+		decodeCheck(t, `{"@double":"100"}`, 100.0)
+		decodeCheck(t, `{"@double":"-100.1"}`, -100.1)
+		decodeCheck(t, `{"@double":"9.999999999999"}`, 9.999999999999)
 	})
 
 	t.Run("encode nil", func(t *testing.T) {
-		bs := marshalAndCheck(t, nil)
-		if assert.JSONEq(t, `null`, string(bs)) {
-			var decoded *string
-			unmarshalAndCheck(t, bs, &decoded)
-			assert.Nil(t, decoded)
-		}
+		encodeCheck(t, nil, `{"value": null}`)
+
+		var decoded *string
+		unmarshalAndCheck(t, []byte("null"), &decoded)
+		assert.Nil(t, decoded)
 	})
 }
 
@@ -190,7 +165,7 @@ func TestEncodingTime(t *testing.T) {
 	t.Run("encodes time as @time", func(t *testing.T) {
 		if tz, err := time.LoadLocation("America/Los_Angeles"); assert.NoError(t, err) {
 			bs := marshalAndCheck(t, time.Date(2023, 02, 28, 10, 10, 10, 10000, tz))
-			if assert.JSONEq(t, `{"@time":"2023-02-28T18:10:10.00001Z"}`, string(bs)) {
+			if assert.JSONEq(t, `{"value": {"@time":"2023-02-28T18:10:10.00001Z"}}`, string(bs)) {
 				var decoded time.Time
 				bs := []byte(`{"@time":"2023-02-28T18:10:10.000010Z"}`)
 				unmarshalAndCheck(t, bs, &decoded)
@@ -205,7 +180,8 @@ func TestEncodingTime(t *testing.T) {
 		}{
 			D: time.Date(2023, 02, 28, 0, 0, 0, 0, time.UTC),
 		}
-		roundTripCheck(t, obj, `{"d_field":{"@date":"2023-02-28"}}`)
+		encodeCheck(t, obj, `{"object": {"d_field": { "value": {"@date":"2023-02-28"}}}}`)
+		decodeCheck(t, `{"d_field": {"@date":"2023-02-28"}}`, obj)
 	})
 }
 
@@ -248,27 +224,32 @@ func TestDecodingToInterface(t *testing.T) {
 func TestEncodingFaunaStructs(t *testing.T) {
 	t.Run("encodes Module", func(t *testing.T) {
 		obj := Module{"Foo"}
-		roundTripCheck(t, obj, `{"@mod":"Foo"}`)
+		encodeCheck(t, obj, `{"value":{"@mod":"Foo"}}`)
+		decodeCheck(t, `{"@mod":"Foo"}`, obj)
 	})
 
 	t.Run("encodes Ref", func(t *testing.T) {
 		obj := Ref{"1234", &Module{"Foo"}}
-		roundTripCheck(t, obj, `{"@ref":{"id":"1234","coll":{"@mod":"Foo"}}}`)
+		encodeCheck(t, obj, `{"value":{"@ref":{"id":"1234","coll":{"@mod":"Foo"}}}}`)
+		decodeCheck(t, `{"@ref":{"id":"1234","coll":{"@mod":"Foo"}}}`, obj)
 	})
 
 	t.Run("encodes NamedRef", func(t *testing.T) {
 		obj := NamedRef{"Bar", &Module{"Foo"}}
-		roundTripCheck(t, obj, `{"@ref":{"name":"Bar","coll":{"@mod":"Foo"}}}`)
+		encodeCheck(t, obj, `{"value":{"@ref":{"name":"Bar","coll":{"@mod":"Foo"}}}}`)
+		decodeCheck(t, `{"@ref":{"name":"Bar","coll":{"@mod":"Foo"}}}`, obj)
 	})
 
 	t.Run("encodes Page", func(t *testing.T) {
 		obj := Page{[]any{"0", "1", "2"}, "foobarbaz"}
-		roundTripCheck(t, obj, `{"@set":{"data":["0","1","2"],"after":"foobarbaz"}}`)
+		encodeCheck(t, obj, `{"value":{"@set":{"data":["0","1","2"],"after":"foobarbaz"}}}`)
+		decodeCheck(t, `{"@set":{"data":["0","1","2"],"after":"foobarbaz"}}`, obj)
 	})
 
 	t.Run("encode NullDoc", func(t *testing.T) {
 		obj := NullDocument{Cause: "Foo", Ref: &Ref{ID: "1234", Coll: &Module{"Foo"}}}
-		roundTripCheck(t, obj, `{"cause": "Foo", "ref": {"@ref":{"id":"1234","coll":{"@mod":"Foo"}}}}`)
+		encodeCheck(t, obj, `{"value": {"@ref":{"id":"1234","coll":{"@mod":"Foo"}}}}`)
+		decodeCheck(t, `{"cause": "Foo", "ref": {"@ref":{"id":"1234","coll":{"@mod":"Foo"}}}}`, obj)
 	})
 
 	t.Run("decodes data-less set", func(t *testing.T) {
@@ -287,14 +268,18 @@ func TestEncodingStructs(t *testing.T) {
 		obj := struct {
 			Field string
 		}{"foo"}
-		roundTripCheck(t, obj, `{"Field":"foo"}`)
+
+		encodeCheck(t, obj, `{"object": {"Field":{"value": "foo"}}}`)
+		decodeCheck(t, `{"Field":"foo"}`, obj)
 	})
 
 	t.Run("encodes using configured field names", func(t *testing.T) {
 		obj := struct {
 			Field string `fauna:"field_name"`
 		}{"foo"}
-		roundTripCheck(t, obj, `{"field_name":"foo"}`)
+
+		encodeCheck(t, obj, `{"object": {"field_name":{"value": "foo"}}}`)
+		decodeCheck(t, `{"field_name":"foo"}`, obj)
 	})
 
 	t.Run("encodes hinted types without configured name", func(t *testing.T) {
@@ -303,7 +288,8 @@ func TestEncodingStructs(t *testing.T) {
 		}{
 			Field: time.Date(2023, 02, 28, 0, 0, 0, 0, time.UTC),
 		}
-		roundTripCheck(t, obj, `{"Field":{"@date":"2023-02-28"}}`)
+		encodeCheck(t, obj, `{"object":{"Field":{"value":{"@date":"2023-02-28"}}}}`)
+		decodeCheck(t, `{"Field":{"@date":"2023-02-28"}}`, obj)
 	})
 
 	t.Run("encodes hinted types with configured name", func(t *testing.T) {
@@ -312,7 +298,9 @@ func TestEncodingStructs(t *testing.T) {
 		}{
 			Field: time.Date(2023, 02, 28, 0, 0, 0, 0, time.UTC),
 		}
-		roundTripCheck(t, obj, `{"field_name":{"@date":"2023-02-28"}}`)
+
+		encodeCheck(t, obj, `{"object": {"field_name":{"value": {"@date":"2023-02-28"}}}}`)
+		decodeCheck(t, `{"field_name":{"@date":"2023-02-28"}}`, obj)
 	})
 
 	t.Run("ignores fields", func(t *testing.T) {
@@ -323,7 +311,8 @@ func TestEncodingStructs(t *testing.T) {
 			Field:        "foo",
 			IgnoredField: "",
 		}
-		roundTripCheck(t, obj, `{"Field":"foo"}`)
+		encodeCheck(t, obj, `{"object": {"Field":{"value": "foo"}}}`)
+		decodeCheck(t, `{"Field":"foo"}`, obj)
 	})
 
 	t.Run("encodes nested fields", func(t *testing.T) {
@@ -338,7 +327,8 @@ func TestEncodingStructs(t *testing.T) {
 		obj.GrandParent.Parent.Child = "foo"
 		obj.GrandParent.Parent.Sibling = "bar"
 
-		roundTripCheck(t, obj, `{"GrandParent":{"Parent":{"Child":"foo","Sibling":"bar"}}}`)
+		encodeCheck(t, obj, `{"object":{"GrandParent":{"object":{"Parent":{"object":{"Child":{"value": "foo"},"Sibling":{"value":"bar"}}}}}}}`)
+		decodeCheck(t, `{"GrandParent":{"Parent":{"Child":"foo","Sibling":"bar"}}}`, obj)
 	})
 }
 
@@ -355,65 +345,50 @@ func TestEncodingPointers(t *testing.T) {
 	obj.NilPtrField = nil
 	obj.PtrField = &checkStruct{"foo"}
 	obj.Field = checkStruct{"bar"}
-	roundTripCheck(t, obj, `{"NilPtrField":null,"PtrField":{"Field":"foo"},"Field":{"Field":"bar"}}`)
-
+	encodeCheck(t, obj, `{"object":{"NilPtrField":null,"PtrField":{"object":{"Field":{"value":"foo"}}},"Field":{"object":{"Field":{"value":"bar"}}}}}`)
+	decodeCheck(t, `{"NilPtrField":null,"PtrField":{"Field":"foo"},"Field":{"Field":"bar"}}`, obj)
 }
 
 func TestEncodingObject(t *testing.T) {
 	t.Run("object has @object key", func(t *testing.T) {
 		test := map[string]int{"@object": 10}
-		expected := `{"@object":{"@object":{"@int":"10"}}}`
-		bs := marshalAndCheck(t, test)
-
-		assert.JSONEq(t, expected, string(bs))
+		encodeCheck(t, test, `{"object":{"@object":{"value":{"@int":"10"}}}}`)
 	})
 
 	t.Run("object has inner conflicting @int key", func(t *testing.T) {
-		roundTripCheck(
-			t,
-			map[string]map[string]string{"@object": {"@int": "bar"}},
-			`{"@object":{"@object":{"@object":{"@int":"bar"}}}}`,
-		)
+		test := map[string]map[string]string{"@object": {"@int": "bar"}}
+		encodeCheck(t, test, `{"object":{"@object":{"object":{"@int":{"value":"bar"}}}}}`)
+		decodeCheck(t, `{"@object":{"@object":{"@object":{"@int":"bar"}}}}`, test)
 	})
 
 	t.Run("object has inner conflicting @object key", func(t *testing.T) {
-		roundTripCheck(
-			t,
-			map[string]map[string]string{"@object": {"@object": "bar"}},
-			`{"@object":{"@object":{"@object":{"@object":"bar"}}}}`,
-		)
+		test := map[string]map[string]string{"@object": {"@object": "bar"}}
+		encodeCheck(t, test, `{"object":{"@object":{"object":{"@object":{"value":"bar"}}}}}`)
+		decodeCheck(t, `{"@object":{"@object":{"@object":{"@object":"bar"}}}}`, test)
 	})
 
 	t.Run("object has multiple conflicting type keys", func(t *testing.T) {
-		roundTripCheck(
-			t,
-			map[string]string{"@int": "foo", "@double": "bar"},
-			`{"@object":{"@int":"foo","@double":"bar"}}`,
-		)
+		test := map[string]string{"@int": "foo", "@double": "bar"}
+		encodeCheck(t, test, `{"object":{"@int":{"value":"foo"},"@double":{"value":"bar"}}}`)
+		decodeCheck(t, `{"@object":{"@int":"foo","@double":"bar"}}`, test)
 	})
 
 	t.Run("object has mixed keys with a conflict", func(t *testing.T) {
-		roundTripCheck(
-			t,
-			map[string]string{"@int": "foo", "bar": "buz"},
-			`{"@object":{"@int":"foo","bar":"buz"}}`,
-		)
+		test := map[string]string{"@int": "foo", "bar": "buz"}
+		encodeCheck(t, test, `{"object":{"@int":{"value":"foo"},"bar":{"value":"buz"}}}`)
+		decodeCheck(t, `{"@object":{"@int":"foo","bar":"buz"}}`, test)
 	})
 
 	t.Run("object has nested conflicting keys", func(t *testing.T) {
-		roundTripCheck(
-			t,
-			map[string]map[string]map[string]map[string]int{"@int": {"@date": {"@time": {"@long": 10}}}},
-			`{"@object":{"@int":{"@object":{"@date":{"@object":{"@time":{"@object":{"@long":{"@int":"10"}}}}}}}}}`,
-		)
+		test := map[string]map[string]map[string]map[string]int{"@int": {"@date": {"@time": {"@long": 10}}}}
+		encodeCheck(t, test, `{"object":{"@int":{"object":{"@date":{"object":{"@time":{"object":{"@long":{"value":{"@int":"10"}}}}}}}}}}`)
+		decodeCheck(t, `{"@object":{"@int":{"@object":{"@date":{"@object":{"@time":{"@object":{"@long":{"@int":"10"}}}}}}}}}`, test)
 	})
 
 	t.Run("object has non-conflicting keys", func(t *testing.T) {
-		roundTripCheck(
-			t,
-			map[string]int{"@foo": 10},
-			`{"@foo":{"@int":"10"}}`,
-		)
+		test := map[string]int{"@foo": 10}
+		encodeCheck(t, test, `{"object":{"@foo":{"value":{"@int":"10"}}}}`)
+		decodeCheck(t, `{"@foo":{"@int":"10"}}`, test)
 	})
 }
 
@@ -448,13 +423,7 @@ func TestEncodingDocuments(t *testing.T) {
 		unmarshalAndCheck(t, doc, &got)
 		assert.Equal(t, expected, got)
 
-		encodedDoc := `{"@doc":{
-    "id": "1234",
-    "coll": {"@mod":"Foo"},
-    "ts": {"@time":"2023-02-28T18:10:10.00001Z"},
-    "extra_field_1": "foobar",
-    "extra_field_2": "bazbuz"
-  }}`
+		encodedDoc := `{"value":{"@ref":{"id": "1234","coll": {"@mod":"Foo"}}}}`
 		bs := marshalAndCheck(t, expected)
 		assert.JSONEq(t, encodedDoc, string(bs))
 	})
@@ -489,13 +458,7 @@ func TestEncodingDocuments(t *testing.T) {
 		unmarshalAndCheck(t, doc, &got)
 		assert.Equal(t, expected, got)
 
-		encodedDoc := `{"@doc":{
-      "name": "mydoc",
-      "coll": {"@mod":"Foo"},
-      "ts": {"@time":"2023-02-28T18:10:10.00001Z"},
-      "extra_field_1": "foobar",
-      "extra_field_2": "bazbuz"
-    }}`
+		encodedDoc := `{"value":{"@ref":{"name":"mydoc","coll":{"@mod":"Foo"}}}}`
 		bs := marshalAndCheck(t, expected)
 		assert.JSONEq(t, encodedDoc, string(bs))
 	})
@@ -518,11 +481,7 @@ func TestEncodingDocuments(t *testing.T) {
 		unmarshalAndCheck(t, doc, &got)
 		assert.Equal(t, expected, got)
 
-		encodedDoc := `{"@doc":{
-    "id": "1234",
-    "coll": {"@mod":"Foo"},
-    "ts": {"@time":"2023-02-28T18:10:10.00001Z"}
-  }}`
+		encodedDoc := `{"value":{"@ref": {"id": "1234","coll": {"@mod":"Foo"}}}}`
 		bs := marshalAndCheck(t, expected)
 		assert.JSONEq(t, encodedDoc, string(bs))
 	})
@@ -545,11 +504,7 @@ func TestEncodingDocuments(t *testing.T) {
 		unmarshalAndCheck(t, doc, &got)
 		assert.Equal(t, expected, got)
 
-		encodedDoc := `{"@doc":{
-      "name": "mydoc",
-      "coll": {"@mod":"Foo"},
-      "ts": {"@time":"2023-02-28T18:10:10.00001Z"}
-    }}`
+		encodedDoc := `{"value":{"@ref": {"name": "mydoc","coll": {"@mod":"Foo"}}}}`
 		bs := marshalAndCheck(t, expected)
 		assert.JSONEq(t, encodedDoc, string(bs))
 	})
@@ -567,10 +522,10 @@ func TestComposition(t *testing.T) {
 	t.Run("template variable", func(t *testing.T) {
 		encodedDoc := `{"fql":[
       "let x = ",
-      {"value":{
-        "age":{"@int":"0"},
-        "birthdate":{"@time":"2023-02-24T00:00:00Z"},
-        "name":"Dino"
+      {"object":{
+        "age":{"value": {"@int":"0"}},
+        "birthdate":{"value":{"@time":"2023-02-24T00:00:00Z"}},
+        "name":{"value":"Dino"}
       }}
     ]}`
 
@@ -584,10 +539,10 @@ func TestComposition(t *testing.T) {
 		encodedDoc := `{"fql":[
       {"fql":[
         "let x = ",
-        {"value":{
-          "age":{"@int":"0"},
-          "birthdate":{"@time":"2023-02-24T00:00:00Z"},
-          "name":"Dino"
+        {"object":{
+          "age":{"value":{"@int":"0"}},
+          "birthdate":{"value":{"@time":"2023-02-24T00:00:00Z"}},
+          "name":{"value":"Dino"}
         }}
       ]},
       "\nx { name }"
@@ -595,6 +550,48 @@ func TestComposition(t *testing.T) {
 
 		if assert.NoError(t, err) {
 			inner, err := FQL("${inner}\nx { name }", map[string]any{"inner": testInnerDino})
+			if assert.NoError(t, err) {
+				bs := marshalAndCheck(t, inner)
+				assert.JSONEq(t, encodedDoc, string(bs))
+			}
+		}
+	})
+
+	t.Run("sub queries embedded in slices and objects", func(t *testing.T) {
+
+		aMap := map[string]any{
+			"q1": testInnerDino,
+		}
+		aSlice := []any{
+			testInnerDino,
+			aMap,
+		}
+
+		encodedDoc := `{"fql":[{
+			"array": [
+				{"fql":[
+					"let x = ",
+					{"object":{
+					  "age":{"value":{"@int":"0"}},
+					  "birthdate":{"value":{"@time":"2023-02-24T00:00:00Z"}},
+					  "name":{"value":"Dino"}
+					}}
+                ]},
+				{"object":{"q1":
+					{"fql":[
+						"let x = ",
+						{"object":{
+						  "age":{"value":{"@int":"0"}},
+						  "birthdate":{"value":{"@time":"2023-02-24T00:00:00Z"}},
+						  "name":{"value":"Dino"}
+						}}
+					]}
+				}}
+			]
+		}]}`
+
+		if assert.NoError(t, err) {
+			inner, err := FQL("${inner}", map[string]any{"inner": aSlice})
 			if assert.NoError(t, err) {
 				bs := marshalAndCheck(t, inner)
 				assert.JSONEq(t, encodedDoc, string(bs))
