@@ -263,22 +263,40 @@ func (c *Client) Query(fql *Query, opts ...QueryOptFn) (*QuerySuccess, error) {
 // Paginate invoke fql with pagination optionally set multiple [QueryOptFn]
 func (c *Client) Paginate(fql *Query, opts ...QueryOptFn) *QueryIterator {
 	return &QueryIterator{
-		client: c,
-		fql:    fql,
-		opts:   opts,
+		client:  c,
+		fql:     fql,
+		opts:    opts,
+		isFirst: true,
 	}
 }
 
 // QueryIterator is a [fauna.Client] iterator for paginated queries
 type QueryIterator struct {
-	client *Client
-	fql    *Query
-	opts   []QueryOptFn
+	after   string
+	isFirst bool
+	client  *Client
+	fql     *Query
+	opts    []QueryOptFn
 }
 
 // Next returns the next page of results
 func (q *QueryIterator) Next() (*Page, error) {
-	res, queryErr := q.client.Query(q.fql, q.opts...)
+	var res *QuerySuccess
+	var queryErr error
+
+	// We have to run a different query on after tokens, so branch here.
+	if q.isFirst {
+		res, queryErr = q.client.Query(q.fql, q.opts...)
+		q.isFirst = false
+	} else {
+		pQuery, fqlErr := FQL(`Set.paginate(${after})`, map[string]any{"after": q.after})
+		if fqlErr != nil {
+			return nil, queryErr
+		}
+
+		res, queryErr = q.client.Query(pQuery, q.opts...)
+	}
+
 	if queryErr != nil {
 		return nil, queryErr
 	}
@@ -299,29 +317,14 @@ func (q *QueryIterator) Next() (*Page, error) {
 		page = &Page{After: "", Data: []any{res.Data}}
 	}
 
-	if pageErr := q.nextPage(page.After); pageErr != nil {
-		return nil, pageErr
-	}
-
+	q.after = page.After
 	page.Stats = res.Stats
 	return page, nil
 }
 
-func (q *QueryIterator) nextPage(after string) error {
-	if after == "" {
-		q.fql = nil
-		return nil
-	}
-
-	var fqlErr error
-	q.fql, fqlErr = FQL(`Set.paginate(${after})`, map[string]any{"after": after})
-
-	return fqlErr
-}
-
 // HasNext returns whether there is another page of results
 func (q *QueryIterator) HasNext() bool {
-	return q.fql != nil
+	return q.after != ""
 }
 
 // SetLastTxnTime update the last txn time for the [fauna.Client]
