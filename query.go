@@ -29,9 +29,8 @@ func FQL(query string, args map[string]any) (*Query, error) {
 		return nil, err
 	}
 
-	fragments := make([]*queryFragment, 0)
+	fragments := make([]*queryFragment, 0, len(parts))
 	for _, part := range parts {
-
 		switch category := part.Category; category {
 		case templateLiteral:
 			fragments = append(fragments, &queryFragment{true, part.Text})
