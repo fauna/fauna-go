@@ -1,5 +1,10 @@
 name: Validate Driver
 
+permissions:
+  contents: read
+  pull-requests: read
+  checks: write
+
 on:
   pull_request:
     paths:
