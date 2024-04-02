@@ -73,7 +73,7 @@ type Client struct {
 	maxBackoff  time.Duration
 
 	// lazily cached URLs
-	queryURL *url.URL
+	queryURL, streamURL *url.URL
 }
 
 // NewDefaultClient initialize a [fauna.Client] with recommend default settings
@@ -140,7 +140,9 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 			MaxIdleConns:      20,
 			IdleConnTimeout:   timeouts.IdleConnectionTimeout,
 		},
-		Timeout: timeouts.QueryTimeout + timeouts.ClientBufferTimeout,
+		// FIXME: we need to set infinite timeout for stream requests only.
+		// Timeout: timeouts.QueryTimeout + timeouts.ClientBufferTimeout,
+		Timeout: 0,
 	}
 
 	defaultHeaders := map[string]string{
@@ -183,12 +185,19 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 func (c *Client) parseQueryURL() (url *url.URL, err error) {
 	if c.queryURL != nil {
 		url = c.queryURL
-		return
-	}
-
-	if url, err = url.Parse(c.url); err == nil {
+	} else if url, err = url.Parse(c.url); err == nil {
 		url = url.JoinPath("query", "1")
 		c.queryURL = url
+	}
+	return
+}
+
+func (c *Client) parseStreamURL() (url *url.URL, err error) {
+	if c.streamURL != nil {
+		url = c.streamURL
+	} else if url, err = url.Parse(c.url); err == nil {
+		url = url.JoinPath("stream", "1")
+		c.streamURL = url
 	}
 	return
 }

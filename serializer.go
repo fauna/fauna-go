@@ -484,6 +484,18 @@ func encode(v any, hint string) (any, error) {
 			}
 		}
 		return out, nil
+
+	case streamRequest:
+		token, err := encode(vt.Token, hint)
+		if err != nil {
+			return nil, err
+		}
+
+		out := map[string]any{"token": token}
+		if vt.StartTime > 0 {
+			out["start_ts"] = strconv.FormatInt(vt.StartTime, 10)
+		}
+		return out, nil
 	}
 
 	switch value := reflect.ValueOf(v); value.Kind() {
