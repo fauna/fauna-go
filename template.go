@@ -12,34 +12,25 @@ const (
 	templateLiteral  templateCategory = "literal"
 )
 
+var (
+	templateRegex = regexp.MustCompile(`\$(?:(?P<escaped>\$)|{(?P<braced>[_a-zA-Z0-9]*)}|(?P<invalid>))`)
+	escapedIndex  = templateRegex.SubexpIndex("escaped")
+	bracedIndex   = templateRegex.SubexpIndex("braced")
+	invalidIndex  = templateRegex.SubexpIndex("invalid")
+)
+
 type templatePart struct {
 	Text     string
 	Category templateCategory
 }
 
-type template struct {
-	text string
-	re   *regexp.Regexp
-}
-
-func newTemplate(text string) *template {
-	return &template{
-		text: text,
-		re:   regexp.MustCompile(`\$(?:(?P<escaped>\$)|{(?P<braced>[_a-zA-Z0-9]*)}|(?P<invalid>))`),
-	}
-}
-
 // Parse parses Text and returns a slice of template parts.
-func (t *template) Parse() ([]templatePart, error) {
-	escapedIndex := t.re.SubexpIndex("escaped")
-	bracedIndex := t.re.SubexpIndex("braced")
-	invalidIndex := t.re.SubexpIndex("invalid")
-
-	end := len(t.text)
+func parseTemplate(text string) ([]templatePart, error) {
+	end := len(text)
 	currentPosition := 0
 
-	matches := t.re.FindAllStringSubmatch(t.text, -1)
-	matchIndexes := t.re.FindAllStringSubmatchIndex(t.text, -1)
+	matches := templateRegex.FindAllStringSubmatch(text, -1)
+	matchIndexes := templateRegex.FindAllStringSubmatchIndex(text, -1)
 	parts := make([]templatePart, 0)
 
 	for i, m := range matches {
@@ -57,7 +48,7 @@ func (t *template) Parse() ([]templatePart, error) {
 
 		if currentPosition < matchStartPos {
 			parts = append(parts, templatePart{
-				Text:     t.text[currentPosition:matchStartPos] + escaped,
+				Text:     text[currentPosition:matchStartPos] + escaped,
 				Category: templateLiteral,
 			})
 		}
@@ -73,7 +64,7 @@ func (t *template) Parse() ([]templatePart, error) {
 	}
 
 	if currentPosition < end {
-		parts = append(parts, templatePart{Text: t.text[currentPosition:], Category: templateLiteral})
+		parts = append(parts, templatePart{Text: text[currentPosition:], Category: templateLiteral})
 	}
 
 	return parts, nil

@@ -85,7 +85,7 @@ func TestTemplate_ParseSuccess(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		parsed, err := newTemplate(tc.given).Parse()
+		parsed, err := parseTemplate(tc.given)
 		if !assert.NoError(t, err) {
 			return
 		}
@@ -109,7 +109,7 @@ func TestTemplate_ParseFail(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		_, err := newTemplate(tc.given).Parse()
+		_, err := parseTemplate(tc.given)
 		if assert.Error(t, err) {
 			assert.EqualError(t, err, tc.error)
 		}

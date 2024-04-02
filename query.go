@@ -24,9 +24,7 @@ type Query struct {
 // The values of args can be any type, including [fauna.Query] to allow for
 // query composition.
 func FQL(query string, args map[string]any) (*Query, error) {
-	template := newTemplate(query)
-	parts, err := template.Parse()
-
+	parts, err := parseTemplate(query)
 	if err != nil {
 		return nil, err
 	}
