@@ -85,3 +85,9 @@ func TestFQL(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkFQL(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = FQL(`${arg0}.length`, map[string]any{"arg0": "foo"})
+	}
+}
