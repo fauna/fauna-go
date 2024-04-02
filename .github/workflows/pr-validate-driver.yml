@@ -18,13 +18,13 @@ jobs:
           - 8443:8443
     strategy:
       matrix:
-        go: [ '1.20', '1.19' ]
+        go: [ '1.22', '1.21', '1.20', '1.19' ]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
           cache: true
@@ -45,7 +45,7 @@ jobs:
         run: go vet ./...
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
 
       - name: Test
         run: go test -v ./...
