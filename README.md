@@ -126,6 +126,60 @@ func main() {
 }
 ```
 
+## Pagination
+
+Use the `Client.Paginate()` method to iterate sets that contain more than one page of results.
+
+`Client.paginate()` accepts the same query options as `Client.Query()`.
+
+Change the default items per page using FQL's `<set>.pageSize()` method.
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/fauna/fauna-go"
+)
+
+type Product struct {
+	Description string `fauna:"description"`
+}
+
+func main() {
+	client, clientErr := fauna.NewDefaultClient()
+	if clientErr != nil {
+		panic(clientErr)
+	}
+
+	// Adjust `pageSize()` size as needed.
+	query, _ := fauna.FQL(`
+    Product
+      .byName("limes")
+      .pageSize(2) { description }`, nil)
+
+	options := fauna.Timeout(time.Minute)
+
+	paginator := client.Paginate(query, options)
+	for {
+		page, _ := paginator.Next()
+
+		var pageItems []Product
+		page.Unmarshal(&pageItems)
+
+		for _, item := range pageItems {
+			fmt.Println(item)
+		}
+
+		if !paginator.HasNext() {
+			break
+		}
+	}
+}
+```
+
 ## Client Configuration
 
 ### Timeouts
