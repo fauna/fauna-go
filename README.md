@@ -175,7 +175,6 @@ func main() {
 		}
 	}
 }
-
 ```
 
 ## Client Configuration
