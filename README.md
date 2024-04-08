@@ -155,9 +155,9 @@ func main() {
 
 	// Adjust `pageSize()` size as needed.
 	query, _ := fauna.FQL(`
-    Product
-      .byName("limes")
-      .pageSize(2) { description }`, nil)
+		Product
+			.byName("limes")
+			.pageSize(2) { description }`, nil)
 
 	paginator := client.Paginate(query)
 	for {
