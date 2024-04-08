@@ -139,7 +139,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/fauna/fauna-go"
 )
@@ -160,9 +159,7 @@ func main() {
       .byName("limes")
       .pageSize(2) { description }`, nil)
 
-	options := fauna.Timeout(time.Minute)
-
-	paginator := client.Paginate(query, options)
+	paginator := client.Paginate(query)
 	for {
 		page, _ := paginator.Next()
 
@@ -178,6 +175,7 @@ func main() {
 		}
 	}
 }
+
 ```
 
 ## Client Configuration
