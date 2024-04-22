@@ -62,6 +62,19 @@ type queryResponse struct {
 	Tags          string          `json:"query_tags"`
 }
 
+func parseQueryResponse(httpRes *http.Response, attempts int) (qRes *queryResponse, err error) {
+	var bytesIn []byte
+	if bytesIn, err = io.ReadAll(httpRes.Body); err != nil {
+		err = fmt.Errorf("failed to read response body: %w", err)
+		return
+	}
+
+	if err = json.Unmarshal(bytesIn, &qRes); err != nil {
+		err = fmt.Errorf("failed to umarmshal response: %w", err)
+	}
+	return
+}
+
 func (r *queryResponse) queryTags() map[string]string {
 	ret := map[string]string{}
 
@@ -74,6 +87,7 @@ func (r *queryResponse) queryTags() map[string]string {
 
 	return ret
 }
+
 func (qReq *queryRequest) do(cli *Client) (qSus *QuerySuccess, err error) {
 	var bytesOut []byte
 	if bytesOut, err = marshal(qReq); err != nil {
@@ -94,25 +108,15 @@ func (qReq *queryRequest) do(cli *Client) (qSus *QuerySuccess, err error) {
 		return
 	}
 
-	var (
-		qRes    queryResponse
-		bytesIn []byte
-	)
-
-	if bytesIn, err = io.ReadAll(httpRes.Body); err != nil {
-		err = fmt.Errorf("failed to read response body: %w", err)
-		return
-	}
-
-	if err = json.Unmarshal(bytesIn, &qRes); err != nil {
-		err = fmt.Errorf("failed to umarmshal response: %w", err)
+	var qRes *queryResponse
+	if qRes, err = parseQueryResponse(httpRes, attempts); err != nil {
 		return
 	}
 
 	cli.lastTxnTime.sync(qRes.TxnTime)
 	qRes.Header = httpRes.Header
 
-	if err = getErrFauna(httpRes.StatusCode, &qRes, attempts); err != nil {
+	if err = getErrFauna(httpRes.StatusCode, qRes, attempts); err != nil {
 		return
 	}
 
@@ -123,10 +127,50 @@ func (qReq *queryRequest) do(cli *Client) (qSus *QuerySuccess, err error) {
 	}
 
 	qSus = &QuerySuccess{
-		QueryInfo:  newQueryInfo(&qRes),
+		QueryInfo:  newQueryInfo(qRes),
 		Data:       data,
 		StaticType: qRes.StaticType,
 	}
 	qSus.Stats.Attempts = attempts
+	return
+}
+
+type streamRequest struct {
+	apiRequest
+	Stream  Stream
+	StartTS int64
+}
+
+func (streamReq *streamRequest) do(cli *Client) (bytes io.ReadCloser, err error) {
+	var bytesOut []byte
+	if bytesOut, err = marshal(streamReq); err != nil {
+		err = fmt.Errorf("marshal request failed: %w", err)
+		return
+	}
+
+	var streamURL *url.URL
+	if streamURL, err = cli.parseStreamURL(); err != nil {
+		return
+	}
+
+	var (
+		attempts int
+		httpRes  *http.Response
+	)
+	if attempts, httpRes, err = streamReq.post(cli, streamURL, bytesOut); err != nil {
+		return
+	}
+
+	if httpRes.StatusCode != http.StatusOK {
+		var qRes *queryResponse
+		if qRes, err = parseQueryResponse(httpRes, attempts); err == nil {
+			if err = getErrFauna(httpRes.StatusCode, qRes, attempts); err == nil {
+				err = fmt.Errorf("unknown error for http status: %d", httpRes.StatusCode)
+			}
+		}
+		return
+	}
+
+	bytes = httpRes.Body
 	return
 }

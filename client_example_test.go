@@ -317,3 +317,81 @@ func ExampleClient_Paginate() {
 	fmt.Printf("%d", len(items))
 	// Output: 20
 }
+
+func ExampleClient_Subscribe() {
+	// IMPORTANT: just for the purpose of example, don't actually hardcode secret
+	_ = os.Setenv(fauna.EnvFaunaSecret, "secret")
+	_ = os.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+
+	client, err := fauna.NewDefaultClient()
+	if err != nil {
+		log.Fatalf("client should have been initialized: %s", err)
+	}
+
+	// setup a collection
+	setupQuery, _ := fauna.FQL(`
+		Collection.byName('StreamingSandbox')?.delete()
+		Collection.create({ name: 'StreamingSandbox' })
+	`, nil)
+	if _, err := client.Query(setupQuery); err != nil {
+		log.Fatalf("failed to setup the collection: %s", err)
+	}
+
+	// create a stream
+	streamQuery, _ := fauna.FQL(`StreamingSandbox.all().toStream()`, nil)
+	result, err := client.Query(streamQuery)
+	if err != nil {
+		log.Fatalf("failed to create a stream: %s", err)
+	}
+
+	var stream fauna.Stream
+	if err := result.Unmarshal(&stream); err != nil {
+		log.Fatalf("failed to unmarshal the stream value: %s", err)
+	}
+
+	// initiate the stream subscription
+	subscription, err := client.Subscribe(stream)
+	if err != nil {
+		log.Fatalf("failed to subscribe to the stream value: %s", err)
+	}
+	defer subscription.Close()
+
+	// produce some events while the subscription is open
+	createQuery, _ := fauna.FQL(`StreamingSandbox.create({ foo: 'bar' })`, nil)
+	updateQuery, _ := fauna.FQL(`StreamingSandbox.all().forEach(.update({ foo: 'baz' }))`, nil)
+	deleteQuery, _ := fauna.FQL(`StreamingSandbox.all().forEach(.delete())`, nil)
+
+	queries := []*fauna.Query{createQuery, updateQuery, deleteQuery}
+	for _, query := range queries {
+		if _, err := client.Query(query); err != nil {
+			log.Fatalf("failed execute CRUD query: %s", err)
+		}
+	}
+
+	// fetch the produced events
+	type Data struct {
+		Foo string `fauna:"foo"`
+	}
+
+	events := subscription.Events()
+	expect := 3
+
+	for expect > 0 {
+		event := <-events
+		if event == nil {
+			break
+		}
+		switch event.Type {
+		case "add", "update", "remove":
+			var data Data
+			if err := event.Unmarshal(&data); err != nil {
+				log.Fatalf("failed to unmarshal event data: %s", err)
+			}
+			fmt.Printf("Event: %s Data: %+v\n", event.Type, data)
+			expect--
+		}
+	}
+	// Output: Event: add Data: {Foo:bar}
+	// Event: update Data: {Foo:baz}
+	// Event: remove Data: {Foo:baz}
+}
