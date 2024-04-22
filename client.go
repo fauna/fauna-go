@@ -128,15 +128,21 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 		Timeout: timeouts.ConnectionTimeout,
 	}
 
+	// NOTE: prefer a response header timeout instead of a client timeout so
+	// that the client don't stop reading a http body that was produced by
+	// Fauna. On the query interface, an HTTP body is sent as a single http
+	// message. On the streaming interface, HTTP chunks are sent on every event.
+	// Therefore, it's in the driver's best interest to continue reading the
+	// HTTP body once the headers appear.
 	httpClient := &http.Client{
 		Transport: &http.Transport{
-			Proxy:             http.ProxyFromEnvironment,
-			DialContext:       dialer.DialContext,
-			ForceAttemptHTTP2: true,
-			MaxIdleConns:      20,
-			IdleConnTimeout:   timeouts.IdleConnectionTimeout,
+			Proxy:                 http.ProxyFromEnvironment,
+			DialContext:           dialer.DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          20,
+			IdleConnTimeout:       timeouts.IdleConnectionTimeout,
+			ResponseHeaderTimeout: timeouts.QueryTimeout + timeouts.ClientBufferTimeout,
 		},
-		Timeout: timeouts.QueryTimeout + timeouts.ClientBufferTimeout,
 	}
 
 	defaultHeaders := map[string]string{
