@@ -469,7 +469,7 @@ func encode(v any, hint string) (any, error) {
 	case time.Time:
 		return encodeTime(vt, hint)
 
-	case fqlRequest:
+	case queryRequest:
 		query, err := encode(vt.Query, hint)
 		if err != nil {
 			return nil, err
