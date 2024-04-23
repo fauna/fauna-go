@@ -11,11 +11,42 @@ import (
 	"strings"
 )
 
-type fqlRequest struct {
-	Context   context.Context
-	Headers   map[string]string
-	Query     any            `fauna:"query"`
-	Arguments map[string]any `fauna:"arguments"`
+type apiRequest struct {
+	Context context.Context
+	Headers map[string]string
+}
+
+func (apiReq *apiRequest) post(cli *Client, url *url.URL, bytesOut []byte) (attempts int, httpRes *http.Response, err error) {
+	var httpReq *http.Request
+	if httpReq, err = http.NewRequestWithContext(
+		apiReq.Context,
+		http.MethodPost,
+		url.String(),
+		bytes.NewReader(bytesOut),
+	); err != nil {
+		err = fmt.Errorf("failed to init request: %w", err)
+		return
+	}
+
+	httpReq.Header.Set(headerAuthorization, `Bearer `+cli.secret)
+	if lastTxnTs := cli.lastTxnTime.string(); lastTxnTs != "" {
+		httpReq.Header.Set(HeaderLastTxnTs, lastTxnTs)
+	}
+
+	for k, v := range apiReq.Headers {
+		httpReq.Header.Set(k, v)
+	}
+
+	if attempts, httpRes, err = cli.doWithRetry(httpReq); err != nil {
+		err = ErrNetwork(fmt.Errorf("network error: %w", err))
+	}
+	return
+}
+
+type queryRequest struct {
+	apiRequest
+	Query     any
+	Arguments map[string]any
 }
 
 type queryResponse struct {
@@ -43,72 +74,59 @@ func (r *queryResponse) queryTags() map[string]string {
 
 	return ret
 }
-
-func (c *Client) do(request *fqlRequest) (*QuerySuccess, error) {
-	bytesOut, bytesErr := marshal(request)
-	if bytesErr != nil {
-		return nil, fmt.Errorf("marshal request failed: %w", bytesErr)
+func (qReq *queryRequest) do(cli *Client) (qSus *QuerySuccess, err error) {
+	var bytesOut []byte
+	if bytesOut, err = marshal(qReq); err != nil {
+		err = fmt.Errorf("marshal request failed: %w", err)
+		return
 	}
 
-	reqURL, urlErr := url.Parse(c.url)
-	if urlErr != nil {
-		return nil, urlErr
+	var queryURL *url.URL
+	if queryURL, err = cli.parseQueryURL(); err != nil {
+		return
 	}
 
-	if path, err := url.JoinPath(reqURL.Path, "query", "1"); err != nil {
-		return nil, err
-	} else {
-		reqURL.Path = path
+	var (
+		attempts int
+		httpRes  *http.Response
+	)
+	if attempts, httpRes, err = qReq.post(cli, queryURL, bytesOut); err != nil {
+		return
 	}
 
-	req, reqErr := http.NewRequestWithContext(request.Context, http.MethodPost, reqURL.String(), bytes.NewReader(bytesOut))
-	if reqErr != nil {
-		return nil, fmt.Errorf("failed to init request: %w", reqErr)
+	var (
+		qRes    queryResponse
+		bytesIn []byte
+	)
+
+	if bytesIn, err = io.ReadAll(httpRes.Body); err != nil {
+		err = fmt.Errorf("failed to read response body: %w", err)
+		return
 	}
 
-	req.Header.Set(headerAuthorization, `Bearer `+c.secret)
-	if lastTxnTs := c.lastTxnTime.string(); lastTxnTs != "" {
-		req.Header.Set(HeaderLastTxnTs, lastTxnTs)
+	if err = json.Unmarshal(bytesIn, &qRes); err != nil {
+		err = fmt.Errorf("failed to umarmshal response: %w", err)
+		return
 	}
 
-	for k, v := range request.Headers {
-		req.Header.Set(k, v)
+	cli.lastTxnTime.sync(qRes.TxnTime)
+	qRes.Header = httpRes.Header
+
+	if err = getErrFauna(httpRes.StatusCode, &qRes, attempts); err != nil {
+		return
 	}
 
-	attempts, r, doErr := c.doWithRetry(req)
-	if doErr != nil {
-		return nil, ErrNetwork(fmt.Errorf("network error: %w", doErr))
+	var data any
+	if data, err = decode(qRes.Data); err != nil {
+		err = fmt.Errorf("failed to decode data: %w", err)
+		return
 	}
 
-	var res queryResponse
-
-	bin, readErr := io.ReadAll(r.Body)
-	if readErr != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", readErr)
-	}
-
-	if unmarshalErr := json.Unmarshal(bin, &res); unmarshalErr != nil {
-		return nil, fmt.Errorf("failed to umarmshal response: %w", unmarshalErr)
-	}
-
-	c.lastTxnTime.sync(res.TxnTime)
-	res.Header = r.Header
-
-	if serviceErr := getErrFauna(r.StatusCode, &res, attempts); serviceErr != nil {
-		return nil, serviceErr
-	}
-
-	data, decodeErr := decode(res.Data)
-	if decodeErr != nil {
-		return nil, fmt.Errorf("failed to decode data: %w", decodeErr)
-	}
-
-	ret := &QuerySuccess{
-		QueryInfo:  newQueryInfo(&res),
+	qSus = &QuerySuccess{
+		QueryInfo:  newQueryInfo(&qRes),
 		Data:       data,
-		StaticType: res.StaticType,
+		StaticType: qRes.StaticType,
 	}
-	ret.Stats.Attempts = attempts
-
-	return ret, nil
+	qSus.Stats.Attempts = attempts
+	return
 }

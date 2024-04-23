@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -70,6 +71,9 @@ type Client struct {
 
 	maxAttempts int
 	maxBackoff  time.Duration
+
+	// lazily cached URLs
+	queryURL *url.URL
 }
 
 // NewDefaultClient initialize a [fauna.Client] with recommend default settings
@@ -176,6 +180,16 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 	return client
 }
 
+func (c *Client) parseQueryURL() (url *url.URL, err error) {
+	if c.queryURL != nil {
+		url = c.queryURL
+	} else if url, err = url.Parse(c.url); err == nil {
+		url = url.JoinPath("query", "1")
+		c.queryURL = url
+	}
+	return
+}
+
 func (c *Client) doWithRetry(req *http.Request) (attempts int, r *http.Response, err error) {
 	req2 := req.Clone(req.Context())
 	body, rerr := io.ReadAll(req.Body)
@@ -247,17 +261,19 @@ func (c *Client) backoff(attempt int) (sleep time.Duration) {
 
 // Query invoke fql optionally set multiple [QueryOptFn]
 func (c *Client) Query(fql *Query, opts ...QueryOptFn) (*QuerySuccess, error) {
-	req := &fqlRequest{
-		Context: c.ctx,
-		Query:   fql,
-		Headers: c.headers,
+	req := &queryRequest{
+		apiRequest: apiRequest{
+			Context: c.ctx,
+			Headers: c.headers,
+		},
+		Query: fql,
 	}
 
 	for _, queryOptionFn := range opts {
 		queryOptionFn(req)
 	}
 
-	return c.do(req)
+	return req.do(c)
 }
 
 // Paginate invoke fql with pagination optionally set multiple [QueryOptFn]
