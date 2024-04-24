@@ -350,11 +350,11 @@ func ExampleClient_Subscribe() {
 	}
 
 	// initiate the stream subscription
-	subscription, err := client.Subscribe(stream)
+	events, err := client.Subscribe(stream)
 	if err != nil {
 		log.Fatalf("failed to subscribe to the stream value: %s", err)
 	}
-	defer subscription.Close()
+	defer events.Close()
 
 	// produce some events while the subscription is open
 	createQuery, _ := fauna.FQL(`StreamingSandbox.create({ foo: 'bar' })`, nil)
@@ -373,16 +373,14 @@ func ExampleClient_Subscribe() {
 		Foo string `fauna:"foo"`
 	}
 
-	events := subscription.Events()
 	expect := 3
-
 	for expect > 0 {
-		event := <-events
-		if event == nil {
-			break
+		event, err := events.Next()
+		if err != nil {
+			log.Fatalf("failed to receive next event: %s", err)
 		}
 		switch event.Type {
-		case "add", "update", "remove":
+		case fauna.AddEvent, fauna.UpdateEvent, fauna.RemoveEvent:
 			var data Data
 			if err := event.Unmarshal(&data); err != nil {
 				log.Fatalf("failed to unmarshal event data: %s", err)

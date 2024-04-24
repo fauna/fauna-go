@@ -5,34 +5,35 @@ import (
 	"io"
 )
 
+// EventType represents a Fauna's event type.
+type EventType string
+
+const (
+	// AddEvent happens when a new value is added to the stream's watched set.
+	AddEvent EventType = "add"
+	// UpdateEvent happens when a value in the stream's watched set changes.
+	UpdateEvent EventType = "update"
+	// Remove event happens when a value in the stream's watched set is removed.
+	RemoveEvent EventType = "remove"
+	// StatusEvent happens periodically and comunicates the stream's latest
+	// transacion time as well as ops aquired during its idle period.
+	StatusEvent EventType = "status"
+)
+
 // Event represents a streaming event.
 //
-// All events contain the [fauna.Event.Type] and [fauna.Event.Stats] fields.
-//
-// Events of type "add", "update", and "remove" will contain the
-// [fauna.Event.Data] field with the event's data in it. Data events have their
-// [fauna.Event.Error] field set to nil. Data events can be umarmshalled into a
-// user-defined struct via the [fauna.Event.Unmarshal] method.
-//
-// Events of type "status" and "error" will have their [fauna.Event.Data] field
-// set to nil. Error events contain the [fauna.Event.Error] field present with
-// the underlying error information.
+// Events of type [fauna.StatusEvent] have its [fauna.Event.Data] field set to
+// nil. Other event's [fauna.Data] can be unmarshalled via the
+// [fauna.Event.Unmarshal] method.
 type Event struct {
 	// Type is this event's type.
-	Type string `json:"type"`
-
+	Type EventType
 	// TxnTime is the transaction time that produce this event.
-	TxnTime int64 `json:"txn_ts,omitempty"`
-
-	// Data is the event's data. Data is set to nil if the Type field is set to
-	// "status" or "error".
-	Data any `json:"data,omitempty"`
-
-	// Error contains error information when the event Type is set to "error".
-	Error *ErrEvent `json:"error,omitempty"`
-
+	TxnTime int64
+	// Data is the event's data.
+	Data any
 	// Stats contains the ops acquired to process the event.
-	Stats Stats `json:"stats"`
+	Stats Stats
 }
 
 // Unmarshal will unmarshal the raw [fauna.Event.Data] (if present) into the
@@ -53,8 +54,14 @@ type ErrEvent struct {
 	// Message is the error's message.
 	Message string `json:"message"`
 
-	// Abort is the error's abort data, present if Code == "abort".
-	Abort any `json:"abort"`
+	// Abort is the error's abort data, present if [fauna.ErrEvent.Code] is
+	// equals to "abort".
+	Abort any `json:"abort,omitempty"`
+}
+
+// Error provides the underlying error message.
+func (e *ErrEvent) Error() string {
+	return e.Message
 }
 
 // Unmarshal will unmarshal the raw [fauna.ErrEvent.Abort] (if present) into the
@@ -63,71 +70,76 @@ func (e *ErrEvent) Unmarshal(into any) error {
 	return decodeInto(e.Abort, into)
 }
 
-// Subscription is a Fauna stream subscription.
+// Events is an iterator of Fauna events.
 //
-// Events can be obtained by reading from the [fauna.Subscription.Events]
-// channel. Note that the events channel emits a nil event on closing.
-//
-// If the subscription gets closed unexpectedly, its closing error can be
-// retrieved via the [fauna.Subscription.Error] method.
-//
-// A stream subscription can be gracefully closed via the
-// [fauna.Subscription.Close] method.
-type Subscription struct {
+// The next available event can be obtained by calling the
+// [fauna.Subscription.Next] method. Note this method blocks until the next
+// event is available or until the events iterator is closed via the
+// [fauna.Events.Close] method.
+type Events struct {
 	byteStream io.ReadCloser
-	events     chan *Event
-	error      error
-	closed     bool
+	decoder    *json.Decoder
 }
 
-// Events return the subscription's events channel.
-func (s *Subscription) Events() <-chan *Event { return s.events }
-
-// Error returns the subscription's closing error, if any.
-func (s *Subscription) Error() error { return s.error }
+func newEvents(byteStream io.ReadCloser) *Events {
+	return &Events{
+		byteStream: byteStream,
+		decoder:    json.NewDecoder(byteStream),
+	}
+}
 
 // Close gracefully closes the stream subscription.
-func (s *Subscription) Close() (err error) {
-	if !s.closed {
-		s.closed = true
-		err = s.byteStream.Close()
+func (es *Events) Close() (err error) {
+	// XXX: Is there a way to make sure there are no bytes left on the stream
+	// after closing it? According to go's docs, the underlying connection will
+	// remain unusable for the duration of its idle time if there are bytes left
+	// in its read buffer.
+	return es.byteStream.Close()
+}
+
+type rawEvent = struct {
+	Type    EventType `json:"type"`
+	TxnTime int64     `json:"txn_ts"`
+	Data    any       `json:"data,omitempty"`
+	Error   *ErrEvent `json:"error,omitempty"`
+	Stats   Stats     `json:"stats"`
+}
+
+// Next blocks until the next event is available.
+//
+// Note that network errors of type [fauna.ErrEvent] are considered fatal and
+// close the underlying stream. Calling next after an error event occurs will
+// return an error.
+func (es *Events) Next() (event *Event, err error) {
+	raw := rawEvent{}
+	if err = es.decoder.Decode(&raw); err == nil {
+		event, err = convertRawEvent(&raw)
+		if _, ok := err.(*ErrEvent); ok {
+			es.Close() // no more events are comming
+		}
 	}
 	return
 }
 
-func (s *Subscription) consume() {
-	defer close(s.events)
-	decoder := json.NewDecoder(s.byteStream)
-
-	for {
-		event := &Event{}
-		if err := decoder.Decode(event); err != nil {
-			// NOTE: When closing the stream, a network error may occur as due
-			// to its socket closing while the json decoder is blocked reading
-			// it. Errors to close the socket are already emitted by the Close()
-			// method, therefore, we don't want to propagate them here again.
-			if !s.closed {
-				s.error = err
+func convertRawEvent(raw *rawEvent) (event *Event, err error) {
+	if raw.Error != nil {
+		if raw.Error.Abort != nil {
+			if raw.Error.Abort, err = convert(false, raw.Error.Abort); err != nil {
+				return
 			}
-			break
 		}
-		if err := convertEvent(event); err != nil {
-			s.error = err
-			break
+		err = raw.Error
+	} else {
+		if raw.Data != nil {
+			if raw.Data, err = convert(false, raw.Data); err != nil {
+				return
+			}
 		}
-		s.events <- event
-	}
-}
-
-func convertEvent(event *Event) (err error) {
-	if event.Data != nil {
-		if event.Data, err = convert(false, event.Data); err != nil {
-			return
-		}
-	}
-	if event.Error != nil && event.Error.Abort != nil {
-		if event.Error.Abort, err = convert(false, event.Error.Abort); err != nil {
-			return
+		event = &Event{
+			Type:    raw.Type,
+			TxnTime: raw.TxnTime,
+			Data:    raw.Data,
+			Stats:   raw.Stats,
 		}
 	}
 	return

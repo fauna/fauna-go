@@ -302,19 +302,13 @@ func (c *Client) Paginate(fql *Query, opts ...QueryOptFn) *QueryIterator {
 }
 
 // Subscribe initiates a stream subscription for the given stream value.
-func (c *Client) Subscribe(stream Stream) (*Subscription, error) {
+func (c *Client) Subscribe(stream Stream) (*Events, error) {
 	streamReq := streamRequest{
 		apiRequest: apiRequest{c.ctx, c.headers},
 		Stream:     stream,
 	}
-
 	if byteStream, err := streamReq.do(c); err == nil {
-		sub := &Subscription{
-			events:     make(chan *Event),
-			byteStream: byteStream,
-		}
-		go sub.consume()
-		return sub, nil
+		return newEvents(byteStream), nil
 	} else {
 		return nil, err
 	}
