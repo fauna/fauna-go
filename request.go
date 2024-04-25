@@ -62,7 +62,7 @@ type queryResponse struct {
 	Tags          string          `json:"query_tags"`
 }
 
-func parseQueryResponse(httpRes *http.Response, attempts int) (qRes *queryResponse, err error) {
+func parseQueryResponse(httpRes *http.Response) (qRes *queryResponse, err error) {
 	var bytesIn []byte
 	if bytesIn, err = io.ReadAll(httpRes.Body); err != nil {
 		err = fmt.Errorf("failed to read response body: %w", err)
@@ -109,7 +109,7 @@ func (qReq *queryRequest) do(cli *Client) (qSus *QuerySuccess, err error) {
 	}
 
 	var qRes *queryResponse
-	if qRes, err = parseQueryResponse(httpRes, attempts); err != nil {
+	if qRes, err = parseQueryResponse(httpRes); err != nil {
 		return
 	}
 
@@ -163,7 +163,7 @@ func (streamReq *streamRequest) do(cli *Client) (bytes io.ReadCloser, err error)
 
 	if httpRes.StatusCode != http.StatusOK {
 		var qRes *queryResponse
-		if qRes, err = parseQueryResponse(httpRes, attempts); err == nil {
+		if qRes, err = parseQueryResponse(httpRes); err == nil {
 			if err = getErrFauna(httpRes.StatusCode, qRes, attempts); err == nil {
 				err = fmt.Errorf("unknown error for http status: %d", httpRes.StatusCode)
 			}
