@@ -332,7 +332,7 @@ func (c *Client) Subscribe(stream Stream, opts ...StreamOptFn) (*Events, error) 
 	}
 
 	if byteStream, err := req.do(c); err == nil {
-		return newEvents(byteStream), nil
+		return newEvents(c, byteStream), nil
 	} else {
 		return nil, err
 	}

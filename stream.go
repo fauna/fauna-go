@@ -77,12 +77,15 @@ func (e *ErrEvent) Unmarshal(into any) error {
 // event is available or until the events iterator is closed via the
 // [fauna.Events.Close] method.
 type Events struct {
-	byteStream io.ReadCloser
-	decoder    *json.Decoder
+	client      *Client
+	byteStream  io.ReadCloser
+	decoder     *json.Decoder
+	lastTxnTime int64
 }
 
-func newEvents(byteStream io.ReadCloser) *Events {
+func newEvents(client *Client, byteStream io.ReadCloser) *Events {
 	return &Events{
+		client:     client,
 		byteStream: byteStream,
 		decoder:    json.NewDecoder(byteStream),
 	}
@@ -113,12 +116,18 @@ type rawEvent = struct {
 func (es *Events) Next() (event *Event, err error) {
 	raw := rawEvent{}
 	if err = es.decoder.Decode(&raw); err == nil {
+		es.syncTxnTime(raw.TxnTime)
 		event, err = convertRawEvent(&raw)
 		if _, ok := err.(*ErrEvent); ok {
 			es.Close() // no more events are comming
 		}
 	}
 	return
+}
+
+func (es *Events) syncTxnTime(txnTime int64) {
+	es.client.lastTxnTime.sync(txnTime)
+	es.lastTxnTime = txnTime
 }
 
 func convertRawEvent(raw *rawEvent) (event *Event, err error) {
