@@ -3,6 +3,7 @@ package fauna
 import (
 	"encoding/json"
 	"io"
+	"net"
 )
 
 // EventType represents a Fauna's event type.
@@ -78,17 +79,42 @@ func (e *ErrEvent) Unmarshal(into any) error {
 // [fauna.Events.Close] method.
 type Events struct {
 	client      *Client
+	stream      Stream
 	byteStream  io.ReadCloser
 	decoder     *json.Decoder
 	lastTxnTime int64
 }
 
-func newEvents(client *Client, byteStream io.ReadCloser) *Events {
-	return &Events{
-		client:     client,
-		byteStream: byteStream,
-		decoder:    json.NewDecoder(byteStream),
+func subscribe(client *Client, stream Stream, opts ...StreamOptFn) (*Events, error) {
+	events := &Events{client: client, stream: stream}
+	if err := events.reconnect(opts...); err != nil {
+		return nil, err
 	}
+	return events, nil
+}
+
+func (es *Events) reconnect(opts ...StreamOptFn) error {
+	req := streamRequest{
+		apiRequest: apiRequest{
+			es.client.ctx,
+			es.client.headers,
+		},
+		Stream:  es.stream,
+		StartTS: es.lastTxnTime,
+	}
+
+	for _, streamOptionFn := range opts {
+		streamOptionFn(&req)
+	}
+
+	byteStream, err := req.do(es.client)
+	if err != nil {
+		return err
+	}
+
+	es.byteStream = byteStream
+	es.decoder = json.NewDecoder(byteStream)
+	return nil
 }
 
 // Close gracefully closes the stream subscription.
@@ -120,6 +146,16 @@ func (es *Events) Next() (event *Event, err error) {
 		event, err = convertRawEvent(&raw)
 		if _, ok := err.(*ErrEvent); ok {
 			es.Close() // no more events are comming
+		}
+	} else {
+		// NOTE: This code tries to resume streams on network and IO errors. It
+		// presume that if the service is unavailable, the reconnect call will
+		// fail. Automatic retries and backoff mechanisms are impleneted at the
+		// Client level.
+		if _, ok := err.(net.Error); ok || err == io.ErrUnexpectedEOF {
+			if err = es.reconnect(); err == nil {
+				event, err = es.Next()
+			}
 		}
 	}
 	return
