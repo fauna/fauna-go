@@ -330,8 +330,11 @@ func ExampleClient_Subscribe() {
 
 	// setup a collection
 	setupQuery, _ := fauna.FQL(`
-		Collection.byName('StreamingSandbox')?.delete()
-		Collection.create({ name: 'StreamingSandbox' })
+		if (!Collection.byName('StreamingSandbox').exists()) {
+		  Collection.create({ name: 'StreamingSandbox' })
+        } else {
+          StreamingSandbox.all().forEach(.delete())
+        }
 	`, nil)
 	if _, err := client.Query(setupQuery); err != nil {
 		log.Fatalf("failed to setup the collection: %s", err)
