@@ -8,15 +8,23 @@ import (
 )
 
 func TestStreaming(t *testing.T) {
-	t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
-	t.Setenv(fauna.EnvFaunaSecret, "secret")
-
-	client, clientErr := fauna.NewDefaultClient()
-	require.NoError(t, clientErr)
+	// NB. Use a linearized client to ensure that we get a txn time instead of a
+	// snapshot time when creating a stream value. That makes testing easier as
+	// we can trust that documents' timestamps created after a stream token can
+	// be used reliably to resume the stream.
+	client := fauna.NewClient(
+		"secret",
+		fauna.DefaultTimeouts(),
+		fauna.URL(fauna.EndpointLocal),
+		fauna.Linearized(true),
+	)
 
 	setupQ, _ := fauna.FQL(`
-		Collection.byName('StreamingTest')?.delete()
-		Collection.create({ name: 'StreamingTest' })
+		if (!Collection.byName('StreamingTest').exists()) {
+			Collection.create({ name: 'StreamingTest' })
+        } else {
+			StreamingTest.all().forEach(.delete())
+        }
 	`, nil)
 
 	_, err := client.Query(setupQ)
