@@ -500,6 +500,13 @@ func encode(v any, hint string) (any, error) {
 			}
 		}
 		return out, nil
+
+	case streamRequest:
+		out := map[string]any{"token": string(vt.Stream)}
+		if vt.StartTS > 0 {
+			out["start_ts"] = vt.StartTS
+		}
+		return out, nil
 	}
 
 	switch value := reflect.ValueOf(v); value.Kind() {

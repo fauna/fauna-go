@@ -73,7 +73,7 @@ type Client struct {
 	maxBackoff  time.Duration
 
 	// lazily cached URLs
-	queryURL *url.URL
+	queryURL, streamURL *url.URL
 }
 
 // NewDefaultClient initialize a [fauna.Client] with recommend default settings
@@ -196,6 +196,16 @@ func (c *Client) parseQueryURL() (url *url.URL, err error) {
 	return
 }
 
+func (c *Client) parseStreamURL() (url *url.URL, err error) {
+	if c.streamURL != nil {
+		url = c.streamURL
+	} else if url, err = url.Parse(c.url); err == nil {
+		url = url.JoinPath("stream", "1")
+		c.streamURL = url
+	}
+	return
+}
+
 func (c *Client) doWithRetry(req *http.Request) (attempts int, r *http.Response, err error) {
 	req2 := req.Clone(req.Context())
 	body, rerr := io.ReadAll(req.Body)
@@ -288,6 +298,19 @@ func (c *Client) Paginate(fql *Query, opts ...QueryOptFn) *QueryIterator {
 		client: c,
 		fql:    fql,
 		opts:   opts,
+	}
+}
+
+// Subscribe initiates a stream subscription for the given stream value.
+func (c *Client) Subscribe(stream Stream) (*Events, error) {
+	streamReq := streamRequest{
+		apiRequest: apiRequest{c.ctx, c.headers},
+		Stream:     stream,
+	}
+	if byteStream, err := streamReq.do(c); err == nil {
+		return newEvents(byteStream), nil
+	} else {
+		return nil, err
 	}
 }
 
