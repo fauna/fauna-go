@@ -35,7 +35,7 @@ func TestStreaming(t *testing.T) {
 
 			event, err := events.Next()
 			require.NoError(t, err)
-			require.Equal(t, event.Type, fauna.StatusEvent)
+			require.Equal(t, fauna.StatusEvent, event.Type)
 		})
 
 		t.Run("Fails on non-streamable values", func(t *testing.T) {
@@ -61,7 +61,7 @@ func TestStreaming(t *testing.T) {
 
 			event, err := events.Next()
 			require.NoError(t, err)
-			require.Equal(t, event.Type, fauna.StatusEvent)
+			require.Equal(t, fauna.StatusEvent, event.Type)
 
 			createQ, _ := fauna.FQL(`StreamingTest.create({ foo: 'bar' })`, nil)
 			_, err = client.Query(createQ)
@@ -69,11 +69,11 @@ func TestStreaming(t *testing.T) {
 
 			event, err = events.Next()
 			require.NoError(t, err)
-			require.Equal(t, event.Type, fauna.AddEvent)
+			require.Equal(t, fauna.AddEvent, event.Type)
 
 			var doc TestDoc
 			require.NoError(t, event.Unmarshal(&doc))
-			require.Equal(t, doc.Foo, "bar")
+			require.Equal(t, "bar", doc.Foo)
 			require.NoError(t, events.Close())
 		})
 
@@ -97,7 +97,7 @@ func TestStreaming(t *testing.T) {
 
 			event, err := events.Next()
 			require.NoError(t, err)
-			require.Equal(t, event.Type, fauna.StatusEvent)
+			require.Equal(t, fauna.StatusEvent, event.Type)
 
 			createQ, _ := fauna.FQL(`StreamingTest.create({ foo: 'bar' })`, nil)
 			_, err = client.Query(createQ)
@@ -108,12 +108,12 @@ func TestStreaming(t *testing.T) {
 			require.Nil(t, event)
 
 			evErr := err.(*fauna.ErrEvent)
-			require.Equal(t, evErr.Code, "abort")
-			require.Equal(t, evErr.Message, "Query aborted.")
+			require.Equal(t, "abort", evErr.Code)
+			require.Equal(t, "Query aborted.", evErr.Message)
 
 			var msg string
 			require.NoError(t, evErr.Unmarshal(&msg))
-			require.Equal(t, msg, "oops")
+			require.Equal(t, "oops", msg)
 			require.NoError(t, events.Close())
 		})
 
@@ -140,13 +140,13 @@ func TestStreaming(t *testing.T) {
 
 			event, err := events.Next()
 			require.NoError(t, err)
-			require.Equal(t, event.Type, fauna.StatusEvent)
+			require.Equal(t, fauna.StatusEvent, event.Type)
 			require.GreaterOrEqual(t, event.TxnTime, foo.TxnTime)
 
 			event, err = events.Next()
 			require.NoError(t, err)
-			require.Equal(t, event.Type, fauna.AddEvent)
-			require.Equal(t, event.TxnTime, bar.TxnTime)
+			require.Equal(t, fauna.AddEvent, event.Type)
+			require.Equal(t, bar.TxnTime, event.TxnTime)
 		})
 	})
 }
