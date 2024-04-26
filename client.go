@@ -301,6 +301,25 @@ func (c *Client) Paginate(fql *Query, opts ...QueryOptFn) *QueryIterator {
 	}
 }
 
+// Stream initiates a stream subscription for the [fauna.Query].
+//
+// This is a syntax sugar for [fauna.Client.Query] and [fauna.Client.Subscribe].
+//
+// Note that the query provided MUST return [fauna.Stream] value. Otherwise,
+// this method returns an error.
+func (c *Client) Stream(fql *Query, opts ...QueryOptFn) (*Events, error) {
+	res, err := c.Query(fql, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	if stream, ok := res.Data.(Stream); ok {
+		return c.Subscribe(stream)
+	}
+
+	return nil, fmt.Errorf("expected query to return a fauna.Stream but got %T", res.Data)
+}
+
 // Subscribe initiates a stream subscription for the given stream value.
 func (c *Client) Subscribe(stream Stream, opts ...StreamOptFn) (*Events, error) {
 	req := streamRequest{

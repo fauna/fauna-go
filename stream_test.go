@@ -26,6 +26,26 @@ func TestStreaming(t *testing.T) {
 		Foo string `fauna:"foo"`
 	}
 
+	t.Run("single-step streaming", func(t *testing.T) {
+		t.Run("Stream events", func(t *testing.T) {
+			streamQ, _ := fauna.FQL(`StreamingTest.all().toStream()`, nil)
+			events, err := client.Stream(streamQ)
+			require.NoError(t, err)
+			defer events.Close()
+
+			event, err := events.Next()
+			require.NoError(t, err)
+			require.Equal(t, event.Type, fauna.StatusEvent)
+		})
+
+		t.Run("Fails on non-streamable values", func(t *testing.T) {
+			streamQ, _ := fauna.FQL(`"I'm a string"`, nil)
+			events, err := client.Stream(streamQ)
+			require.ErrorContains(t, err, "expected query to return a fauna.Stream but got string")
+			require.Nil(t, events)
+		})
+	})
+
 	t.Run("multi-step streaming", func(t *testing.T) {
 		t.Run("Stream events", func(t *testing.T) {
 			streamQ, _ := fauna.FQL(`StreamingTest.all().toStream()`, nil)
