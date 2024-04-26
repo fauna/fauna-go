@@ -322,20 +322,7 @@ func (c *Client) Stream(fql *Query, opts ...QueryOptFn) (*Events, error) {
 
 // Subscribe initiates a stream subscription for the given stream value.
 func (c *Client) Subscribe(stream Stream, opts ...StreamOptFn) (*Events, error) {
-	req := streamRequest{
-		apiRequest: apiRequest{c.ctx, c.headers},
-		Stream:     stream,
-	}
-
-	for _, streamOptionFn := range opts {
-		streamOptionFn(&req)
-	}
-
-	if byteStream, err := req.do(c); err == nil {
-		return newEvents(byteStream), nil
-	} else {
-		return nil, err
-	}
+	return subscribe(c, stream, opts...)
 }
 
 // QueryIterator is a [fauna.Client] iterator for paginated queries

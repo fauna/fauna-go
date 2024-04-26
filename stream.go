@@ -3,6 +3,7 @@ package fauna
 import (
 	"encoding/json"
 	"io"
+	"net"
 )
 
 // EventType represents a Fauna's event type.
@@ -77,15 +78,43 @@ func (e *ErrEvent) Unmarshal(into any) error {
 // event is available or until the events iterator is closed via the
 // [fauna.Events.Close] method.
 type Events struct {
-	byteStream io.ReadCloser
-	decoder    *json.Decoder
+	client      *Client
+	stream      Stream
+	byteStream  io.ReadCloser
+	decoder     *json.Decoder
+	lastTxnTime int64
 }
 
-func newEvents(byteStream io.ReadCloser) *Events {
-	return &Events{
-		byteStream: byteStream,
-		decoder:    json.NewDecoder(byteStream),
+func subscribe(client *Client, stream Stream, opts ...StreamOptFn) (*Events, error) {
+	events := &Events{client: client, stream: stream}
+	if err := events.reconnect(opts...); err != nil {
+		return nil, err
 	}
+	return events, nil
+}
+
+func (es *Events) reconnect(opts ...StreamOptFn) error {
+	req := streamRequest{
+		apiRequest: apiRequest{
+			es.client.ctx,
+			es.client.headers,
+		},
+		Stream:  es.stream,
+		StartTS: es.lastTxnTime,
+	}
+
+	for _, streamOptionFn := range opts {
+		streamOptionFn(&req)
+	}
+
+	byteStream, err := req.do(es.client)
+	if err != nil {
+		return err
+	}
+
+	es.byteStream = byteStream
+	es.decoder = json.NewDecoder(byteStream)
+	return nil
 }
 
 // Close gracefully closes the stream subscription.
@@ -113,12 +142,28 @@ type rawEvent = struct {
 func (es *Events) Next() (event *Event, err error) {
 	raw := rawEvent{}
 	if err = es.decoder.Decode(&raw); err == nil {
+		es.syncTxnTime(raw.TxnTime)
 		event, err = convertRawEvent(&raw)
 		if _, ok := err.(*ErrEvent); ok {
 			es.Close() // no more events are comming
 		}
+	} else {
+		// NOTE: This code tries to resume streams on network and IO errors. It
+		// presume that if the service is unavailable, the reconnect call will
+		// fail. Automatic retries and backoff mechanisms are impleneted at the
+		// Client level.
+		if _, ok := err.(net.Error); ok || err == io.ErrUnexpectedEOF {
+			if err = es.reconnect(); err == nil {
+				event, err = es.Next()
+			}
+		}
 	}
 	return
+}
+
+func (es *Events) syncTxnTime(txnTime int64) {
+	es.client.lastTxnTime.sync(txnTime)
+	es.lastTxnTime = txnTime
 }
 
 func convertRawEvent(raw *rawEvent) (event *Event, err error) {
