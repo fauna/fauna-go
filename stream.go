@@ -74,9 +74,16 @@ func (e *ErrEvent) Unmarshal(into any) error {
 // Events is an iterator of Fauna events.
 //
 // The next available event can be obtained by calling the
-// [fauna.Subscription.Next] method. Note this method blocks until the next
-// event is available or until the events iterator is closed via the
+// [fauna.Events.Next] method. Note this method blocks until the next
+// event is available or the events iterator is closed via the
 // [fauna.Events.Close] method.
+//
+// The events iterator wraps an [http.Response.Body] reader. As per Go's current
+// [http.Response] implementation, environments using HTTP/1.x may not reuse its
+// TCP connections for the duration of its "keep-alive" time if response body is
+// not read to completion and closed. By default, Fauna's region groups use the
+// HTTP/2.x protocol where this restriction don't apply. However, if connecting
+// to Fauna via an HTTP/1.x proxy, be aware of the events iterator closing time.
 type Events struct {
 	client      *Client
 	stream      Stream
@@ -117,12 +124,8 @@ func (es *Events) reconnect(opts ...StreamOptFn) error {
 	return nil
 }
 
-// Close gracefully closes the stream subscription.
+// Close gracefully closes the events iterator. See [fauna.Events] for details.
 func (es *Events) Close() (err error) {
-	// XXX: Is there a way to make sure there are no bytes left on the stream
-	// after closing it? According to go's docs, the underlying connection will
-	// remain unusable for the duration of its idle time if there are bytes left
-	// in its read buffer.
 	return es.byteStream.Close()
 }
 
