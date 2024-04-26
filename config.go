@@ -130,6 +130,16 @@ func Typecheck(enabled bool) QueryOptFn {
 	return func(req *queryRequest) { req.Headers[HeaderTypecheck] = fmt.Sprintf("%v", enabled) }
 }
 
+// StreamOptFn function to set options on the [Client.Subscribe]
+type StreamOptFn func(req *streamRequest)
+
+// StartTime set the streams starting timestamp.
+//
+// Usefull when resuming a stream after a failure.
+func StartTime(ts int64) StreamOptFn {
+	return func(req *streamRequest) { req.StartTS = ts }
+}
+
 func argsStringFromMap(input map[string]string, currentArgs ...string) string {
 	params := url.Values{}
 
