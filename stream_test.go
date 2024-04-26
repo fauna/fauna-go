@@ -96,5 +96,37 @@ func TestStreaming(t *testing.T) {
 			require.Equal(t, msg, "oops")
 			require.NoError(t, events.Close())
 		})
+
+		t.Run("Resume a stream at a given start time", func(t *testing.T) {
+			streamQ, _ := fauna.FQL(`StreamingTest.all().toStream()`, nil)
+			res, err := client.Query(streamQ)
+			require.NoError(t, err)
+
+			var stream fauna.Stream
+			require.NoError(t, res.Unmarshal(&stream))
+
+			createFooQ, _ := fauna.FQL(`StreamingTest.create({ foo: 'foo' })`, nil)
+			createBarQ, _ := fauna.FQL(`StreamingTest.create({ foo: 'bar' })`, nil)
+
+			foo, err := client.Query(createFooQ)
+			require.NoError(t, err)
+
+			bar, err := client.Query(createBarQ)
+			require.NoError(t, err)
+
+			events, err := client.Subscribe(stream, fauna.StartTime(foo.TxnTime))
+			require.NoError(t, err)
+			defer events.Close()
+
+			event, err := events.Next()
+			require.NoError(t, err)
+			require.Equal(t, event.Type, fauna.StatusEvent)
+			require.GreaterOrEqual(t, event.TxnTime, foo.TxnTime)
+
+			event, err = events.Next()
+			require.NoError(t, err)
+			require.Equal(t, event.Type, fauna.AddEvent)
+			require.Equal(t, event.TxnTime, bar.TxnTime)
+		})
 	})
 }
