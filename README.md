@@ -177,6 +177,195 @@ func main() {
 }
 ```
 
+## Streaming
+
+Streams can be initiated with the `Client.Stream()` method:
+
+``` go
+package main
+
+import (
+	"fmt"
+
+	"github.com/fauna/fauna-go"
+)
+
+type Product struct {
+	Name     string  `fauna:"name"`
+	Category string  `fauna:"category"`
+	Price    float64 `fauna:"price"`
+}
+
+func main() {
+	client, err := fauna.NewDefaultClient()
+	if err != nil {
+		panic(err)
+	}
+
+	streamQuery, _ := fauna.FQL("Product.all().toStream()", nil)
+	events, err := client.Stream(streamQuery)
+	if err != nil {
+		panic(err)
+	}
+	defer events.Close()
+
+	for {
+		event, err := events.Next()
+		if err != nil {
+			panic(err)
+		}
+
+		switch event.Type {
+		case fauna.AddEvent, fauna.UpdateEvent, fauna.RemoveEvent:
+			var product Product
+			if err = event.Unmarshal(&product); err != nil {
+				panic(err)
+			}
+			fmt.Println(product)
+		}
+	}
+}
+```
+
+Streams can compose with normal query results. In order to initiate a stream from a query result, call the `Client.Subscribe()` method on the resulting `fauna.Stream` value.
+
+``` go
+package main
+
+import (
+	"fmt"
+
+	"github.com/fauna/fauna-go"
+)
+
+type Product struct {
+	Name     string  `fauna:"name"`
+	Category string  `fauna:"category"`
+	Price    float64 `fauna:"price"`
+}
+
+func main() {
+	client, err := fauna.NewDefaultClient()
+	if err != nil {
+		panic(err)
+	}
+
+	dataLoad, _ := fauna.FQL(`
+		let products = Product.all()
+		{
+			Products: products.toArray(),
+			Stream: products.toStream()
+		}
+	`, nil)
+
+	data, err := client.Query(dataLoad)
+	if err != nil {
+		panic(err)
+	}
+
+	queryResult := struct {
+		Products []Product
+		Stream   fauna.Stream
+	}{}
+
+	if err := data.Unmarshal(&queryResult); err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Existing products:")
+	for _, product := range queryResult.Products {
+		fmt.Println(product)
+	}
+
+	events, err := client.Subscribe(queryResult.Stream)
+	if err != nil {
+		panic(err)
+	}
+	defer events.Close()
+
+	fmt.Println("Products from streaming:")
+	for {
+		event, err := events.Next()
+		if err != nil {
+			panic(err)
+		}
+
+		switch event.Type {
+		case fauna.AddEvent, fauna.UpdateEvent, fauna.RemoveEvent:
+			var product Product
+			if err = event.Unmarshal(&product); err != nil {
+				panic(err)
+			}
+			fmt.Println(product)
+		}
+	}
+}
+```
+
+The client tracks its last seen event timestamp. Upon network failures, the client will attempt to resume streaming at the last seen event time (exclusively). When designing a system that tolerates crashes, the last seen event timestamp must be stored by the application and given to the `Client.Subscribe()` method during recovery via the `fauna.StartTime()` function.
+
+``` go
+package main
+
+import (
+	"fmt"
+
+	"github.com/fauna/fauna-go"
+)
+
+type Product struct {
+	Name     string  `fauna:"name"`
+	Category string  `fauna:"category"`
+	Price    float64 `fauna:"price"`
+}
+
+func main() {
+	client, err := fauna.NewDefaultClient()
+	if err != nil {
+		panic(err)
+	}
+
+	streamQuery, _ := fauna.FQL("Product.all().toStream()", nil)
+	data, err := client.Query(streamQuery)
+	if err != nil {
+		panic(err)
+	}
+
+	var stream fauna.Stream
+	if err := data.Unmarshal(&stream); err != nil {
+		panic(err)
+	}
+
+	// Recover the last seen transaction time on start...
+	startTime := recoverLastSeenTxnTime()
+
+	events, err := client.Subscribe(stream, fauna.StartTime(startTime))
+	if err != nil {
+		panic(err)
+	}
+	defer events.Close()
+
+	for {
+		event, err := events.Next()
+		if err != nil {
+			panic(err)
+		}
+
+		// Save the last seen transaction time in case we crash...
+		saveLastSeenTxnTime(event.TxnTime)
+
+		switch event.Type {
+		case fauna.AddEvent, fauna.UpdateEvent, fauna.RemoveEvent:
+			var product Product
+			if err = event.Unmarshal(&product); err != nil {
+				panic(err)
+			}
+			fmt.Println(product)
+		}
+	}
+}
+```
+
 ## Client Configuration
 
 ### Timeouts
