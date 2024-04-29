@@ -179,7 +179,7 @@ func main() {
 
 ## Streaming
 
-Streams can be initiated with the `Client.Stream()` method:
+To start and subscribe to a stream, pass a query that produces a stream token to `Client.Stream()`:
 
 ``` go
 package main
@@ -227,7 +227,7 @@ func main() {
 }
 ```
 
-Streams can compose with normal query results. In order to initiate a stream from a query result, call the `Client.Subscribe()` method on the resulting `fauna.Stream` value.
+Streams can compose with normal query results. To start a stream from a query result, call `Client.Subscribe()` on the `fauna.Stream` value.
 
 ``` go
 package main
@@ -302,7 +302,7 @@ func main() {
 }
 ```
 
-The client tracks its last seen event timestamp. Upon network failures, the client will attempt to resume streaming at the last seen event time (exclusively). When designing a system that tolerates crashes, the last seen event timestamp must be stored by the application and given to the `Client.Subscribe()` method during recovery via the `fauna.StartTime()` function.
+The client tracks its last seen event's timestamp. After a network failure, the client attempts to resume streaming at this timestamp (exclusively). To recover from crashes, your application must store the last seen event's timestamp and pass it to `Client.Subscribe()` using the `fauna.StartTime()` function.
 
 ``` go
 package main
