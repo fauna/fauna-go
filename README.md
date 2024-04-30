@@ -302,13 +302,15 @@ func main() {
 }
 ```
 
-The client tracks its last seen event's timestamp. After a network failure, the client attempts to resume streaming at this timestamp (exclusively). To recover from crashes, your application must store the last seen event's timestamp and pass it to `Client.Subscribe()` using the `fauna.StartTime()` function.
+The client tracks its last seen event's timestamp. After a network failure, the client attempts to resume streaming at this timestamp (exclusively). To recover from crashes, your application must store the stream and its last seen event's timestamp and pass them to `Client.Subscribe()` using the `fauna.StartTime()` function.
 
 ``` go
 package main
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 
 	"github.com/fauna/fauna-go"
 )
@@ -325,19 +327,22 @@ func main() {
 		panic(err)
 	}
 
-	streamQuery, _ := fauna.FQL("Product.all().toStream()", nil)
-	data, err := client.Query(streamQuery)
-	if err != nil {
-		panic(err)
+	var (
+		stream    fauna.Stream
+		startTime int64
+		ok        bool
+	)
+	if stream, startTime, ok = recoverSavedStream(); !ok {
+		streamQuery, _ := fauna.FQL("Product.all().toStream()", nil)
+		data, err := client.Query(streamQuery)
+		if err != nil {
+			panic(err)
+		}
+		if err := data.Unmarshal(&stream); err != nil {
+			panic(err)
+		}
+		saveOpenStream(stream)
 	}
-
-	var stream fauna.Stream
-	if err := data.Unmarshal(&stream); err != nil {
-		panic(err)
-	}
-
-	// Recover the last seen transaction time on start...
-	startTime := recoverLastSeenTxnTime()
 
 	events, err := client.Subscribe(stream, fauna.StartTime(startTime))
 	if err != nil {
