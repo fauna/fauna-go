@@ -365,9 +365,11 @@ func ExampleClient_Stream() {
 		Foo string `fauna:"foo"`
 	}
 
+	var event fauna.Event
+
 	expect := 3
 	for expect > 0 {
-		event, err := events.Next()
+		err := events.Next(&event)
 		if err != nil {
 			log.Fatalf("failed to receive next event: %s", err)
 		}
@@ -444,9 +446,11 @@ func ExampleClient_Subscribe() {
 		Foo string `fauna:"foo"`
 	}
 
+	var event fauna.Event
+
 	expect := 3
 	for expect > 0 {
-		event, err := events.Next()
+		err := events.Next(&event)
 		if err != nil {
 			log.Fatalf("failed to receive next event: %s", err)
 		}

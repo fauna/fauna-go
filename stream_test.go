@@ -33,7 +33,8 @@ func TestStreaming(t *testing.T) {
 			require.NoError(t, err)
 			defer events.Close()
 
-			event, err := events.Next()
+			var event fauna.Event
+			err = events.Next(&event)
 			require.NoError(t, err)
 			require.Equal(t, fauna.StatusEvent, event.Type)
 		})
@@ -59,7 +60,8 @@ func TestStreaming(t *testing.T) {
 			require.NoError(t, err)
 			defer events.Close()
 
-			event, err := events.Next()
+			var event fauna.Event
+			err = events.Next(&event)
 			require.NoError(t, err)
 			require.Equal(t, fauna.StatusEvent, event.Type)
 
@@ -67,7 +69,7 @@ func TestStreaming(t *testing.T) {
 			_, err = client.Query(createQ)
 			require.NoError(t, err)
 
-			event, err = events.Next()
+			err = events.Next(&event)
 			require.NoError(t, err)
 			require.Equal(t, fauna.AddEvent, event.Type)
 
@@ -95,7 +97,8 @@ func TestStreaming(t *testing.T) {
 			require.NoError(t, err)
 			defer events.Close()
 
-			event, err := events.Next()
+			var event fauna.Event
+			err = events.Next(&event)
 			require.NoError(t, err)
 			require.Equal(t, fauna.StatusEvent, event.Type)
 
@@ -103,9 +106,8 @@ func TestStreaming(t *testing.T) {
 			_, err = client.Query(createQ)
 			require.NoError(t, err)
 
-			event, err = events.Next()
+			err = events.Next(&event)
 			require.IsType(t, err, &fauna.ErrEvent{})
-			require.Nil(t, event)
 
 			evErr := err.(*fauna.ErrEvent)
 			require.Equal(t, "abort", evErr.Code)
@@ -138,12 +140,13 @@ func TestStreaming(t *testing.T) {
 			require.NoError(t, err)
 			defer events.Close()
 
-			event, err := events.Next()
+			var event fauna.Event
+			err = events.Next(&event)
 			require.NoError(t, err)
 			require.Equal(t, fauna.StatusEvent, event.Type)
 			require.GreaterOrEqual(t, event.TxnTime, foo.TxnTime)
 
-			event, err = events.Next()
+			err = events.Next(&event)
 			require.NoError(t, err)
 			require.Equal(t, fauna.AddEvent, event.Type)
 			require.Equal(t, bar.TxnTime, event.TxnTime)
