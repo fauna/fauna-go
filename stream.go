@@ -142,11 +142,11 @@ type rawEvent = struct {
 // Note that network errors of type [fauna.ErrEvent] are considered fatal and
 // close the underlying stream. Calling next after an error event occurs will
 // return an error.
-func (es *Events) Next() (event *Event, err error) {
+func (es *Events) Next(event *Event) (err error) {
 	raw := rawEvent{}
 	if err = es.decoder.Decode(&raw); err == nil {
 		es.syncTxnTime(raw.TxnTime)
-		event, err = convertRawEvent(&raw)
+		err = convertRawEvent(&raw, event)
 		if _, ok := err.(*ErrEvent); ok {
 			es.Close() // no more events are comming
 		}
@@ -157,7 +157,7 @@ func (es *Events) Next() (event *Event, err error) {
 		// Client level.
 		if _, ok := err.(net.Error); ok || err == io.ErrUnexpectedEOF {
 			if err = es.reconnect(); err == nil {
-				event, err = es.Next()
+				err = es.Next(event)
 			}
 		}
 	}
@@ -169,7 +169,7 @@ func (es *Events) syncTxnTime(txnTime int64) {
 	es.lastTxnTime = txnTime
 }
 
-func convertRawEvent(raw *rawEvent) (event *Event, err error) {
+func convertRawEvent(raw *rawEvent, event *Event) (err error) {
 	if raw.Error != nil {
 		if raw.Error.Abort != nil {
 			if raw.Error.Abort, err = convert(false, raw.Error.Abort); err != nil {
@@ -183,12 +183,10 @@ func convertRawEvent(raw *rawEvent) (event *Event, err error) {
 				return
 			}
 		}
-		event = &Event{
-			Type:    raw.Type,
-			TxnTime: raw.TxnTime,
-			Data:    raw.Data,
-			Stats:   raw.Stats,
-		}
+		event.Type = raw.Type
+		event.TxnTime = raw.TxnTime
+		event.Data = raw.Data
+		event.Stats = raw.Stats
 	}
 	return
 }
