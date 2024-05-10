@@ -312,8 +312,9 @@ func main() {
 	}
 	defer events.Close()
 
+	var event fauna.Event
 	for {
-		event, err := events.Next()
+		err := events.Next(&event)
 		if err != nil {
 			panic(err)
 		}
@@ -384,8 +385,9 @@ func main() {
 	defer events.Close()
 
 	fmt.Println("Products from streaming:")
+	var event fauna.Event
 	for {
-		event, err := events.Next()
+		err := events.Next(&event)
 		if err != nil {
 			panic(err)
 		}
