@@ -1,4 +1,4 @@
-// Package fauna provides a driver for Fauna FQL X
+// Package fauna provides a driver for Fauna v10
 package fauna
 
 import (
