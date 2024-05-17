@@ -1,4 +1,4 @@
-// Package fauna provides a driver for Fauna FQL X
+// Package fauna provides a driver for Fauna v10
 package fauna
 
 import (
@@ -13,10 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/fauna/fauna-go/internal/fingerprinting"
@@ -388,20 +385,12 @@ func (q *QueryIterator) HasNext() bool {
 // WARNING: This should be used only when coordinating timestamps across multiple clients.
 // Moving the timestamp arbitrarily forward into the future will cause transactions to stall.
 func (c *Client) SetLastTxnTime(txnTime time.Time) {
-	c.lastTxnTime.Lock()
-	defer c.lastTxnTime.Unlock()
-
-	if val := txnTime.UnixMicro(); val > c.lastTxnTime.Value {
-		c.lastTxnTime.Value = val
-	}
+	c.lastTxnTime.sync(txnTime.UnixMicro())
 }
 
 // GetLastTxnTime gets the last txn timestamp seen by the [fauna.Client]
 func (c *Client) GetLastTxnTime() int64 {
-	c.lastTxnTime.RLock()
-	defer c.lastTxnTime.RUnlock()
-
-	return c.lastTxnTime.Value
+	return c.lastTxnTime.get()
 }
 
 // String fulfil Stringify interface for the [fauna.Client]
@@ -412,34 +401,4 @@ func (c *Client) String() string {
 
 func (c *Client) setHeader(key, val string) {
 	c.headers[key] = val
-}
-
-type txnTime struct {
-	sync.RWMutex
-
-	Value int64
-}
-
-func (t *txnTime) string() string {
-	t.RLock()
-	defer t.RUnlock()
-
-	if lastSeen := atomic.LoadInt64(&t.Value); lastSeen != 0 {
-		return strconv.FormatInt(lastSeen, 10)
-	}
-
-	return ""
-}
-
-func (t *txnTime) sync(newTxnTime int64) {
-	t.Lock()
-	defer t.Unlock()
-
-	for {
-		oldTxnTime := atomic.LoadInt64(&t.Value)
-		if oldTxnTime >= newTxnTime ||
-			atomic.CompareAndSwapInt64(&t.Value, oldTxnTime, newTxnTime) {
-			break
-		}
-	}
 }
