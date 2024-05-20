@@ -263,15 +263,165 @@ The maximum amount of time to wait before retrying a query. Retries will use an 
 package main
 
 import (
-    "time"
+	"time"
 
-    "github.com/fauna/fauna-go"
+	"github.com/fauna/fauna-go"
 )
 
 func main() {
 	client := fauna.NewClient("mysecret", fauna.DefaultTimeouts(), fauna.MaxBackoff(10 * time.Second))
 }
 ```
+
+
+## Event Streaming
+
+The driver supports [Event
+Streaming](https://docs.fauna.com/fauna/current/learn/streaming).
+
+
+### Start a stream
+
+To get a stream token, append
+[`toStream()`](https://docs.fauna.com/fauna/current/reference/reference/schema_entities/set/tostream)
+or
+[`changesOn()`](https://docs.fauna.com/fauna/current/reference/reference/schema_entities/set/changeson)
+to a set from a [supported
+source](https://docs.fauna.com/fauna/current/reference/streaming_reference/#supported-sources).
+
+To start and subscribe to the stream, pass a query that produces a stream token
+to `Client.Stream()`:
+
+```go
+type Product struct {
+	Name			string	`fauna:"name"`
+	Description		string	`fauna:"description"`
+	Price			float64	`fauna:"price"`
+}
+
+func main() {
+	client, clientErr := fauna.NewDefaultClient()
+	if clientErr != nil {
+		panic(clientErr)
+	}
+
+	streamQuery, _ := fauna.FQL("Product.all().toStream()", nil)
+	events, err := client.Stream(streamQuery)
+	if err != nil {
+		panic(err)
+	}
+	defer events.Close()
+
+	var event fauna.Event
+	for {
+		err := events.Next(&event)
+		if err != nil {
+			panic(err)
+		}
+
+		switch event.Type {
+		case fauna.AddEvent, fauna.UpdateEvent, fauna.RemoveEvent:
+			var product Product
+			if err = event.Unmarshal(&product); err != nil {
+				panic(err)
+			}
+			fmt.Println(product)
+		}
+	}
+}
+```
+
+In query results, the driver represents stream tokens as `fauna.Stream`
+values.
+
+To start a stream from a query result, call `Client.Subscribe()` on a
+`fauna.Stream` value. This lets you output a stream alongside normal query
+results:
+
+```go
+type Product struct {
+	Name			string	`fauna:"name"`
+	Description		string	`fauna:"description"`
+	Price			float64	`fauna:"price"`
+}
+
+func main() {
+	client, clientErr := fauna.NewDefaultClient()
+	if clientErr != nil {
+		panic(clientErr)
+	}
+
+	dataLoad, _ := fauna.FQL(`
+		let products = Product.all()
+		{
+			Products: products.toArray(),
+			Stream: products.toStream()
+		}
+	`, nil)
+
+	data, err := client.Query(dataLoad)
+	if err != nil {
+		panic(err)
+	}
+
+	queryResult := struct {
+		Products []Product
+		Stream   fauna.Stream
+	}{}
+
+	if err := data.Unmarshal(&queryResult); err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Existing products:")
+	for _, product := range queryResult.Products {
+		fmt.Println(product)
+	}
+
+	events, err := client.Subscribe(queryResult.Stream)
+	if err != nil {
+		panic(err)
+	}
+	defer events.Close()
+
+	fmt.Println("Products from streaming:")
+	var event fauna.Event
+	for {
+		err := events.Next(&event)
+		if err != nil {
+			panic(err)
+		}
+		switch event.Type {
+		case fauna.AddEvent, fauna.UpdateEvent, fauna.RemoveEvent:
+			var product Product
+			if err = event.Unmarshal(&product); err != nil {
+				panic(err)
+			}
+			fmt.Println(product)
+		}
+	}
+}
+```
+
+
+### Stream options
+
+The [client configuration](#client-configuration) sets default query options for
+`Client.Stream()`. To override these options, see [query
+options](#query-options).
+
+The `Client.Subscribe()` method accepts a `fauna.StartTime` function. You can
+use `fauna.StartTime` to restart a stream after disconnection.
+
+```go
+streamQuery, _ := fauna.FQL(`Product.all().toStream()`, nil)
+client.Subscribe(streamQuery, fauna.StartTime(1710968002310000))
+```
+
+| Function | Description |
+| -------- | ----------- |
+| `fauna.StartTime`  | Sets the stream start time. Accepts an `int64` representing the start time in microseconds since the Unix epoch.<br><br>The start time is typically the time the stream disconnected.<br><br>The start time must be later than the creation time of the stream token. The period between the stream restart and the start time argument can't exceed the `history_days` value for source set's collection. If a collection's `history_days` is `0` or unset, the period can't exceed 15 minutes. |
+
 
 ## Contributing
 

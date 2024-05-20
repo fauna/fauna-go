@@ -34,6 +34,7 @@ const (
 	typeTagDoc    typeTag = "@doc"
 	typeTagRef    typeTag = "@ref"
 	typeTagSet    typeTag = "@set"
+	typeTagStream typeTag = "@stream"
 	typeTagMod    typeTag = "@mod"
 	typeTagObject typeTag = "@object"
 )
@@ -95,6 +96,8 @@ type Page struct {
 func (p Page) Unmarshal(into any) error {
 	return decodeInto(p.Data, into)
 }
+
+type Stream string
 
 func mapDecoder(into any) (*mapstructure.Decoder, error) {
 	return mapstructure.NewDecoder(&mapstructure.DecoderConfig{
@@ -232,6 +235,8 @@ func unboxType(body map[string]any) (any, error) {
 				return unboxRef(v.(map[string]any))
 			case typeTagSet:
 				return unboxSet(v)
+			case typeTagStream:
+				return unboxStream(v)
 			case typeTagDoc:
 				return unboxDoc(v.(map[string]any))
 			case typeTagObject:
@@ -400,6 +405,14 @@ func unboxSet(v any) (any, error) {
 	return nil, fmt.Errorf("invalid set %v", v)
 }
 
+func unboxStream(v any) (any, error) {
+	if token, ok := v.(string); ok {
+		return Stream(token), nil
+	} else {
+		return nil, fmt.Errorf("invalid stream %v", v)
+	}
+}
+
 func unboxTime(v string) (*time.Time, error) {
 	if t, err := time.Parse(timeFormat, v); err != nil {
 		return nil, err
@@ -466,10 +479,13 @@ func encode(v any, hint string) (any, error) {
 	case Page:
 		return encodeFaunaStruct(typeTagSet, vt)
 
+	case Stream:
+		return map[typeTag]any{typeTagStream: vt}, nil
+
 	case time.Time:
 		return encodeTime(vt, hint)
 
-	case fqlRequest:
+	case queryRequest:
 		query, err := encode(vt.Query, hint)
 		if err != nil {
 			return nil, err
@@ -482,6 +498,13 @@ func encode(v any, hint string) (any, error) {
 			} else {
 				out["arguments"] = args
 			}
+		}
+		return out, nil
+
+	case streamRequest:
+		out := map[string]any{"token": string(vt.Stream)}
+		if vt.StartTS > 0 {
+			out["start_ts"] = vt.StartTS
 		}
 		return out, nil
 	}

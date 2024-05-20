@@ -93,18 +93,18 @@ func URL(url string) ClientConfigFn {
 }
 
 // QueryOptFn function to set options on the [Client.Query]
-type QueryOptFn func(req *fqlRequest)
+type QueryOptFn func(req *queryRequest)
 
 // QueryContext set the [context.Context] for a single [Client.Query]
 func QueryContext(ctx context.Context) QueryOptFn {
-	return func(req *fqlRequest) {
+	return func(req *queryRequest) {
 		req.Context = ctx
 	}
 }
 
 // Tags set the tags header on a single [Client.Query]
 func Tags(tags map[string]string) QueryOptFn {
-	return func(req *fqlRequest) {
+	return func(req *queryRequest) {
 		if val, exists := req.Headers[HeaderTags]; exists {
 			req.Headers[HeaderTags] = argsStringFromMap(tags, strings.Split(val, ",")...)
 		} else {
@@ -115,19 +115,29 @@ func Tags(tags map[string]string) QueryOptFn {
 
 // Traceparent sets the header on a single [Client.Query]
 func Traceparent(id string) QueryOptFn {
-	return func(req *fqlRequest) { req.Headers[HeaderTraceparent] = id }
+	return func(req *queryRequest) { req.Headers[HeaderTraceparent] = id }
 }
 
 // Timeout set the query timeout on a single [Client.Query]
 func Timeout(dur time.Duration) QueryOptFn {
-	return func(req *fqlRequest) {
+	return func(req *queryRequest) {
 		req.Headers[HeaderQueryTimeoutMs] = fmt.Sprintf("%d", dur.Milliseconds())
 	}
 }
 
 // Typecheck sets the header on a single [Client.Query]
 func Typecheck(enabled bool) QueryOptFn {
-	return func(req *fqlRequest) { req.Headers[HeaderTypecheck] = fmt.Sprintf("%v", enabled) }
+	return func(req *queryRequest) { req.Headers[HeaderTypecheck] = fmt.Sprintf("%v", enabled) }
+}
+
+// StreamOptFn function to set options on the [Client.Subscribe]
+type StreamOptFn func(req *streamRequest)
+
+// StartTime set the streams starting timestamp.
+//
+// Usefull when resuming a stream after a failure.
+func StartTime(ts int64) StreamOptFn {
+	return func(req *streamRequest) { req.StartTS = ts }
 }
 
 func argsStringFromMap(input map[string]string, currentArgs ...string) string {

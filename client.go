@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -67,6 +68,9 @@ type Client struct {
 
 	maxAttempts int
 	maxBackoff  time.Duration
+
+	// lazily cached URLs
+	queryURL, streamURL *url.URL
 }
 
 // NewDefaultClient initialize a [fauna.Client] with recommend default settings
@@ -125,15 +129,21 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 		Timeout: timeouts.ConnectionTimeout,
 	}
 
+	// NOTE: prefer a response header timeout instead of a client timeout so
+	// that the client don't stop reading a http body that was produced by
+	// Fauna. On the query interface, an HTTP body is sent as a single http
+	// message. On the streaming interface, HTTP chunks are sent on every event.
+	// Therefore, it's in the driver's best interest to continue reading the
+	// HTTP body once the headers appear.
 	httpClient := &http.Client{
 		Transport: &http.Transport{
-			Proxy:             http.ProxyFromEnvironment,
-			DialContext:       dialer.DialContext,
-			ForceAttemptHTTP2: true,
-			MaxIdleConns:      20,
-			IdleConnTimeout:   timeouts.IdleConnectionTimeout,
+			Proxy:                 http.ProxyFromEnvironment,
+			DialContext:           dialer.DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          20,
+			IdleConnTimeout:       timeouts.IdleConnectionTimeout,
+			ResponseHeaderTimeout: timeouts.QueryTimeout + timeouts.ClientBufferTimeout,
 		},
-		Timeout: timeouts.QueryTimeout + timeouts.ClientBufferTimeout,
 	}
 
 	defaultHeaders := map[string]string{
@@ -171,6 +181,26 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 	}
 
 	return client
+}
+
+func (c *Client) parseQueryURL() (url *url.URL, err error) {
+	if c.queryURL != nil {
+		url = c.queryURL
+	} else if url, err = url.Parse(c.url); err == nil {
+		url = url.JoinPath("query", "1")
+		c.queryURL = url
+	}
+	return
+}
+
+func (c *Client) parseStreamURL() (url *url.URL, err error) {
+	if c.streamURL != nil {
+		url = c.streamURL
+	} else if url, err = url.Parse(c.url); err == nil {
+		url = url.JoinPath("stream", "1")
+		c.streamURL = url
+	}
+	return
 }
 
 func (c *Client) doWithRetry(req *http.Request) (attempts int, r *http.Response, err error) {
@@ -244,17 +274,19 @@ func (c *Client) backoff(attempt int) (sleep time.Duration) {
 
 // Query invoke fql optionally set multiple [QueryOptFn]
 func (c *Client) Query(fql *Query, opts ...QueryOptFn) (*QuerySuccess, error) {
-	req := &fqlRequest{
-		Context: c.ctx,
-		Query:   fql,
-		Headers: c.headers,
+	req := &queryRequest{
+		apiRequest: apiRequest{
+			Context: c.ctx,
+			Headers: c.headers,
+		},
+		Query: fql,
 	}
 
 	for _, queryOptionFn := range opts {
 		queryOptionFn(req)
 	}
 
-	return c.do(req)
+	return req.do(c)
 }
 
 // Paginate invoke fql with pagination optionally set multiple [QueryOptFn]
@@ -264,6 +296,30 @@ func (c *Client) Paginate(fql *Query, opts ...QueryOptFn) *QueryIterator {
 		fql:    fql,
 		opts:   opts,
 	}
+}
+
+// Stream initiates a stream subscription for the [fauna.Query].
+//
+// This is a syntax sugar for [fauna.Client.Query] and [fauna.Client.Subscribe].
+//
+// Note that the query provided MUST return [fauna.Stream] value. Otherwise,
+// this method returns an error.
+func (c *Client) Stream(fql *Query, opts ...QueryOptFn) (*Events, error) {
+	res, err := c.Query(fql, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	if stream, ok := res.Data.(Stream); ok {
+		return c.Subscribe(stream)
+	}
+
+	return nil, fmt.Errorf("expected query to return a fauna.Stream but got %T", res.Data)
+}
+
+// Subscribe initiates a stream subscription for the given stream value.
+func (c *Client) Subscribe(stream Stream, opts ...StreamOptFn) (*Events, error) {
+	return subscribe(c, stream, opts...)
 }
 
 // QueryIterator is a [fauna.Client] iterator for paginated queries
