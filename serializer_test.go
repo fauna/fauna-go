@@ -1,6 +1,7 @@
 package fauna
 
 import (
+	"encoding/base64"
 	"reflect"
 	"testing"
 	"time"
@@ -55,6 +56,7 @@ type BusinessObj struct {
 	NamedDocField     NamedDocBusinessObj     `fauna:"named_doc_field"`
 	NullDocField      NullDocBusinessObj      `fauna:"nulldoc_field"`
 	NullNamedDocField NullNamedDocBusinessObj `fauna:"nulldoc_named_field"`
+	BytesField        []byte                  `fauna:"bytes_field"`
 
 	IgnoredField string `fauna:"-"`
 }
@@ -108,7 +110,8 @@ func TestRoundtrip(t *testing.T) {
       "tuple_field": ["one",2,3.0],
       "int_field": 1234,
       "double_field": 1234.567
-    }}
+    }},
+	"bytes_field": {"@bytes":"SGVsbG8sIGZyb20gRmF1bmEh"}
   }`)
 
 	obj := &BusinessObj{}
@@ -183,6 +186,18 @@ func TestEncodingPrimitives(t *testing.T) {
 			var decoded *string
 			unmarshalAndCheck(t, bs, &decoded)
 			assert.Nil(t, decoded)
+		}
+	})
+
+	t.Run("encode bytes", func(t *testing.T) {
+		inputBytes := []byte("This is a test string 🚀 with various characters: !@#$%^&*()_+=-`~[]{}|;:'\\\",./<>?")
+		encoded := base64.StdEncoding.EncodeToString(inputBytes)
+
+		bs := marshalAndCheck(t, inputBytes)
+		if assert.JSONEq(t, `{"@bytes": "`+encoded+`"}`, string(bs)) {
+			var decoded []byte
+			unmarshalAndCheck(t, bs, &decoded)
+			assert.Equal(t, inputBytes, decoded)
 		}
 	})
 }

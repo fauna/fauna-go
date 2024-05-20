@@ -1,6 +1,7 @@
 package fauna
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -37,6 +38,7 @@ const (
 	typeTagStream typeTag = "@stream"
 	typeTagMod    typeTag = "@mod"
 	typeTagObject typeTag = "@object"
+	typeTagBytes  typeTag = "@bytes"
 )
 
 func keyConflicts(key string) bool {
@@ -241,6 +243,8 @@ func unboxType(body map[string]any) (any, error) {
 				return unboxDoc(v.(map[string]any))
 			case typeTagObject:
 				return convertMap(v.(map[string]any))
+			case typeTagBytes:
+				return unboxBytes(v.(string))
 			}
 		}
 	}
@@ -445,6 +449,14 @@ func unboxDouble(v string) (any, error) {
 	}
 }
 
+func unboxBytes(v string) (any, error) {
+	if b, err := base64.StdEncoding.DecodeString(v); err != nil {
+		return nil, err
+	} else {
+		return b, nil
+	}
+}
+
 func marshal(v any) ([]byte, error) {
 	if enc, err := encode(v, ""); err != nil {
 		return nil, err
@@ -507,6 +519,9 @@ func encode(v any, hint string) (any, error) {
 			out["start_ts"] = vt.StartTS
 		}
 		return out, nil
+
+	case []byte:
+		return encodeBytes(vt)
 	}
 
 	switch value := reflect.ValueOf(v); value.Kind() {
@@ -544,6 +559,12 @@ func encode(v any, hint string) (any, error) {
 	}
 
 	return v, nil
+}
+
+func encodeBytes(b []byte) (any, error) {
+	return map[typeTag]any{
+		typeTagBytes: base64.StdEncoding.EncodeToString(b),
+	}, nil
 }
 
 func encodeInt(i int64) (any, error) {
