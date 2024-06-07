@@ -13,6 +13,8 @@ See the [Fauna Documentation](https://docs.fauna.com/fauna/current/) for additio
 Currently, the driver is tested on:
 - 1.19
 - 1.20
+- 1.21
+- 1.22
 
 ## Using the Driver
 
