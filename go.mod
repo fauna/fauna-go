@@ -1,4 +1,4 @@
-module github.com/fauna/fauna-go
+module github.com/fauna/fauna-go/v2
 
 go 1.19
 
