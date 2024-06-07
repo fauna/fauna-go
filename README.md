@@ -27,7 +27,7 @@ package main
 import (
 	"fmt"
 
-		"github.com/fauna/fauna-go/v2"
+	"github.com/fauna/fauna-go/v2"
 )
 
 func main() {
