@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/fauna/fauna-go"
+	"github.com/fauna/fauna-go/v2"
 	"github.com/stretchr/testify/assert"
 )
 

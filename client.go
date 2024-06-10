@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fauna/fauna-go/internal/fingerprinting"
+	"github.com/fauna/fauna-go/v2/internal/fingerprinting"
 )
 
 //go:embed version
