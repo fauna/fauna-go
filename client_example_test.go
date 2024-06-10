@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/fauna/fauna-go"
+	"github.com/fauna/fauna-go/v2"
 )
 
 // ExampleNewDefaultClient query fauna running in a local Docker instance:

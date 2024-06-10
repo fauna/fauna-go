@@ -61,7 +61,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/fauna/fauna-go"
+	"github.com/fauna/fauna-go/v2"
 )
 
 type Dog struct {
