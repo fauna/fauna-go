@@ -70,7 +70,7 @@ func parseQueryResponse(httpRes *http.Response) (qRes *queryResponse, err error)
 	}
 
 	if err = json.Unmarshal(bytesIn, &qRes); err != nil {
-		err = fmt.Errorf("failed to umarmshal response: %w", err)
+		err = fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 	return
 }
