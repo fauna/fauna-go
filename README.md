@@ -130,11 +130,11 @@ func main() {
 
 ## Pagination
 
-Use the `Client.Paginate()` method to iterate sets that contain more than one page of results.
+Use the `Paginate()` method to iterate sets that contain more than one page of results.
 
-`Client.paginate()` accepts the same query options as `Client.Query()`.
+`Paginate()` accepts the same query options as `Query()`.
 
-Change the default items per page using FQL's `<set>.pageSize()` method.
+Change the default items per page using FQL's `pageSize()` method.
 
 ```go
 package main
@@ -292,7 +292,7 @@ to a set from a [supported
 source](https://docs.fauna.com/fauna/current/reference/streaming_reference/#supported-sources).
 
 To start and subscribe to the stream, pass a query that produces a stream token
-to `Client.Stream()`:
+to `Stream()`:
 
 ```go
 type Product struct {
@@ -336,7 +336,7 @@ func main() {
 In query results, the driver represents stream tokens as `fauna.Stream`
 values.
 
-To start a stream from a query result, call `Client.Subscribe()` on a
+To start a stream from a query result, call `Subscribe()` on a
 `fauna.Stream` value. This lets you output a stream alongside normal query
 results:
 
@@ -409,10 +409,10 @@ func main() {
 ### Stream options
 
 The [client configuration](#client-configuration) sets default query options for
-`Client.Stream()`. To override these options, see [query
+`Stream()`. To override these options, see [query
 options](#query-options).
 
-The `Client.Subscribe()` method accepts a `fauna.StartTime` function. You can
+The `Subscribe()` method accepts a `fauna.StartTime` function. You can
 use `fauna.StartTime` to restart a stream after disconnection.
 
 ```go
