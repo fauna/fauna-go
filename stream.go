@@ -155,7 +155,7 @@ func (es *Events) Next(event *Event) (err error) {
 		// presume that if the service is unavailable, the reconnect call will
 		// fail. Automatic retries and backoff mechanisms are impleneted at the
 		// Client level.
-		if _, ok := err.(net.Error); ok || err == io.ErrUnexpectedEOF {
+		if _, ok := err.(net.Error); ok || err == io.EOF || err == io.ErrUnexpectedEOF {
 			if err = es.reconnect(); err == nil {
 				err = es.Next(event)
 			}
