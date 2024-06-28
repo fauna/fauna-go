@@ -90,6 +90,7 @@ type Events struct {
 	byteStream  io.ReadCloser
 	decoder     *json.Decoder
 	lastTxnTime int64
+	closed      bool
 }
 
 func subscribe(client *Client, stream Stream, opts ...StreamOptFn) (*Events, error) {
@@ -126,7 +127,11 @@ func (es *Events) reconnect(opts ...StreamOptFn) error {
 
 // Close gracefully closes the events iterator. See [fauna.Events] for details.
 func (es *Events) Close() (err error) {
-	return es.byteStream.Close()
+	if !es.closed {
+		es.closed = true
+		err = es.byteStream.Close()
+	}
+	return
 }
 
 type rawEvent = struct {
@@ -150,7 +155,7 @@ func (es *Events) Next(event *Event) (err error) {
 		if _, ok := err.(*ErrEvent); ok {
 			es.Close() // no more events are comming
 		}
-	} else {
+	} else if !es.closed {
 		// NOTE: This code tries to resume streams on network and IO errors. It
 		// presume that if the service is unavailable, the reconnect call will
 		// fail. Automatic retries and backoff mechanisms are impleneted at the
