@@ -14,17 +14,17 @@ const (
 	AddEvent EventType = "add"
 	// UpdateEvent happens when a value in the stream's watched set changes.
 	UpdateEvent EventType = "update"
-	// Remove event happens when a value in the stream's watched set is removed.
+	// RemoveEvent happens when a value in the stream's watched set is removed.
 	RemoveEvent EventType = "remove"
-	// StatusEvent happens periodically and comunicates the stream's latest
-	// transacion time as well as ops aquired during its idle period.
+	// StatusEvent happens periodically and communicates the stream's latest
+	// transaction time as well as ops acquired during its idle period.
 	StatusEvent EventType = "status"
 )
 
 // Event represents a streaming event.
 //
 // Events of type [fauna.StatusEvent] have its [fauna.Event.Data] field set to
-// nil. Other event's [fauna.Data] can be unmarshalled via the
+// nil. Other event's [fauna.Data] can be unmarshaled via the
 // [fauna.Event.Unmarshal] method.
 type Event struct {
 	// Type is this event's type.
@@ -46,7 +46,7 @@ func (e *Event) Unmarshal(into any) error {
 // ErrEvent contains error information present in error events.
 //
 // Error events with "abort" code contain its aborting value present in the
-// [fauan.ErrEvent.Abort]. The aborting values can be unmarshalled with the
+// [fauan.ErrEvent.Abort]. The aborting values can be unmarshaled with the
 // [fauna.ErrEvent.Unmarshal] method.
 type ErrEvent struct {
 	// Code is the error's code.
@@ -153,12 +153,12 @@ func (es *Events) Next(event *Event) (err error) {
 		es.syncTxnTime(raw.TxnTime)
 		err = convertRawEvent(&raw, event)
 		if _, ok := err.(*ErrEvent); ok {
-			es.Close() // no more events are comming
+			es.Close() // no more events are coming
 		}
 	} else if !es.closed {
 		// NOTE: This code tries to resume streams on network and IO errors. It
-		// presume that if the service is unavailable, the reconnect call will
-		// fail. Automatic retries and backoff mechanisms are impleneted at the
+		// presumes that if the service is unavailable, the reconnect call will
+		// fail. Automatic retries and backoff mechanisms are implemented at the
 		// Client level.
 		if _, ok := err.(net.Error); ok || err == io.EOF || err == io.ErrUnexpectedEOF {
 			if err = es.reconnect(); err == nil {
