@@ -135,9 +135,17 @@ type StreamOptFn func(req *streamRequest)
 
 // StartTime set the streams starting timestamp.
 //
-// Usefull when resuming a stream after a failure.
+// Useful when resuming a stream at a given point in time.
 func StartTime(ts int64) StreamOptFn {
 	return func(req *streamRequest) { req.StartTS = ts }
+}
+
+// EventCursor set the stream starting point based on a previously received
+// event cursor.
+//
+// Useful when resuming a stream after a failure.
+func EventCursor(cursor string) StreamOptFn {
+	return func(req *streamRequest) { req.Cursor = cursor }
 }
 
 func argsStringFromMap(input map[string]string, currentArgs ...string) string {

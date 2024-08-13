@@ -31,6 +31,8 @@ type Event struct {
 	Type EventType
 	// TxnTime is the transaction time that produce this event.
 	TxnTime int64
+	// Cursor is the event's cursor, used for resuming streams after crashes.
+	Cursor string
 	// Data is the event's data.
 	Data any
 	// Stats contains the ops acquired to process the event.
@@ -85,12 +87,12 @@ func (e *ErrEvent) Unmarshal(into any) error {
 // HTTP/2.x protocol where this restriction don't apply. However, if connecting
 // to Fauna via an HTTP/1.x proxy, be aware of the events iterator closing time.
 type Events struct {
-	client      *Client
-	stream      Stream
-	byteStream  io.ReadCloser
-	decoder     *json.Decoder
-	lastTxnTime int64
-	closed      bool
+	client     *Client
+	stream     Stream
+	byteStream io.ReadCloser
+	decoder    *json.Decoder
+	lastCursor string
+	closed     bool
 }
 
 func subscribe(client *Client, stream Stream, opts ...StreamOptFn) (*Events, error) {
@@ -107,8 +109,8 @@ func (es *Events) reconnect(opts ...StreamOptFn) error {
 			es.client.ctx,
 			es.client.headers,
 		},
-		Stream:  es.stream,
-		StartTS: es.lastTxnTime,
+		Stream: es.stream,
+		Cursor: es.lastCursor,
 	}
 
 	for _, streamOptionFn := range opts {
@@ -137,6 +139,7 @@ func (es *Events) Close() (err error) {
 type rawEvent = struct {
 	Type    EventType `json:"type"`
 	TxnTime int64     `json:"txn_ts"`
+	Cursor  string    `json:"cursor"`
 	Data    any       `json:"data,omitempty"`
 	Error   *ErrEvent `json:"error,omitempty"`
 	Stats   Stats     `json:"stats"`
@@ -150,7 +153,7 @@ type rawEvent = struct {
 func (es *Events) Next(event *Event) (err error) {
 	raw := rawEvent{}
 	if err = es.decoder.Decode(&raw); err == nil {
-		es.syncTxnTime(raw.TxnTime)
+		es.onNextEvent(&raw)
 		err = convertRawEvent(&raw, event)
 		if _, ok := err.(*ErrEvent); ok {
 			es.Close() // no more events are coming
@@ -169,9 +172,9 @@ func (es *Events) Next(event *Event) (err error) {
 	return
 }
 
-func (es *Events) syncTxnTime(txnTime int64) {
-	es.client.lastTxnTime.sync(txnTime)
-	es.lastTxnTime = txnTime
+func (es *Events) onNextEvent(event *rawEvent) {
+	es.client.lastTxnTime.sync(event.TxnTime)
+	es.lastCursor = event.Cursor
 }
 
 func convertRawEvent(raw *rawEvent, event *Event) (err error) {
@@ -190,6 +193,7 @@ func convertRawEvent(raw *rawEvent, event *Event) (err error) {
 		}
 		event.Type = raw.Type
 		event.TxnTime = raw.TxnTime
+		event.Cursor = raw.Cursor
 		event.Data = raw.Data
 		event.Stats = raw.Stats
 	}

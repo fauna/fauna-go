@@ -518,6 +518,9 @@ func encode(v any, hint string) (any, error) {
 		if vt.StartTS > 0 {
 			out["start_ts"] = vt.StartTS
 		}
+		if len(vt.Cursor) > 0 {
+			out["cursor"] = vt.Cursor
+		}
 		return out, nil
 
 	case []byte:
