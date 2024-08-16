@@ -16,6 +16,10 @@ Currently, the driver is tested on:
 - 1.21
 - 1.22
 
+## API reference
+
+API reference documentation for the driver is available on [pkg.go.dev](https://pkg.go.dev/github.com/fauna/fauna-go/v2#section-documentation).
+
 ## Using the Driver
 
 For FQL templates, denote variables with `${}` and pass variables as `map[string]any` to `fauna.FQL()`. You can escape a variable with by prepending
