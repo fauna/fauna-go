@@ -416,17 +416,25 @@ The [client configuration](#client-configuration) sets default query options for
 `Stream()`. To override these options, see [query
 options](#query-options).
 
-The `Subscribe()` method accepts a `fauna.StartTime` function. You can
-use `fauna.StartTime` to restart a stream after disconnection.
+The `Subscribe()` method accepts the `fauna.StartTime` and `fauna.EventCursor`
+function. Use `fauna.StartTime` to restart a stream at a specific timestamp.
 
 ```go
 streamQuery, _ := fauna.FQL(`Product.all().toStream()`, nil)
 client.Subscribe(streamQuery, fauna.StartTime(1710968002310000))
 ```
 
+Use `fauna.EventCursor` to resume a stream after a disconnect:
+
+```go
+streamQuery, _ := fauna.FQL(`Product.all().toStream()`, nil)
+client.Subscribe(streamQuery, fauna.EventCursor("abc2345=="))
+```
+
 | Function | Description |
 | -------- | ----------- |
-| `fauna.StartTime`  | Sets the stream start time. Accepts an `int64` representing the start time in microseconds since the Unix epoch.<br><br>The start time is typically the time the stream disconnected.<br><br>The start time must be later than the creation time of the stream token. The period between the stream restart and the start time argument can't exceed the `history_days` value for source set's collection. If a collection's `history_days` is `0` or unset, the period can't exceed 15 minutes. |
+| `fauna.StartTime`  | Sets the stream start time. Accepts an `int64` representing the start time in microseconds since the Unix epoch.<br><br>The start time must be later than the creation time of the stream token. The period between the stream restart and the start time argument can't exceed the `history_days` value for source set's collection. If a collection's `history_days` is `0` or unset, the period can't exceed 15 minutes. |
+| `fauna.EventCursor`  | Resumes the stream after the given event cursor. Accepts a `string` representation of the cursor retrieved from a `fauna.Event`. |
 
 
 ## Contributing

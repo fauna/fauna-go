@@ -139,6 +139,7 @@ type streamRequest struct {
 	apiRequest
 	Stream  Stream
 	StartTS int64
+	Cursor  string
 }
 
 func (streamReq *streamRequest) do(cli *Client) (bytes io.ReadCloser, err error) {
