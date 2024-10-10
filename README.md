@@ -1,4 +1,4 @@
-# The Official Golang Driver for [Fauna](https://fauna.com/).
+# Official Golang Driver for [Fauna v10](https://fauna.com/) (current)
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/fauna/fauna-go)](https://goreportcard.com/report/github.com/fauna/fauna-go)
 [![Go Reference](https://pkg.go.dev/badge/github.com/fauna/fauna-go.svg)](https://pkg.go.dev/github.com/fauna/fauna-go/v2)
