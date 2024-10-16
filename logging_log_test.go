@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCustomLogger(t *testing.T) {
+func TestLogLogger(t *testing.T) {
 	t.Run("should be able to provide a custom logger", func(t *testing.T) {
 		buf := new(bytes.Buffer)
 
