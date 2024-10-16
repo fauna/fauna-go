@@ -46,7 +46,7 @@ type CustomLogger struct {
 }
 
 func (c CustomLogger) Info(msg string) {
-	_, _ = fmt.Fprintf(os.Stdout, msg)
+	_, _ = fmt.Fprint(os.Stdout, msg)
 }
 
 func (c CustomLogger) LogResponse(_ context.Context, res *http.Response) {
