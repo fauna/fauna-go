@@ -3,6 +3,7 @@
 package fauna_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -51,7 +52,11 @@ func TestSlogLogger(t *testing.T) {
 	})
 
 	t.Run("should be able to provide a custom logger", func(t *testing.T) {
-		client := fauna.NewClient("secret", fauna.DefaultTimeouts(), fauna.Logger(CustomLogger{}), fauna.URL(fauna.EndpointLocal))
+		buf := new(bytes.Buffer)
+
+		client := fauna.NewClient("secret", fauna.DefaultTimeouts(), fauna.Logger(CustomLogger{
+			Output: buf,
+		}), fauna.URL(fauna.EndpointLocal))
 		assert.NotNil(t, client)
 
 		res, err := client.Query(query)
@@ -61,17 +66,21 @@ func TestSlogLogger(t *testing.T) {
 		err = res.Unmarshal(&value)
 		require.NoError(t, err)
 		require.Equal(t, 42, value)
+
+		assert.NotEmpty(t, buf)
 	})
 }
 
 type CustomLogger struct {
 	fauna.DriverLogger
+
+	Output *bytes.Buffer
 }
 
 func (c CustomLogger) Info(msg string, _ ...any) {
-	_, _ = fmt.Fprintf(os.Stdout, msg)
+	_, _ = fmt.Fprint(os.Stdout, msg)
 }
 
 func (c CustomLogger) LogResponse(_ context.Context, requestBody []byte, res *http.Response) {
-	_, _ = fmt.Fprintf(os.Stdout, "URL: %s\nStatus: %s\nBody: %s\n", res.Request.URL.String(), res.Status, string(requestBody))
+	_, _ = fmt.Fprintf(c.Output, "URL: %s\nStatus: %s\nBody: %s\n", res.Request.URL.String(), res.Status, string(requestBody))
 }
