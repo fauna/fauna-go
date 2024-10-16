@@ -32,6 +32,8 @@ const (
 	EnvFaunaEndpoint = "FAUNA_ENDPOINT"
 	// EnvFaunaSecret environment variable for Fauna Client authentication
 	EnvFaunaSecret = "FAUNA_SECRET"
+	// EnvFaunaDebug environment variable for Fauna Client logging
+	EnvFaunaDebug = "FAUNA_DEBUG"
 
 	// Headers consumers might want to use
 
@@ -71,6 +73,8 @@ type Client struct {
 
 	// lazily cached URLs
 	queryURL, streamURL *url.URL
+
+	logger DriverLogger
 }
 
 // NewDefaultClient initialize a [fauna.Client] with recommend default settings
@@ -173,6 +177,7 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 		typeCheckingEnabled: false,
 		maxAttempts:         retryMaxAttemptsDefault,
 		maxBackoff:          retryMaxBackoffDefault,
+		logger:              DefaultLogger(),
 	}
 
 	// set options to override defaults
@@ -221,6 +226,8 @@ func (c *Client) doWithRetry(req *http.Request) (attempts int, r *http.Response,
 		// Ensure we have a fresh body for the request
 		req2.Body = io.NopCloser(bytes.NewReader(body))
 		r, err = c.http.Do(req2)
+		c.logger.LogResponse(c.ctx, body, r)
+
 		attempts++
 		if err != nil {
 			return
