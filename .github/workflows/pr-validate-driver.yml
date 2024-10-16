@@ -36,7 +36,7 @@ jobs:
 
       - name: Install tools
         run: |
-          go install golang.org/x/tools/cmd/goimports@latest
+          go install golang.org/x/tools/cmd/goimports@v0.24.0
 
       - name: Fmt
         run: |
