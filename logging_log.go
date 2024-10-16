@@ -13,7 +13,7 @@ import (
 
 type DriverLogger interface {
 	Info(msg string)
-	LogResponse(ctx context.Context, r *http.Response)
+	LogResponse(ctx context.Context, requestBody []byte, r *http.Response)
 }
 
 type ClientLogger struct {
@@ -55,7 +55,7 @@ func (d ClientLogger) Error(msg string) {
 	d.logger.Print("ERROR: " + msg)
 }
 
-func (d ClientLogger) LogResponse(ctx context.Context, r *http.Response) {
+func (d ClientLogger) LogResponse(ctx context.Context, requestBody []byte, r *http.Response) {
 	if d.logger == nil {
 		return
 	}
@@ -67,6 +67,7 @@ func (d ClientLogger) LogResponse(ctx context.Context, r *http.Response) {
 		}
 	}
 
+	d.Debug(fmt.Sprintf("Request Body: %s", string(requestBody)))
 	d.Info(fmt.Sprintf("HTTP Response - Status: %s, From: %s, Headers: %v", r.Status, r.Request.URL.String(), headers))
 }
 

@@ -49,6 +49,6 @@ func (c CustomLogger) Info(msg string) {
 	_, _ = fmt.Fprint(os.Stdout, msg)
 }
 
-func (c CustomLogger) LogResponse(_ context.Context, res *http.Response) {
-	_, _ = fmt.Fprintf(c.Output, "URL: %s\nStatus: %s\n", res.Request.URL.String(), res.Status)
+func (c CustomLogger) LogResponse(_ context.Context, requestBody []byte, res *http.Response) {
+	_, _ = fmt.Fprintf(c.Output, "URL: %s\nStatus: %s\nBody: %s\n", res.Request.URL.String(), res.Status, string(requestBody))
 }
