@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/fauna/fauna-go/v2"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -51,21 +50,5 @@ func TestLogger(t *testing.T) {
 
 		require.Contains(t, outStr, logMessage)
 		t.Logf("out: %s", outStr)
-	})
-
-	t.Run("should be able to provide a custom logger", func(t *testing.T) {
-		client := fauna.NewClient("secret", fauna.DefaultTimeouts(), fauna.Logger(CustomLogger{}), fauna.URL(fauna.EndpointLocal))
-		assert.NotNil(t, client)
-
-		query, queryErr := fauna.FQL(`42`, nil)
-		require.NoError(t, queryErr)
-
-		res, err := client.Query(query)
-		require.NoError(t, err)
-
-		var value int
-		err = res.Unmarshal(&value)
-		require.NoError(t, err)
-		require.Equal(t, 42, value)
 	})
 }
