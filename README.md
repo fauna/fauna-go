@@ -341,11 +341,10 @@ func main() {
 }
 ```
 
-In query results, the driver represents event sources as `fauna.Stream`
+In query results, the driver represents stream tokens as `fauna.EventSource`
 values.
 
-To start a stream from a query result, call `Subscribe()` on a
-`fauna.Stream` value. This lets you output a stream alongside normal query
+To start a stream from a query result, call `Stream()` and pass the `fauna.EventSource`. This lets you output a stream alongside normal query
 results:
 
 ```go
@@ -376,7 +375,7 @@ func main() {
 
 	queryResult := struct {
 		Products []Product
-		Stream   fauna.Stream
+		Stream   fauna.EventSource
 	}{}
 
 	if err := data.Unmarshal(&queryResult); err != nil {
@@ -388,7 +387,7 @@ func main() {
 		fmt.Println(product)
 	}
 
-	events, err := client.Subscribe(queryResult.Stream)
+	events, err := client.Stream(queryResult.Stream)
 	if err != nil {
 		panic(err)
 	}
@@ -417,21 +416,21 @@ func main() {
 ### Stream options
 
 The [client configuration](#client-configuration) sets default query options for
-`Stream()`. To override these options, see [query options](#query-options).
+`Stream()`. To override these options, see [query
 
-The `Subscribe()` method accepts the `fauna.StartTime` and `fauna.EventCursor`
+The `Stream()` method accepts the `fauna.StartTime` and `fauna.EventCursor`
 function. Use `fauna.StartTime` to restart a stream at a specific timestamp.
 
 ```go
 streamQuery, _ := fauna.FQL(`Product.all().eventSource()`, nil)
-client.Subscribe(streamQuery, fauna.StartTime(1710968002310000))
+client.StreamFromQuery(streamQuery, nil, fauna.StartTime(1710968002310000))
 ```
 
 Use `fauna.EventCursor` to resume a stream after a disconnect:
 
 ```go
 streamQuery, _ := fauna.FQL(`Product.all().eventSource()`, nil)
-client.Subscribe(streamQuery, fauna.EventCursor("abc2345=="))
+client.StreamFromQuery(streamQuery, nil, fauna.EventCursor("abc2345=="))
 ```
 
 | Function | Description |

@@ -50,7 +50,7 @@ type BusinessObj struct {
 	RefField          Ref                     `fauna:"ref_field"`
 	NamedRefField     NamedRef                `fauna:"named_ref_field"`
 	SetField          Page                    `fauna:"set_field"`
-	StreamField       Stream                  `fauna:"stream_field"`
+	StreamField       EventSource             `fauna:"stream_field"`
 	ObjField          SubBusinessObj          `fauna:"obj_field"`
 	DocField          DocBusinessObj          `fauna:"doc_field"`
 	NamedDocField     NamedDocBusinessObj     `fauna:"named_doc_field"`
@@ -282,8 +282,8 @@ func TestEncodingFaunaStructs(t *testing.T) {
 		roundTripCheck(t, obj, `{"@set":{"data":["0","1","2"],"after":"foobarbaz"}}`)
 	})
 
-	t.Run("encodes Stream", func(t *testing.T) {
-		stream := Stream("abcd==")
+	t.Run("encodes StreamFromQuery", func(t *testing.T) {
+		stream := EventSource("abcd==")
 		roundTripCheck(t, stream, `{"@stream":"abcd=="}`)
 	})
 
