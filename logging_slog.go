@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-type DriverLogger interface {
+type Logger interface {
 	Debug(msg string, args ...any)
 	Info(msg string, args ...any)
 	Warn(msg string, args ...any)
@@ -20,7 +20,7 @@ type DriverLogger interface {
 }
 
 type ClientLogger struct {
-	DriverLogger
+	Logger
 
 	logger *slog.Logger
 }
@@ -83,7 +83,7 @@ func (d ClientLogger) LogResponse(ctx context.Context, requestBody []byte, r *ht
 }
 
 // DefaultLogger returns the default logger
-func DefaultLogger() DriverLogger {
+func DefaultLogger() Logger {
 	clientLogger := ClientLogger{}
 
 	if val, found := os.LookupEnv(EnvFaunaDebug); found {
