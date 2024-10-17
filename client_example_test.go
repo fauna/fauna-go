@@ -318,7 +318,7 @@ func ExampleClient_Paginate() {
 	// Output: 20
 }
 
-func ExampleClient_Stream() {
+func ExampleClient_StreamFromQuery() {
 	// IMPORTANT: just for the purpose of example, don't actually hardcode secret
 	_ = os.Setenv(fauna.EnvFaunaSecret, "secret")
 	_ = os.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
@@ -342,11 +342,13 @@ func ExampleClient_Stream() {
 
 	// create a stream
 	streamQuery, _ := fauna.FQL(`StreamingSandbox.all().toStream()`, nil)
-	events, err := client.Stream(streamQuery)
+	events, err := client.StreamFromQuery(streamQuery, nil)
 	if err != nil {
 		log.Fatalf("failed to subscribe to the stream value: %s", err)
 	}
-	defer events.Close()
+	defer func() {
+		_ = events.Close()
+	}()
 
 	// produce some events while the subscription is open
 	createQuery, _ := fauna.FQL(`StreamingSandbox.create({ foo: 'bar' })`, nil)
@@ -388,7 +390,7 @@ func ExampleClient_Stream() {
 	// Event: remove Data: {Foo:baz}
 }
 
-func ExampleClient_Subscribe() {
+func ExampleClient_Stream() {
 	// IMPORTANT: just for the purpose of example, don't actually hardcode secret
 	_ = os.Setenv(fauna.EnvFaunaSecret, "secret")
 	_ = os.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
@@ -417,17 +419,19 @@ func ExampleClient_Subscribe() {
 		log.Fatalf("failed to create a stream: %s", err)
 	}
 
-	var stream fauna.Stream
+	var stream fauna.EventSource
 	if err := result.Unmarshal(&stream); err != nil {
 		log.Fatalf("failed to unmarshal the stream value: %s", err)
 	}
 
 	// initiate the stream subscription
-	events, err := client.Subscribe(stream)
+	events, err := client.Stream(stream)
 	if err != nil {
 		log.Fatalf("failed to subscribe to the stream value: %s", err)
 	}
-	defer events.Close()
+	defer func() {
+		_ = events.Close()
+	}()
 
 	// produce some events while the subscription is open
 	createQuery, _ := fauna.FQL(`StreamingSandbox.create({ foo: 'bar' })`, nil)
