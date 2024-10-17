@@ -340,11 +340,11 @@ func main() {
 }
 ```
 
-In query results, the driver represents event sources as `fauna.EventSource`
+In query results, the driver represents stream tokens as `fauna.Stream`
 values.
 
-To start a stream from a query result, call `Stream()` and pass the
-`fauna.EventSource`. This lets you output a stream alongside normal query
+To start a stream from a query result, call `Subscribe()` on a
+`fauna.Stream` value. This lets you output a stream alongside normal query
 results:
 
 ```go
@@ -415,9 +415,9 @@ func main() {
 ### Stream options
 
 The [client configuration](#client-configuration) sets default query options for
-`StreamFromQuery()` and `Stream()`.
+`Stream()`. To override these options, see [query
 
-The `StreamFromQuery()` and `Stream()` methods accept
+The `Subscribe()` method accepts the `fauna.StartTime` and `fauna.EventCursor`
 [StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v2#StreamOptFn)
 functions as arguments.
 
