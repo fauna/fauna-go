@@ -45,7 +45,7 @@ func TestStreaming(t *testing.T) {
 		t.Run("Fails on non-streamable values", func(t *testing.T) {
 			streamQ, _ := fauna.FQL(`"I'm a string"`, nil)
 			events, err := client.StreamFromQuery(streamQ, nil)
-			require.ErrorContains(t, err, "expected query to return a fauna.StreamFromQuery but got string")
+			require.ErrorContains(t, err, "query should return a fauna.EventSource but got string")
 			require.Nil(t, events)
 		})
 	})
