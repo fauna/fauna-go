@@ -19,7 +19,7 @@ func TestLogLogger(t *testing.T) {
 	t.Run("should be able to provide a custom logger", func(t *testing.T) {
 		buf := new(bytes.Buffer)
 
-		client := fauna.NewClient("secret", fauna.DefaultTimeouts(), fauna.Logger(CustomLogger{
+		client := fauna.NewClient("secret", fauna.DefaultTimeouts(), fauna.WithLogger(CustomLogger{
 			Output: buf,
 		}), fauna.URL(fauna.EndpointLocal))
 		assert.NotNil(t, client)
@@ -40,7 +40,7 @@ func TestLogLogger(t *testing.T) {
 }
 
 type CustomLogger struct {
-	fauna.DriverLogger
+	fauna.Logger
 
 	Output *bytes.Buffer
 }

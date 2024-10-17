@@ -74,7 +74,7 @@ type Client struct {
 	// lazily cached URLs
 	queryURL, streamURL *url.URL
 
-	logger DriverLogger
+	logger Logger
 }
 
 // NewDefaultClient initialize a [fauna.Client] with recommend default settings

@@ -92,8 +92,8 @@ func URL(url string) ClientConfigFn {
 	return func(c *Client) { c.url = url }
 }
 
-// Logger set the [fauna.Client] Logger
-func Logger(logger DriverLogger) ClientConfigFn {
+// WithLogger set the [fauna.Client] Logger
+func WithLogger(logger Logger) ClientConfigFn {
 	return func(c *Client) { c.logger = logger }
 }
 
