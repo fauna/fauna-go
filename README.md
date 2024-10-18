@@ -441,7 +441,8 @@ the API reference.
 
 ## Debug logging
 
-To enable debug logging set the `FAUNA_DEBUG` environment variable to an integer for the value of the desired [slog.Level](https://pkg.go.dev/log/slog#Level).
+## Event Feeds (beta)
+
 For Go versions 1.21 and earlier, the driver uses a [log.Logger](https://pkg.go.dev/log#Logger).
 For 1.22+, the driver uses the [slog.Logger](https://pkg.go.dev/log/slog#Logger).
 You can optionally define your own Logger.

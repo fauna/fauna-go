@@ -179,3 +179,40 @@ func (streamReq *streamRequest) do(cli *Client) (bytes io.ReadCloser, err error)
 	bytes = httpRes.Body
 	return
 }
+
+type feedRequest struct {
+	apiRequest
+	Stream  EventSource
+	StartTS int64
+	Cursor  string
+}
+
+func (feedReq *feedRequest) do(cli *Client) (io.ReadCloser, error) {
+	bytesOut, marshalErr := marshal(feedReq)
+	if marshalErr != nil {
+		return nil, fmt.Errorf("marshal request failed: %w", marshalErr)
+	}
+
+	changeFeedURL, parseURLErr := cli.parseFeedURL()
+	if parseURLErr != nil {
+		return nil, fmt.Errorf("parse url failed: %w", parseURLErr)
+	}
+
+	attempts, httpRes, postErr := feedReq.post(cli, changeFeedURL, bytesOut)
+	if postErr != nil {
+		return nil, fmt.Errorf("post request failed: %w", postErr)
+	}
+
+	if httpRes.StatusCode != http.StatusOK {
+		qRes, err := parseQueryResponse(httpRes)
+		if err == nil {
+			if err = getErrFauna(httpRes.StatusCode, qRes, attempts); err == nil {
+				err = fmt.Errorf("unknown error for http status: %d", httpRes.StatusCode)
+			}
+		}
+
+		return nil, err
+	}
+
+	return httpRes.Body, nil
+}
