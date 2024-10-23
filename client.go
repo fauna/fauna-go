@@ -304,6 +304,8 @@ func (c *Client) Paginate(fql *Query, opts ...QueryOptFn) *QueryIterator {
 //
 // Note that the query provided MUST return [fauna.Stream] value. Otherwise,
 // this method returns an error.
+//
+// Deprecated: will be replaced in future versions
 func (c *Client) Stream(fql *Query, opts ...QueryOptFn) (*Events, error) {
 	res, err := c.Query(fql, opts...)
 	if err != nil {
@@ -318,6 +320,8 @@ func (c *Client) Stream(fql *Query, opts ...QueryOptFn) (*Events, error) {
 }
 
 // Subscribe initiates a stream subscription for the given stream value.
+//
+// Deprecated: will be replaced in future versions
 func (c *Client) Subscribe(stream Stream, opts ...StreamOptFn) (*Events, error) {
 	return subscribe(c, stream, opts...)
 }

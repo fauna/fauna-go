@@ -86,6 +86,8 @@ func (e *ErrEvent) Unmarshal(into any) error {
 // not read to completion and closed. By default, Fauna's region groups use the
 // HTTP/2.x protocol where this restriction don't apply. However, if connecting
 // to Fauna via an HTTP/1.x proxy, be aware of the events iterator closing time.
+//
+// Deprecated: will be replaced in future versions
 type Events struct {
 	client     *Client
 	stream     Stream
