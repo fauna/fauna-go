@@ -335,7 +335,7 @@ func (c *Client) StreamFromQuery(fql *Query, streamOpts []StreamOptFn, opts ...Q
 		return c.Stream(stream, streamOpts...)
 	}
 
-	return nil, fmt.Errorf("expected query to return a fauna.Stream but got %T", res.Data)
+	return nil, fmt.Errorf("expected query to return a fauna.StreamFromQuery but got %T", res.Data)
 }
 
 // Stream initiates a stream subscription for the given stream value.
