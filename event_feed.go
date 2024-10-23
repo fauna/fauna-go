@@ -13,8 +13,6 @@ type EventFeed struct {
 	decoder *json.Decoder
 
 	lastCursor string
-
-	closed bool
 }
 
 func newEventFeed(client *Client, token EventSource, opts ...FeedOptFn) (*EventFeed, error) {
