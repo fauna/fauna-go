@@ -188,24 +188,36 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 	return client
 }
 
-func (c *Client) parseQueryURL() (url *url.URL, err error) {
-	if c.queryURL != nil {
-		url = c.queryURL
-	} else if url, err = url.Parse(c.url); err == nil {
-		url = url.JoinPath("query", "1")
-		c.queryURL = url
+func (c *Client) parseQueryURL() (*url.URL, error) {
+	if c.queryURL == nil {
+		if queryURL, err := url.Parse(c.url); err != nil {
+			return nil, err
+		} else {
+			c.queryURL = queryURL.JoinPath("query", "1")
+		}
 	}
-	return
+
+	if c.queryURL == nil {
+		return nil, fmt.Errorf("query url is not set")
+	}
+
+	return c.queryURL, nil
 }
 
-func (c *Client) parseStreamURL() (url *url.URL, err error) {
-	if c.streamURL != nil {
-		url = c.streamURL
-	} else if url, err = url.Parse(c.url); err == nil {
-		url = url.JoinPath("stream", "1")
-		c.streamURL = url
+func (c *Client) parseStreamURL() (*url.URL, error) {
+	if c.streamURL == nil {
+		if streamURL, err := url.Parse(c.url); err != nil {
+			return nil, err
+		} else {
+			c.streamURL = streamURL.JoinPath("stream", "1")
+		}
 	}
-	return
+
+	if c.streamURL == nil {
+		return nil, fmt.Errorf("stream url is not set")
+	}
+
+	return c.streamURL, nil
 }
 
 func (c *Client) doWithRetry(req *http.Request) (attempts int, r *http.Response, err error) {
@@ -323,7 +335,7 @@ func (c *Client) StreamFromQuery(fql *Query, streamOpts []StreamOptFn, opts ...Q
 		return c.Stream(stream, streamOpts...)
 	}
 
-	return nil, fmt.Errorf("expected query to return a fauna.StreamFromQuery but got %T", res.Data)
+	return nil, fmt.Errorf("query should return a fauna.EventSource but got %T", res.Data)
 }
 
 // Stream initiates a stream subscription for the given stream value.
