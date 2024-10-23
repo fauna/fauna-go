@@ -70,7 +70,7 @@ type Client struct {
 	maxBackoff  time.Duration
 
 	// lazily cached URLs
-	queryURL, streamURL *url.URL
+	queryURL, streamURL, feedURL *url.URL
 }
 
 // NewDefaultClient initialize a [fauna.Client] with recommended default settings
@@ -215,6 +215,22 @@ func (c *Client) parseStreamURL() (*url.URL, error) {
 	return c.streamURL, nil
 }
 
+func (c *Client) parseFeedURL() (*url.URL, error) {
+	if c.feedURL == nil {
+		if feedURL, err := url.Parse(c.url); err != nil {
+			return nil, err
+		} else {
+			c.feedURL = feedURL.JoinPath("changefeed", "1")
+		}
+	}
+
+	if c.feedURL == nil {
+		return nil, fmt.Errorf("feed url is not set")
+	}
+
+	return c.feedURL, nil
+}
+
 func (c *Client) doWithRetry(req *http.Request) (attempts int, r *http.Response, err error) {
 	req2 := req.Clone(req.Context())
 	body, rerr := io.ReadAll(req.Body)
@@ -328,7 +344,7 @@ func (c *Client) StreamFromQuery(fql *Query, streamOpts []StreamOptFn, opts ...Q
 		return c.Stream(stream, streamOpts...)
 	}
 
-	return nil, fmt.Errorf("query should return a fauna.EventSource but got %T", res.Data)
+	return nil, fmt.Errorf("expected query to return a fauna.Stream but got %T", res.Data)
 }
 
 // Stream initiates a stream subscription for the given stream value.
@@ -415,4 +431,36 @@ func (c *Client) String() string {
 
 func (c *Client) setHeader(key, val string) {
 	c.headers[key] = val
+}
+
+func (c *Client) FeedFromQuery(fql *Query, opts ...QueryOptFn) (*EventFeed, error) {
+	res, err := c.Query(fql, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	token, ok := res.Data.(EventSource)
+	if !ok {
+		return nil, fmt.Errorf("query should return a fauna.EventSource but got %T", res.Data)
+	}
+
+	return newEventFeed(c, token)
+}
+
+func (c *Client) FeedFromQueryWithOptions(fql *Query, feedOpts []FeedOptFn, opts ...QueryOptFn) (*EventFeed, error) {
+	res, err := c.Query(fql, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	token, ok := res.Data.(EventSource)
+	if !ok {
+		return nil, fmt.Errorf("query should return a fauna.EventSource but got %T", res.Data)
+	}
+
+	return newEventFeed(c, token, feedOpts...)
+}
+
+func (c *Client) Feed(stream EventSource, opts ...FeedOptFn) (*EventFeed, error) {
+	return newEventFeed(c, stream, opts...)
 }

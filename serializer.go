@@ -523,6 +523,16 @@ func encode(v any, hint string) (any, error) {
 		}
 		return out, nil
 
+	case feedRequest:
+		out := map[string]any{"token": string(vt.Stream)}
+		if vt.StartTS > 0 {
+			out["start_ts"] = vt.StartTS
+		}
+		if len(vt.Cursor) > 0 {
+			out["cursor"] = vt.Cursor
+		}
+		return out, nil
+
 	case []byte:
 		return encodeBytes(vt)
 	}
