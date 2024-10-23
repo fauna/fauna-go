@@ -204,6 +204,22 @@ func (c *Client) parseQueryURL() (*url.URL, error) {
 	return c.queryURL, nil
 }
 
+func (c *Client) parseStreamURL() (*url.URL, error) {
+	if c.streamURL == nil {
+		if streamURL, err := url.Parse(c.url); err != nil {
+			return nil, err
+		} else {
+			c.streamURL = streamURL.JoinPath("stream", "1")
+		}
+	}
+
+	if c.streamURL == nil {
+		return nil, fmt.Errorf("stream url is not set")
+	}
+
+	return c.streamURL, nil
+}
+
 func (c *Client) parseFeedURL() (*url.URL, error) {
 	if c.feedURL == nil {
 		if feedURL, err := url.Parse(c.url); err != nil {
