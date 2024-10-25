@@ -415,10 +415,13 @@ func main() {
 ### Stream options
 
 The [client configuration](#client-configuration) sets default query options for
-`StreamFromQuery()`.
+`StreamFromQuery()` and `Stream()`.
 
-The `Stream()` method accepts the `fauna.StartTime` and `fauna.EventCursor`
-function. Use `fauna.StartTime()` to restart a stream at a specific timestamp.
+The `StreamFromQuery()` and `Stream()` methods accept
+[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v2#StreamOptFn)
+functions as arguments.
+
+Use `fauna.StartTime()` to restart a stream at a specific timestamp:
 
 ```go
 streamQuery, _ := fauna.FQL(`Product.all().eventSource()`, nil)
