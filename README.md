@@ -286,7 +286,6 @@ func main() {
 The driver supports [Event
 Streaming](https://docs.fauna.com/fauna/current/learn/cdc/#event-streaming).
 
-
 ### Start a stream
 
 An Event Stream lets you consume events from an [event
