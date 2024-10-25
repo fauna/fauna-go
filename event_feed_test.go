@@ -28,8 +28,8 @@ func TestEventFeed(t *testing.T) {
 		})
 	})
 
-	t.Run("can use change feeds from a query", func(t *testing.T) {
-		query, queryErr := fauna.FQL(`ChangeFeedTest.all().toStream()`, nil)
+	t.Run("can use event feeds from a query", func(t *testing.T) {
+		query, queryErr := fauna.FQL(`EventFeedTest.all().toStream()`, nil)
 		require.NoError(t, queryErr, "failed to create a query for stream token")
 
 		feed, feedErr := client.FeedFromQuery(query)
@@ -86,8 +86,8 @@ func TestEventFeed(t *testing.T) {
 func resetCollection(t *testing.T, client *fauna.Client) {
 	t.Helper()
 
-	setupQuery, setupQueryErr := fauna.FQL(`Collection.byName("ChangeFeedTest")?.delete()
-Collection.create({ name: "ChangeFeedTest" })`, nil)
+	setupQuery, setupQueryErr := fauna.FQL(`Collection.byName("EventFeedTest")?.delete()
+Collection.create({ name: "EventFeedTest" })`, nil)
 	require.NoError(t, setupQueryErr, "setup query error: %s", setupQueryErr)
 
 	_, setupErr := client.Query(setupQuery)
@@ -97,7 +97,7 @@ Collection.create({ name: "ChangeFeedTest" })`, nil)
 func getEventSource(t *testing.T, client *fauna.Client) fauna.EventSource {
 	t.Helper()
 
-	query, queryErr := fauna.FQL(`ChangeFeedTest.all().toStream()`, nil)
+	query, queryErr := fauna.FQL(`EventFeedTest.all().toStream()`, nil)
 	require.NoError(t, queryErr, "failed to create a query for stream token")
 
 	streamRes, streamResErr := client.Query(query)
@@ -115,7 +115,7 @@ func getEventSource(t *testing.T, client *fauna.Client) fauna.EventSource {
 func createOne(t *testing.T, client *fauna.Client, feed *fauna.EventFeed) {
 	t.Helper()
 
-	createOneQuery, createOneQueryErr := fauna.FQL("ChangeFeedTest.create({ foo: 'bar' })", nil)
+	createOneQuery, createOneQueryErr := fauna.FQL("EventFeedTest.create({ foo: 'bar' })", nil)
 	require.NoError(t, createOneQueryErr, "failed to init query for create statement")
 	require.NotNil(t, createOneQuery, "create statement is nil")
 
@@ -135,7 +135,7 @@ func createOne(t *testing.T, client *fauna.Client, feed *fauna.EventFeed) {
 func createMultipleDocs(t *testing.T, client *fauna.Client, feed *fauna.EventFeed, start int, end int) {
 	t.Helper()
 
-	query, queryErr := fauna.FQL(`Set.sequence(${start}, ${end}).forEach(n => ChangeFeedTest.create({ n: n }))`, map[string]any{
+	query, queryErr := fauna.FQL(`Set.sequence(${start}, ${end}).forEach(n => EventFeedTest.create({ n: n }))`, map[string]any{
 		"start": start,
 		"end":   end,
 	})

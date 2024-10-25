@@ -10,9 +10,9 @@ import (
 func ExampleEventFeed_Events() {
 	client := fauna.NewClient("secret", fauna.DefaultTimeouts(), fauna.URL(fauna.EndpointLocal))
 
-	query, queryErr := fauna.FQL(`Collection.byName("ChangeFeedTest")?.delete()
-Collection.create({ name: "ChangeFeedTest" })
-ChangeFeedTest.all().toStream()`, nil)
+	query, queryErr := fauna.FQL(`Collection.byName("EventFeedTest")?.delete()
+Collection.create({ name: "EventFeedTest" })
+EventFeedTest.all().toStream()`, nil)
 	if queryErr != nil {
 		log.Fatal(queryErr.Error())
 	}
@@ -22,7 +22,7 @@ ChangeFeedTest.all().toStream()`, nil)
 		log.Fatal(feedErr.Error())
 	}
 
-	addOne, _ := fauna.FQL(`ChangeFeedTest.create({ foo: 'bar' })`, nil)
+	addOne, _ := fauna.FQL(`EventFeedTest.create({ foo: 'bar' })`, nil)
 	_, addOneErr := client.Query(addOne)
 	if addOneErr != nil {
 		log.Fatal(addOneErr.Error())
