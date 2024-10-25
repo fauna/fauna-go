@@ -284,19 +284,22 @@ func main() {
 ## Event Streaming
 
 The driver supports [Event
-Streaming](https://docs.fauna.com/fauna/current/learn/streaming).
+Streaming](https://docs.fauna.com/fauna/current/learn/cdc/#event-streaming).
 
 
 ### Start a stream
 
-To get a stream token, append
-[`toStream()`](https://docs.fauna.com/fauna/current/reference/reference/schema_entities/set/tostream)
-or
-[`changesOn()`](https://docs.fauna.com/fauna/current/reference/reference/schema_entities/set/changeson)
-to a set from a [supported
-source](https://docs.fauna.com/fauna/current/reference/streaming_reference/#supported-sources).
+An Event Stream lets you consume events from an [event
+source](https://docs.fauna.com/fauna/current/learn/cdc/#create-an-event-source)
+as a real-time subscription.
 
-To start and subscribe to the stream, pass a query that produces a stream token
+To get an event, append
+[`eventSource()`](https://docs.fauna.com/fauna/current/reference/reference/schema_entities/set/eventsource)
+or
+[`eventsOn()`](https://docs.fauna.com/fauna/current/reference/reference/schema_entities/set/eventson)
+to a [supported Set](https://docs.fauna.com/fauna/current/reference/cdc/#sets).
+
+To start and subscribe to the stream, pass a query that produces an event source
 to `Stream()`:
 
 ```go
@@ -312,7 +315,7 @@ func main() {
 		panic(clientErr)
 	}
 
-	streamQuery, _ := fauna.FQL("Product.all().toStream()", nil)
+	streamQuery, _ := fauna.FQL("Product.all().eventSource()", nil)
 	events, err := client.Stream(streamQuery)
 	if err != nil {
 		panic(err)
@@ -338,7 +341,7 @@ func main() {
 }
 ```
 
-In query results, the driver represents stream tokens as `fauna.Stream`
+In query results, the driver represents event sources as `fauna.Stream`
 values.
 
 To start a stream from a query result, call `Subscribe()` on a
@@ -362,7 +365,7 @@ func main() {
 		let products = Product.all()
 		{
 			Products: products.toArray(),
-			Stream: products.toStream()
+			Stream: products.eventSource()
 		}
 	`, nil)
 
@@ -414,27 +417,26 @@ func main() {
 ### Stream options
 
 The [client configuration](#client-configuration) sets default query options for
-`Stream()`. To override these options, see [query
-options](#query-options).
+`Stream()`. To override these options, see [query options](#query-options).
 
 The `Subscribe()` method accepts the `fauna.StartTime` and `fauna.EventCursor`
 function. Use `fauna.StartTime` to restart a stream at a specific timestamp.
 
 ```go
-streamQuery, _ := fauna.FQL(`Product.all().toStream()`, nil)
+streamQuery, _ := fauna.FQL(`Product.all().eventSource()`, nil)
 client.Subscribe(streamQuery, fauna.StartTime(1710968002310000))
 ```
 
 Use `fauna.EventCursor` to resume a stream after a disconnect:
 
 ```go
-streamQuery, _ := fauna.FQL(`Product.all().toStream()`, nil)
+streamQuery, _ := fauna.FQL(`Product.all().eventSource()`, nil)
 client.Subscribe(streamQuery, fauna.EventCursor("abc2345=="))
 ```
 
 | Function | Description |
 | -------- | ----------- |
-| `fauna.StartTime`  | Sets the stream start time. Accepts an `int64` representing the start time in microseconds since the Unix epoch.<br><br>The start time must be later than the creation time of the stream token. The period between the stream restart and the start time argument can't exceed the `history_days` value for source set's collection. If a collection's `history_days` is `0` or unset, the period can't exceed 15 minutes. |
+| `fauna.StartTime`  | Sets the stream start time. Accepts an `int64` representing the start time in microseconds since the Unix epoch.<br><br>The start time must be later than the creation time of the event source. The period between the stream restart and the start time argument can't exceed the `history_days` value for source set's collection. If a collection's `history_days` is `0` or unset, the period can't exceed 15 minutes. |
 | `fauna.EventCursor`  | Resumes the stream after the given event cursor. Accepts a `string` representation of the cursor retrieved from a `fauna.Event`. |
 
 
