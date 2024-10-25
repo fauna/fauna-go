@@ -441,12 +441,12 @@ client.Subscribe(streamQuery, fauna.EventCursor("abc2345=="))
 
 ## Debug Mode
 
-To enable debug logging, set the `FAUNA_DEBUG` environment variable to an integer for the value of the desired [slog level](https://pkg.go.dev/log/slog#Level).
+To enable debug logging, set the `FAUNA_DEBUG` environment variable to an integer for the value of the desired [slog level](https://pkg.go.dev/log/slog#Level):
 
-- `slog.LevelInfo` will log all HTTP responses from Fauna.
-- `slog.LevelDebug` will not redact the Authorization header and include the request body.
+- `slog.LevelInfo` logs all HTTP responses from Fauna.
+- `slog.LevelDebug` includes the HTTP request body. The `Authorization` header is not redacted.
 
-For Go versions before 1.21 we use a [log.Logger](https://pkg.go.dev/log#Logger) and 1.21+ we use the [slog.Logger](https://pkg.go.dev/log/slog#Logger) -- you can optionally define your own Logger. See `CustomLoggrer` in [logging_slog_test.go](logging_slog_test.go) for an example.
+For Go versions before 1.21, the driver uses a [log.Logger](https://pkg.go.dev/log#Logger). For 1.21+, the driver uses the [slog.Logger](https://pkg.go.dev/log/slog#Logger). You can optionally define your own Logger. For an example, see `CustomLoggrer` in [logging_slog_test.go](logging_slog_test.go.
 
 
 ## Contributing
