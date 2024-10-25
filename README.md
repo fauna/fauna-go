@@ -314,7 +314,7 @@ func main() {
 		panic(clientErr)
 	}
 
-	streamQuery, _ := fauna.FQL("Product.all().toStream()", nil)
+	streamQuery, _ := fauna.FQL("Product.all().eventSource()", nil)
 	events, err := client.StreamFromQuery(streamQuery)
 	if err != nil {
 		panic(err)
@@ -438,6 +438,7 @@ client.StreamFromQuery(streamQuery, nil, fauna.EventCursor("abc2345=="))
 For supported functions, see
 [StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v2#StreamOptFn) in
 the API reference.
+
 ## Debug logging
 
 To enable debug logging set the `FAUNA_DEBUG` environment variable to an integer for the value of the desired [slog.Level](https://pkg.go.dev/log/slog#Level).
@@ -446,7 +447,7 @@ For 1.22+, the driver uses the [slog.Logger](https://pkg.go.dev/log/slog#Logger)
 You can optionally define your own Logger.
 For an example, see `CustomLogger` in [logging_slog_test.go](logging_slog_test.go).
 
-> [!NOTE]  
+> [!NOTE]
 > The value of the `Authorization` header is redacted when logging.
 
 ## Contributing
