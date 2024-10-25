@@ -225,7 +225,7 @@ func (c *Client) parseFeedURL() (*url.URL, error) {
 		if feedURL, err := url.Parse(c.url); err != nil {
 			return nil, err
 		} else {
-			c.feedURL = feedURL.JoinPath("changefeed", "1")
+			c.feedURL = feedURL.JoinPath("feed", "1")
 		}
 	}
 
