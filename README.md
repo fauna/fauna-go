@@ -286,7 +286,6 @@ func main() {
 The driver supports [Event
 Streaming](https://docs.fauna.com/fauna/current/learn/cdc/#event-streaming).
 
-
 ### Start a stream
 
 An Event Stream lets you consume events from an [event
@@ -300,7 +299,7 @@ or
 to a [supported Set](https://docs.fauna.com/fauna/current/reference/cdc/#sets).
 
 To start and subscribe to the stream, pass a query that produces an event source
-to `Stream()`:
+to `StreamFromQuery()`:
 
 ```go
 type Product struct {
@@ -315,8 +314,8 @@ func main() {
 		panic(clientErr)
 	}
 
-	streamQuery, _ := fauna.FQL("Product.all().eventSource()", nil)
-	events, err := client.Stream(streamQuery)
+	streamQuery, _ := fauna.FQL("Product.all().toStream()", nil)
+	events, err := client.StreamFromQuery(streamQuery)
 	if err != nil {
 		panic(err)
 	}
@@ -341,10 +340,11 @@ func main() {
 }
 ```
 
-In query results, the driver represents stream tokens as `fauna.EventSource`
+In query results, the driver represents event sources as `fauna.EventSource`
 values.
 
-To start a stream from a query result, call `Stream()` and pass the `fauna.EventSource`. This lets you output a stream alongside normal query
+To start a stream from a query result, call `Stream()` and pass the
+`fauna.EventSource`. This lets you output a stream alongside normal query
 results:
 
 ```go
@@ -412,32 +412,29 @@ func main() {
 }
 ```
 
-
 ### Stream options
 
 The [client configuration](#client-configuration) sets default query options for
-`Stream()`. To override these options, see [query
+`StreamFromQuery()`.
 
 The `Stream()` method accepts the `fauna.StartTime` and `fauna.EventCursor`
-function. Use `fauna.StartTime` to restart a stream at a specific timestamp.
+function. Use `fauna.StartTime()` to restart a stream at a specific timestamp.
 
 ```go
 streamQuery, _ := fauna.FQL(`Product.all().eventSource()`, nil)
 client.StreamFromQuery(streamQuery, nil, fauna.StartTime(1710968002310000))
 ```
 
-Use `fauna.EventCursor` to resume a stream after a disconnect:
+Use `fauna.EventCursor()` to resume a stream after a disconnect:
 
 ```go
 streamQuery, _ := fauna.FQL(`Product.all().eventSource()`, nil)
 client.StreamFromQuery(streamQuery, nil, fauna.EventCursor("abc2345=="))
 ```
 
-| Function | Description |
-| -------- | ----------- |
-| `fauna.StartTime`  | Sets the stream start time. Accepts an `int64` representing the start time in microseconds since the Unix epoch.<br><br>The start time must be later than the creation time of the event source. The period between the stream restart and the start time argument can't exceed the `history_days` value for source set's collection. If a collection's `history_days` is `0` or unset, the period can't exceed 15 minutes. |
-| `fauna.EventCursor`  | Resumes the stream after the given event cursor. Accepts a `string` representation of the cursor retrieved from a `fauna.Event`. |
-
+For supported functions, see
+[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v2#StreamOptFn) in
+the API reference.
 ## Debug logging
 
 To enable debug logging set the `FAUNA_DEBUG` environment variable to an integer for the value of the desired [slog.Level](https://pkg.go.dev/log/slog#Level).
