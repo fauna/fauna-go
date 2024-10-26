@@ -446,7 +446,7 @@ To enable debug logging, set the `FAUNA_DEBUG` environment variable to an intege
 - `slog.LevelInfo` logs all HTTP responses from Fauna.
 - `slog.LevelDebug` includes the HTTP request body. The `Authorization` header is not redacted.
 
-For Go versions before 1.21, the driver uses a [log.Logger](https://pkg.go.dev/log#Logger). For 1.21+, the driver uses the [slog.Logger](https://pkg.go.dev/log/slog#Logger). You can optionally define your own Logger. For an example, see `CustomLogger` in [logging_slog_test.go](logging_slog_test.go).
+For Go versions before 1.21, the driver uses a [log.Logger](https://pkg.go.dev/log#Logger). For 1.22+, the driver uses the [slog.Logger](https://pkg.go.dev/log/slog#Logger). You can optionally define your own Logger. For an example, see `CustomLogger` in [logging_slog_test.go](logging_slog_test.go).
 
 
 ## Contributing
