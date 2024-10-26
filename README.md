@@ -439,14 +439,14 @@ client.Subscribe(streamQuery, fauna.EventCursor("abc2345=="))
 | `fauna.StartTime`  | Sets the stream start time. Accepts an `int64` representing the start time in microseconds since the Unix epoch.<br><br>The start time must be later than the creation time of the event source. The period between the stream restart and the start time argument can't exceed the `history_days` value for source set's collection. If a collection's `history_days` is `0` or unset, the period can't exceed 15 minutes. |
 | `fauna.EventCursor`  | Resumes the stream after the given event cursor. Accepts a `string` representation of the cursor retrieved from a `fauna.Event`. |
 
-## Debug Mode
+## Debug logging
 
 To enable debug logging, set the `FAUNA_DEBUG` environment variable to an integer for the value of the desired [slog level](https://pkg.go.dev/log/slog#Level):
 
 - `slog.LevelInfo` logs all HTTP responses from Fauna.
 - `slog.LevelDebug` includes the HTTP request body. The `Authorization` header is not redacted.
 
-For Go versions before 1.21, the driver uses a [log.Logger](https://pkg.go.dev/log#Logger). For 1.21+, the driver uses the [slog.Logger](https://pkg.go.dev/log/slog#Logger). You can optionally define your own Logger. For an example, see `CustomLoggrer` in [logging_slog_test.go](logging_slog_test.go.
+For Go versions before 1.21, the driver uses a [log.Logger](https://pkg.go.dev/log#Logger). For 1.21+, the driver uses the [slog.Logger](https://pkg.go.dev/log/slog#Logger). You can optionally define your own Logger. For an example, see `CustomLogger` in [logging_slog_test.go](logging_slog_test.go).
 
 
 ## Contributing
