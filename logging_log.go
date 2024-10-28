@@ -12,7 +12,11 @@ import (
 )
 
 type Logger interface {
+	Debug(msg string)
 	Info(msg string)
+	Warn(msg string)
+	Error(msg string)
+	
 	LogResponse(ctx context.Context, requestBody []byte, r *http.Response)
 }
 
