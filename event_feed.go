@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 )
 
+// EventFeed represents an event feed subscription.
 type EventFeed struct {
 	client *Client
 

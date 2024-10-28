@@ -440,6 +440,7 @@ func (c *Client) setHeader(key, val string) {
 	c.headers[key] = val
 }
 
+// FeedFromQuery opens an event feed from the event source returned by the [fauna.Query].
 func (c *Client) FeedFromQuery(fql *Query, opts ...QueryOptFn) (*EventFeed, error) {
 	res, err := c.Query(fql, opts...)
 	if err != nil {
@@ -454,6 +455,7 @@ func (c *Client) FeedFromQuery(fql *Query, opts ...QueryOptFn) (*EventFeed, erro
 	return newEventFeed(c, token)
 }
 
+// FeedFromQueryWithOptions initiates an event from the event source returned by the [fauna.Query] with custom options
 func (c *Client) FeedFromQueryWithOptions(fql *Query, feedOpts []FeedOptFn, opts ...QueryOptFn) (*EventFeed, error) {
 	res, err := c.Query(fql, opts...)
 	if err != nil {
@@ -468,6 +470,7 @@ func (c *Client) FeedFromQueryWithOptions(fql *Query, feedOpts []FeedOptFn, opts
 	return newEventFeed(c, token, feedOpts...)
 }
 
+// Feed opens an event feed from the event source
 func (c *Client) Feed(stream EventSource, opts ...FeedOptFn) (*EventFeed, error) {
 	return newEventFeed(c, stream, opts...)
 }
