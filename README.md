@@ -283,23 +283,17 @@ func main() {
 
 ## Event Streaming
 
-The driver supports [Event
-Streaming](https://docs.fauna.com/fauna/current/learn/cdc/#event-streaming).
+The driver supports [Event Streaming](https://docs.fauna.com/fauna/current/reference/cdc/).
+
 
 ### Start a stream
 
-An Event Stream lets you consume events from an [event
-source](https://docs.fauna.com/fauna/current/learn/cdc/#create-an-event-source)
-as a real-time subscription.
+To get a stream token, append
+[`eventSource()`](https://docs.fauna.com/fauna/current/reference/fql-api/schema-entities/set/eventsource/)
+or [`changesOn()`](https://docs.fauna.com/fauna/current/reference/fql-api/schema-entities/set/changeson/)
+to a set from a [supported source](https://docs.fauna.com/fauna/current/reference/streaming_reference/#supported-sources).
 
-To get an event, append
-[`eventSource()`](https://docs.fauna.com/fauna/current/reference/reference/schema_entities/set/eventsource)
-or
-[`eventsOn()`](https://docs.fauna.com/fauna/current/reference/reference/schema_entities/set/eventson)
-to a [supported Set](https://docs.fauna.com/fauna/current/reference/cdc/#sets).
-
-To start and subscribe to the stream, pass a query that produces an event source
-to `StreamFromQuery()`:
+To start and subscribe to the stream, pass a query that produces a stream source to `StreamFromQuery()`:
 
 ```go
 type Product struct {
@@ -340,12 +334,9 @@ func main() {
 }
 ```
 
-In query results, the driver represents event sources as `fauna.EventSource`
-values.
+In query results, the driver represents an eventSource as `fauna.EventSource` values.
 
-To start a stream from a query result, call `Stream()` and pass the
-`fauna.EventSource`. This lets you output a stream alongside normal query
-results:
+To start a stream from a query result, call `Stream()` and pass the `fauna.EventSource`.
 
 ```go
 type Product struct {
@@ -364,7 +355,7 @@ func main() {
 		let products = Product.all()
 		{
 			Products: products.toArray(),
-			Stream: products.eventSource()
+			Source: products.eventSource()
 		}
 	`, nil)
 
@@ -375,7 +366,7 @@ func main() {
 
 	queryResult := struct {
 		Products []Product
-		Stream   fauna.EventSource
+		Source fauna.EventSource
 	}{}
 
 	if err := data.Unmarshal(&queryResult); err != nil {
@@ -387,7 +378,7 @@ func main() {
 		fmt.Println(product)
 	}
 
-	events, err := client.Stream(queryResult.Stream)
+	events, err := client.Stream(queryResult.Source)
 	if err != nil {
 		panic(err)
 	}
@@ -412,32 +403,36 @@ func main() {
 }
 ```
 
+
 ### Stream options
 
 The [client configuration](#client-configuration) sets default query options for
-`StreamFromQuery()` and `Stream()`.
+`Stream()`. To override these options, see [query options](#query-options).
 
-The `StreamFromQuery()` and `Stream()` methods accept
-[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v2#StreamOptFn)
-functions as arguments.
+Use `StreamFromQuery()` to set `fauna.StartTime` and `fauna.EventCursor`
+stream options:
 
-Use `fauna.StartTime()` to restart a stream at a specific timestamp:
-
-```go
-streamQuery, _ := fauna.FQL(`Product.all().eventSource()`, nil)
-client.StreamFromQuery(streamQuery, nil, fauna.StartTime(1710968002310000))
-```
-
-Use `fauna.EventCursor()` to resume a stream after a disconnect:
+Use `fauna.StartTime` to restart a stream at a specific timestamp.
 
 ```go
 streamQuery, _ := fauna.FQL(`Product.all().eventSource()`, nil)
-client.StreamFromQuery(streamQuery, nil, fauna.EventCursor("abc2345=="))
+client.StreamFromQuery(streamQuery, fauna.StreamOptFn{
+    fauna.StartTime(1710968002310000),
+})
 ```
 
-For supported functions, see
-[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v2#StreamOptFn) in
-the API reference.
+Use `fauna.EventCursor` to resume a stream after a disconnect:
+
+```go
+client.StreamFromQuery(streamQuery, fauna.StreamOptFn{
+    fauna.EventCursor("<cursor>"),
+})
+```
+
+| Function | Description |
+| -------- | ----------- |
+| `fauna.StartTime`  | Sets the stream start time. Accepts an `int64` representing the start time in microseconds since the Unix epoch.<br><br>The start time must be later than the creation time of the stream token. The period between the stream restart and the start time argument can't exceed the `history_days` value for source set's collection. If a collection's `history_days` is `0` or unset, the period can't exceed 15 minutes. |
+| `fauna.EventCursor`  | Resumes the stream after the given event cursor. Accepts a `string` representation of the cursor retrieved from a `fauna.Event`. |
 
 ## Debug logging
 
