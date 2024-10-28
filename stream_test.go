@@ -1,6 +1,7 @@
 package fauna_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/fauna/fauna-go/v3"
@@ -27,11 +28,13 @@ func TestStreaming(t *testing.T) {
 	}
 
 	t.Run("single-step streaming", func(t *testing.T) {
-		t.Run("Stream events", func(t *testing.T) {
+		t.Run("StreamFromQuery events", func(t *testing.T) {
 			streamQ, _ := fauna.FQL(`StreamingTest.all().toStream()`, nil)
-			events, err := client.Stream(streamQ)
+			events, err := client.StreamFromQuery(streamQ, nil)
 			require.NoError(t, err)
-			defer events.Close()
+			defer func() {
+				_ = events.Close()
+			}()
 
 			var event fauna.Event
 			err = events.Next(&event)
@@ -41,24 +44,26 @@ func TestStreaming(t *testing.T) {
 
 		t.Run("Fails on non-streamable values", func(t *testing.T) {
 			streamQ, _ := fauna.FQL(`"I'm a string"`, nil)
-			events, err := client.Stream(streamQ)
-			require.ErrorContains(t, err, "expected query to return a fauna.Stream but got string")
+			events, err := client.StreamFromQuery(streamQ, nil)
+			require.ErrorContains(t, err, "query should return a fauna.EventSource but got string")
 			require.Nil(t, events)
 		})
 	})
 
 	t.Run("multi-step streaming", func(t *testing.T) {
-		t.Run("Stream events", func(t *testing.T) {
+		t.Run("StreamFromQuery events", func(t *testing.T) {
 			streamQ, _ := fauna.FQL(`StreamingTest.all().toStream()`, nil)
 			res, err := client.Query(streamQ)
 			require.NoError(t, err)
 
-			var stream fauna.Stream
+			var stream fauna.EventSource
 			require.NoError(t, res.Unmarshal(&stream))
 
-			events, err := client.Subscribe(stream)
+			events, err := client.Stream(stream)
 			require.NoError(t, err)
-			defer events.Close()
+			defer func() {
+				_ = events.Close()
+			}()
 
 			var event fauna.Event
 			err = events.Next(&event)
@@ -80,7 +85,7 @@ func TestStreaming(t *testing.T) {
 		})
 
 		t.Run("Handle subscription errors", func(t *testing.T) {
-			events, err := client.Subscribe(fauna.Stream("abc1234=="))
+			events, err := client.Stream("abc1234==")
 			require.IsType(t, err, &fauna.ErrInvalidRequest{})
 			require.Nil(t, events)
 		})
@@ -90,12 +95,14 @@ func TestStreaming(t *testing.T) {
 			res, err := client.Query(streamQ)
 			require.NoError(t, err)
 
-			var stream fauna.Stream
+			var stream fauna.EventSource
 			require.NoError(t, res.Unmarshal(&stream))
 
-			events, err := client.Subscribe(stream)
+			events, err := client.Stream(stream)
 			require.NoError(t, err)
-			defer events.Close()
+			defer func() {
+				_ = events.Close()
+			}()
 
 			var event fauna.Event
 			err = events.Next(&event)
@@ -109,7 +116,8 @@ func TestStreaming(t *testing.T) {
 			err = events.Next(&event)
 			require.IsType(t, err, &fauna.ErrEvent{})
 
-			evErr := err.(*fauna.ErrEvent)
+			var evErr *fauna.ErrEvent
+			require.True(t, errors.As(err, &evErr))
 			require.Equal(t, "abort", evErr.Code)
 			require.Equal(t, "Query aborted.", evErr.Message)
 
@@ -124,7 +132,7 @@ func TestStreaming(t *testing.T) {
 			res, err := client.Query(streamQ)
 			require.NoError(t, err)
 
-			var stream fauna.Stream
+			var stream fauna.EventSource
 			require.NoError(t, res.Unmarshal(&stream))
 
 			createFooQ, _ := fauna.FQL(`StreamingTest.create({ foo: 'foo' })`, nil)
@@ -136,9 +144,11 @@ func TestStreaming(t *testing.T) {
 			bar, err := client.Query(createBarQ)
 			require.NoError(t, err)
 
-			events, err := client.Subscribe(stream, fauna.StartTime(foo.TxnTime))
+			events, err := client.Stream(stream, fauna.StartTime(foo.TxnTime))
 			require.NoError(t, err)
-			defer events.Close()
+			defer func() {
+				_ = events.Close()
+			}()
 
 			var event fauna.Event
 			err = events.Next(&event)
@@ -157,12 +167,14 @@ func TestStreaming(t *testing.T) {
 			res, err := client.Query(streamQ)
 			require.NoError(t, err)
 
-			var stream fauna.Stream
+			var stream fauna.EventSource
 			require.NoError(t, res.Unmarshal(&stream))
 
-			events, err := client.Subscribe(stream)
+			events, err := client.Stream(stream)
 			require.NoError(t, err)
-			defer events.Close()
+			defer func() {
+				_ = events.Close()
+			}()
 
 			createFooQ, _ := fauna.FQL(`StreamingTest.create({ foo: 'foo' })`, nil)
 			createBarQ, _ := fauna.FQL(`StreamingTest.create({ foo: 'bar' })`, nil)
@@ -182,11 +194,13 @@ func TestStreaming(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, fauna.AddEvent, event.Type)
 			require.Equal(t, foo.TxnTime, event.TxnTime)
-			events.Close()
+			_ = events.Close()
 
-			events, err = client.Subscribe(stream, fauna.EventCursor(event.Cursor))
+			events, err = client.Stream(stream, fauna.EventCursor(event.Cursor))
 			require.NoError(t, err)
-			defer events.Close()
+			defer func() {
+				_ = events.Close()
+			}()
 
 			err = events.Next(&event)
 			require.NoError(t, err)

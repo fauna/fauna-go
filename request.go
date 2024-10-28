@@ -140,7 +140,7 @@ func (qReq *queryRequest) do(cli *Client) (qSus *QuerySuccess, err error) {
 
 type streamRequest struct {
 	apiRequest
-	Stream  Stream
+	Stream  EventSource
 	StartTS int64
 	Cursor  string
 }

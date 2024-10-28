@@ -99,7 +99,7 @@ func (p Page) Unmarshal(into any) error {
 	return decodeInto(p.Data, into)
 }
 
-type Stream string
+type EventSource string
 
 func mapDecoder(into any) (*mapstructure.Decoder, error) {
 	return mapstructure.NewDecoder(&mapstructure.DecoderConfig{
@@ -411,7 +411,7 @@ func unboxSet(v any) (any, error) {
 
 func unboxStream(v any) (any, error) {
 	if token, ok := v.(string); ok {
-		return Stream(token), nil
+		return EventSource(token), nil
 	} else {
 		return nil, fmt.Errorf("invalid stream %v", v)
 	}
@@ -491,7 +491,7 @@ func encode(v any, hint string) (any, error) {
 	case Page:
 		return encodeFaunaStruct(typeTagSet, vt)
 
-	case Stream:
+	case EventSource:
 		return map[typeTag]any{typeTagStream: vt}, nil
 
 	case time.Time:

@@ -2,6 +2,7 @@ package fauna
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 )
@@ -23,7 +24,7 @@ const (
 
 // Event represents a streaming event.
 //
-// Events of type [fauna.StatusEvent] have its [fauna.Event.Data] field set to
+// EventStream of type [fauna.StatusEvent] have its [fauna.Event.Data] field set to
 // nil. Other event's [fauna.Data] can be unmarshaled via the
 // [fauna.Event.Unmarshal] method.
 type Event struct {
@@ -48,7 +49,7 @@ func (e *Event) Unmarshal(into any) error {
 // ErrEvent contains error information present in error events.
 //
 // Error events with "abort" code contain its aborting value present in the
-// [fauan.ErrEvent.Abort]. The aborting values can be unmarshaled with the
+// [fauna.ErrEvent.Abort]. The aborting values can be unmarshaled with the
 // [fauna.ErrEvent.Unmarshal] method.
 type ErrEvent struct {
 	// Code is the error's code.
@@ -73,39 +74,37 @@ func (e *ErrEvent) Unmarshal(into any) error {
 	return decodeInto(e.Abort, into)
 }
 
-// Events is an iterator of Fauna events.
+// EventStream is an iterator of Fauna events.
 //
 // The next available event can be obtained by calling the
-// [fauna.Events.Next] method. Note this method blocks until the next
+// [fauna.EventStream.Next] method. Note this method blocks until the next
 // event is available or the events iterator is closed via the
-// [fauna.Events.Close] method.
+// [fauna.EventStream.Close] method.
 //
 // The events iterator wraps an [http.Response.Body] reader. As per Go's current
 // [http.Response] implementation, environments using HTTP/1.x may not reuse its
 // TCP connections for the duration of its "keep-alive" time if response body is
 // not read to completion and closed. By default, Fauna's region groups use the
-// HTTP/2.x protocol where this restriction don't apply. However, if connecting
+// HTTP/2.x protocol where this restriction doesn't apply. However, if connecting
 // to Fauna via an HTTP/1.x proxy, be aware of the events iterator closing time.
-//
-// Deprecated: will be replaced in future versions
-type Events struct {
+type EventStream struct {
 	client     *Client
-	stream     Stream
+	stream     EventSource
 	byteStream io.ReadCloser
 	decoder    *json.Decoder
 	lastCursor string
 	closed     bool
 }
 
-func subscribe(client *Client, stream Stream, opts ...StreamOptFn) (*Events, error) {
-	events := &Events{client: client, stream: stream}
+func subscribe(client *Client, stream EventSource, opts ...StreamOptFn) (*EventStream, error) {
+	events := &EventStream{client: client, stream: stream}
 	if err := events.reconnect(opts...); err != nil {
 		return nil, err
 	}
 	return events, nil
 }
 
-func (es *Events) reconnect(opts ...StreamOptFn) error {
+func (es *EventStream) reconnect(opts ...StreamOptFn) error {
 	req := streamRequest{
 		apiRequest: apiRequest{
 			es.client.ctx,
@@ -129,8 +128,8 @@ func (es *Events) reconnect(opts ...StreamOptFn) error {
 	return nil
 }
 
-// Close gracefully closes the events iterator. See [fauna.Events] for details.
-func (es *Events) Close() (err error) {
+// Close gracefully closes the events iterator. See [fauna.EventStream] for details.
+func (es *EventStream) Close() (err error) {
 	if !es.closed {
 		es.closed = true
 		err = es.byteStream.Close()
@@ -152,20 +151,22 @@ type rawEvent = struct {
 // Note that network errors of type [fauna.ErrEvent] are considered fatal and
 // close the underlying stream. Calling next after an error event occurs will
 // return an error.
-func (es *Events) Next(event *Event) (err error) {
+func (es *EventStream) Next(event *Event) (err error) {
 	raw := rawEvent{}
 	if err = es.decoder.Decode(&raw); err == nil {
 		es.onNextEvent(&raw)
 		err = convertRawEvent(&raw, event)
-		if _, ok := err.(*ErrEvent); ok {
-			es.Close() // no more events are coming
+		var errEvent *ErrEvent
+		if errors.As(err, &errEvent) {
+			_ = es.Close() // no more events are coming
 		}
 	} else if !es.closed {
 		// NOTE: This code tries to resume streams on network and IO errors. It
 		// presumes that if the service is unavailable, the reconnect call will
 		// fail. Automatic retries and backoff mechanisms are implemented at the
 		// Client level.
-		if _, ok := err.(net.Error); ok || err == io.EOF || err == io.ErrUnexpectedEOF {
+		var netError net.Error
+		if errors.As(err, &netError) || err == io.EOF || errors.Is(err, io.ErrUnexpectedEOF) {
 			if err = es.reconnect(); err == nil {
 				err = es.Next(event)
 			}
@@ -174,7 +175,7 @@ func (es *Events) Next(event *Event) (err error) {
 	return
 }
 
-func (es *Events) onNextEvent(event *rawEvent) {
+func (es *EventStream) onNextEvent(event *rawEvent) {
 	es.client.lastTxnTime.sync(event.TxnTime)
 	es.lastCursor = event.Cursor
 }

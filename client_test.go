@@ -11,6 +11,7 @@ import (
 
 	"github.com/fauna/fauna-go/v3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDefaultClient(t *testing.T) {
@@ -29,9 +30,7 @@ func TestDefaultClient(t *testing.T) {
 			query, _ := fauna.FQL(`${arg0}.length`, map[string]any{"arg0": s})
 
 			res, queryErr := client.Query(query)
-			if !assert.NoError(t, queryErr) {
-				return
-			}
+			require.NoError(t, queryErr)
 
 			var i int
 			marshalErr := res.Unmarshal(&i)
@@ -258,7 +257,7 @@ func TestBasicCRUDRequests(t *testing.T) {
 	}
 
 	coll := fmt.Sprintf("Person_%v", randomString(12))
-	collMod := &fauna.Module{coll}
+	collMod := &fauna.Module{Name: coll}
 
 	t.Run("Create a collection", func(t *testing.T) {
 		q, _ := fauna.FQL(`Collection.create({ name: ${name} })`, map[string]any{"name": coll})
