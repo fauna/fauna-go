@@ -418,7 +418,7 @@ The [client configuration](#client-configuration) sets default query options for
 `Stream()`. To override these options, see [query
 
 The `Subscribe()` method accepts the `fauna.StartTime` and `fauna.EventCursor`
-[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v2#StreamOptFn)
+[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v3#StreamOptFn)
 functions as arguments.
 
 Use `fauna.StartTime()` to restart a stream at a specific timestamp:
@@ -436,7 +436,7 @@ client.StreamFromQuery(streamQuery, nil, fauna.EventCursor("abc2345=="))
 ```
 
 For supported functions, see
-[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v2#StreamOptFn) in
+[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v3#StreamOptFn) in
 the API reference.
 
 ## Debug logging
