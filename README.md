@@ -340,11 +340,11 @@ func main() {
 }
 ```
 
-In query results, the driver represents stream tokens as `fauna.Stream`
+In query results, the driver represents event sources as `fauna.EventSource`
 values.
 
-To start a stream from a query result, call `Subscribe()` on a
-`fauna.Stream` value. This lets you output a stream alongside normal query
+To start a stream from a query result, call `Stream()` and pass the
+`fauna.EventSource`. This lets you output a stream alongside normal query
 results:
 
 ```go
@@ -415,10 +415,10 @@ func main() {
 ### Stream options
 
 The [client configuration](#client-configuration) sets default query options for
-`Stream()`. To override these options, see [query
+`StreamFromQuery()` and `Stream()`.
 
-The `Subscribe()` method accepts the `fauna.StartTime` and `fauna.EventCursor`
-[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v3#StreamOptFn)
+The `StreamFromQuery()` and `Stream()` methods accept
+[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v2#StreamOptFn)
 functions as arguments.
 
 Use `fauna.StartTime()` to restart a stream at a specific timestamp:
@@ -436,13 +436,16 @@ client.StreamFromQuery(streamQuery, nil, fauna.EventCursor("abc2345=="))
 ```
 
 For supported functions, see
-[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v3#StreamOptFn) in
+[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v2#StreamOptFn) in
 the API reference.
-
-## Debug logging
 
 ## Event Feeds (beta)
 
+The driver supports [Event Feeds](https://docs.fauna.com/fauna/current/learn/track-changes/streaming/#change-feeds) see [example](event_feed_example_test.go).
+
+## Debug logging
+
+To enable debug logging set the `FAUNA_DEBUG` environment variable to an integer for the value of the desired [slog.Level](https://pkg.go.dev/log/slog#Level).
 For Go versions 1.21 and earlier, the driver uses a [log.Logger](https://pkg.go.dev/log#Logger).
 For 1.22+, the driver uses the [slog.Logger](https://pkg.go.dev/log/slog#Logger).
 You can optionally define your own Logger.
