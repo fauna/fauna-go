@@ -61,10 +61,8 @@ func (d ClientLogger) LogResponse(ctx context.Context, requestBody []byte, r *ht
 	}
 
 	headers := r.Request.Header
-	if d.level > -4 {
-		if _, found := headers["Authorization"]; found {
-			headers["Authorization"] = []string{"hidden"}
-		}
+	if _, found := headers["Authorization"]; found {
+		headers["Authorization"] = []string{"hidden"}
 	}
 
 	d.Debug(fmt.Sprintf("Request Body: %s", string(requestBody)))

@@ -68,11 +68,10 @@ func (d ClientLogger) LogResponse(ctx context.Context, requestBody []byte, r *ht
 		slog.Int("status", r.StatusCode))
 
 	headers := r.Request.Header
-	if !d.logger.Enabled(ctx, slog.LevelDebug) {
-		if _, found := headers["Authorization"]; found {
-			headers["Authorization"] = []string{"hidden"}
-		}
-	} else {
+	if _, found := headers["Authorization"]; found {
+		headers["Authorization"] = []string{"hidden"}
+	}
+	if d.logger.Enabled(ctx, slog.LevelDebug) {
 		requestLogger = requestLogger.With(
 			slog.String("requestBody", string(requestBody)),
 		)
