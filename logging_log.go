@@ -16,7 +16,6 @@ type Logger interface {
 	Info(msg string)
 	Warn(msg string)
 	Error(msg string)
-	
 	LogResponse(ctx context.Context, requestBody []byte, r *http.Response)
 }
 
