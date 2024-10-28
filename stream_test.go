@@ -3,7 +3,7 @@ package fauna_test
 import (
 	"testing"
 
-	"github.com/fauna/fauna-go/v2"
+	"github.com/fauna/fauna-go/v3"
 	"github.com/stretchr/testify/require"
 )
 

@@ -1,7 +1,7 @@
 # Official Golang Driver for [Fauna v10](https://fauna.com/) (current)
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/fauna/fauna-go)](https://goreportcard.com/report/github.com/fauna/fauna-go)
-[![Go Reference](https://pkg.go.dev/badge/github.com/fauna/fauna-go.svg)](https://pkg.go.dev/github.com/fauna/fauna-go/v2)
+[![Go Reference](https://pkg.go.dev/badge/github.com/fauna/fauna-go.svg)](https://pkg.go.dev/github.com/fauna/fauna-go/v3)
 [![License](https://img.shields.io/badge/license-MPL_2.0-blue.svg?maxAge=2592000)](https://raw.githubusercontent.com/fauna/fauna-go/main/LICENSE)
 
 This driver can only be used with FQL v10, and is not compatible with earlier versions of FQL. To query your databases with earlier API versions, see the [faunadb](https://pkg.go.dev/github.com/fauna/faunadb-go/v4) version.
@@ -19,7 +19,7 @@ Currently, the driver is tested on:
 
 ## API reference
 
-API reference documentation for the driver is available on [pkg.go.dev](https://pkg.go.dev/github.com/fauna/fauna-go/v2#section-documentation).
+API reference documentation for the driver is available on [pkg.go.dev](https://pkg.go.dev/github.com/fauna/fauna-go/v3#section-documentation).
 
 ## Using the Driver
 
@@ -34,7 +34,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/fauna/fauna-go/v2"
+	"github.com/fauna/fauna-go/v3"
 )
 
 func main() {
@@ -66,7 +66,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/fauna/fauna-go/v2"
+	"github.com/fauna/fauna-go/v3"
 )
 
 type Dog struct {
@@ -108,7 +108,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/fauna/fauna-go/v2"
+	"github.com/fauna/fauna-go/v3"
 )
 
 func addTwo(x int) *fauna.Query {
@@ -147,7 +147,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/fauna/fauna-go/v2"
+	"github.com/fauna/fauna-go/v3"
 )
 
 type Product struct {
@@ -195,7 +195,7 @@ The timeout of each query. This controls the maximum amount of time Fauna will e
 ```go
 package main
 
-import "github.com/fauna/fauna-go/v2"
+import "github.com/fauna/fauna-go/v3"
 
 func main() {
 	client := fauna.NewClient("mysecret", fauna.Timeouts{QueryTimeout: 20 * time.Second})
@@ -209,7 +209,7 @@ Time beyond `QueryTimeout` at which the client will abort a request if it has no
 ```go
 package main
 
-import "github.com/fauna/fauna-go/v2"
+import "github.com/fauna/fauna-go/v3"
 
 func main() {
 	client := fauna.NewClient("mysecret", fauna.Timeouts{ClientBufferTimeout: 20 * time.Second})
@@ -223,7 +223,7 @@ The amount of time to wait for the connection to complete.
 ```go
 package main
 
-import "github.com/fauna/fauna-go/v2"
+import "github.com/fauna/fauna-go/v3"
 
 func main() {
 	client := fauna.NewClient("mysecret", fauna.Timeouts{ConnectionTimeout: 10 * time.Second})
@@ -237,7 +237,7 @@ The maximum amount of time an idle (keep-alive) connection will remain idle befo
 ```go
 package main
 
-import "github.com/fauna/fauna-go/v2"
+import "github.com/fauna/fauna-go/v3"
 
 func main() {
 	client := fauna.NewClient("mysecret", fauna.Timeouts{IdleConnectionTimeout: 10 * time.Second})
@@ -255,7 +255,7 @@ The maximum number of times the client will try a query. The default is 3.
 ```go
 package main
 
-import "github.com/fauna/fauna-go/v2"
+import "github.com/fauna/fauna-go/v3"
 
 func main() {
 	client := fauna.NewClient("mysecret", fauna.DefaultTimeouts(), fauna.MaxAttempts(1))
@@ -272,7 +272,7 @@ package main
 import (
 	"time"
 
-	"github.com/fauna/fauna-go/v2"
+	"github.com/fauna/fauna-go/v3"
 )
 
 func main() {
