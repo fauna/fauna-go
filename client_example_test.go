@@ -341,7 +341,7 @@ func ExampleClient_StreamFromQuery() {
 	}
 
 	// create a stream
-	streamQuery, _ := fauna.FQL(`StreamingSandbox.all().toStream()`, nil)
+	streamQuery, _ := fauna.FQL(`StreamingSandbox.all().eventSource()`, nil)
 	events, err := client.StreamFromQuery(streamQuery, nil)
 	if err != nil {
 		log.Fatalf("failed to subscribe to the stream value: %s", err)
@@ -413,7 +413,7 @@ func ExampleClient_Stream() {
 	}
 
 	// create a stream
-	streamQuery, _ := fauna.FQL(`StreamingSandbox.all().toStream()`, nil)
+	streamQuery, _ := fauna.FQL(`StreamingSandbox.all().eventSource()`, nil)
 	result, err := client.Query(streamQuery)
 	if err != nil {
 		log.Fatalf("failed to create a stream: %s", err)

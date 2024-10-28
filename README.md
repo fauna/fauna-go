@@ -283,8 +283,8 @@ func main() {
 
 ## Event Streaming
 
-The driver supports [Event
-Streaming](https://docs.fauna.com/fauna/current/learn/cdc/#event-streaming).
+The driver supports [Event Streaming](https://docs.fauna.com/fauna/current/reference/cdc/).
+
 
 ### Start a stream
 
@@ -292,14 +292,12 @@ An Event Stream lets you consume events from an [event
 source](https://docs.fauna.com/fauna/current/learn/cdc/#create-an-event-source)
 as a real-time subscription.
 
-To get an event, append
-[`eventSource()`](https://docs.fauna.com/fauna/current/reference/reference/schema_entities/set/eventsource)
-or
-[`eventsOn()`](https://docs.fauna.com/fauna/current/reference/reference/schema_entities/set/eventson)
+To get an event source, append
+[`eventSource()`](https://docs.fauna.com/fauna/current/reference/fql-api/schema-entities/set/eventsource/)
+or [`eventsOn()`](https://docs.fauna.com/fauna/current/reference/reference/schema_entities/set/eventsource)
 to a [supported Set](https://docs.fauna.com/fauna/current/reference/cdc/#sets).
 
-To start and subscribe to the stream, pass a query that produces an event source
-to `StreamFromQuery()`:
+To start and subscribe to the stream, pass a query that produces an event source to `StreamFromQuery()`:
 
 ```go
 type Product struct {
@@ -340,12 +338,10 @@ func main() {
 }
 ```
 
-In query results, the driver represents event sources as `fauna.EventSource`
-values.
+In query results, the driver represents an event source as a `fauna.EventSource` value.
 
-To start a stream from a query result, call `Stream()` and pass the
-`fauna.EventSource`. This lets you output a stream alongside normal query
-results:
+To start a stream from a query result, call `Stream()` and pass the `fauna.EventSource`.
+This lets you output a stream alongside normal query results:
 
 ```go
 type Product struct {
@@ -364,7 +360,7 @@ func main() {
 		let products = Product.all()
 		{
 			Products: products.toArray(),
-			Stream: products.eventSource()
+			Source: products.eventSource()
 		}
 	`, nil)
 
@@ -375,7 +371,7 @@ func main() {
 
 	queryResult := struct {
 		Products []Product
-		Stream   fauna.EventSource
+		Source fauna.EventSource
 	}{}
 
 	if err := data.Unmarshal(&queryResult); err != nil {
@@ -387,7 +383,7 @@ func main() {
 		fmt.Println(product)
 	}
 
-	events, err := client.Stream(queryResult.Stream)
+	events, err := client.Stream(queryResult.Source)
 	if err != nil {
 		panic(err)
 	}
@@ -412,10 +408,11 @@ func main() {
 }
 ```
 
+
 ### Stream options
 
 The [client configuration](#client-configuration) sets default query options for
-`StreamFromQuery()` and `Stream()`.
+`StreamFromQuery()` and `Stream()`. To override these options, see [query options](#query-options).
 
 The `StreamFromQuery()` and `Stream()` methods accept
 [StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v2#StreamOptFn)
@@ -425,14 +422,17 @@ Use `fauna.StartTime()` to restart a stream at a specific timestamp:
 
 ```go
 streamQuery, _ := fauna.FQL(`Product.all().eventSource()`, nil)
-client.StreamFromQuery(streamQuery, nil, fauna.StartTime(1710968002310000))
+client.StreamFromQuery(streamQuery, fauna.StreamOptFn{
+    fauna.StartTime(1710968002310000),
+})
 ```
 
-Use `fauna.EventCursor()` to resume a stream after a disconnect:
+Use `fauna.EventCursor()` to resume a stream from an event cursor after a disconnect:
 
 ```go
-streamQuery, _ := fauna.FQL(`Product.all().eventSource()`, nil)
-client.StreamFromQuery(streamQuery, nil, fauna.EventCursor("abc2345=="))
+client.StreamFromQuery(streamQuery, fauna.StreamOptFn{
+    fauna.EventCursor("<cursor>"),
+})
 ```
 
 For supported functions, see

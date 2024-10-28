@@ -29,7 +29,7 @@ func TestStreaming(t *testing.T) {
 
 	t.Run("single-step streaming", func(t *testing.T) {
 		t.Run("StreamFromQuery events", func(t *testing.T) {
-			streamQ, _ := fauna.FQL(`StreamingTest.all().toStream()`, nil)
+			streamQ, _ := fauna.FQL(`StreamingTest.all().eventSource()`, nil)
 			events, err := client.StreamFromQuery(streamQ, nil)
 			require.NoError(t, err)
 			defer func() {
@@ -52,7 +52,7 @@ func TestStreaming(t *testing.T) {
 
 	t.Run("multi-step streaming", func(t *testing.T) {
 		t.Run("StreamFromQuery events", func(t *testing.T) {
-			streamQ, _ := fauna.FQL(`StreamingTest.all().toStream()`, nil)
+			streamQ, _ := fauna.FQL(`StreamingTest.all().eventSource()`, nil)
 			res, err := client.Query(streamQ)
 			require.NoError(t, err)
 
@@ -91,7 +91,7 @@ func TestStreaming(t *testing.T) {
 		})
 
 		t.Run("Handle error events", func(t *testing.T) {
-			streamQ, _ := fauna.FQL(`StreamingTest.all().map(doc => abort('oops')).toStream()`, nil)
+			streamQ, _ := fauna.FQL(`StreamingTest.all().map(doc => abort('oops')).eventSource()`, nil)
 			res, err := client.Query(streamQ)
 			require.NoError(t, err)
 
@@ -128,7 +128,7 @@ func TestStreaming(t *testing.T) {
 		})
 
 		t.Run("Resume a stream at a given start time", func(t *testing.T) {
-			streamQ, _ := fauna.FQL(`StreamingTest.all().toStream()`, nil)
+			streamQ, _ := fauna.FQL(`StreamingTest.all().eventSource()`, nil)
 			res, err := client.Query(streamQ)
 			require.NoError(t, err)
 
@@ -163,7 +163,7 @@ func TestStreaming(t *testing.T) {
 		})
 
 		t.Run("Resume a stream at a given event cursor", func(t *testing.T) {
-			streamQ, _ := fauna.FQL(`StreamingTest.all().toStream()`, nil)
+			streamQ, _ := fauna.FQL(`StreamingTest.all().eventSource()`, nil)
 			res, err := client.Query(streamQ)
 			require.NoError(t, err)
 
