@@ -21,8 +21,6 @@ jobs:
         image: fauna/faunadb:latest
         ports:
           - 8443:8443
-        env:
-          FLAG_ACCOUNT_CHANGE_FEEDS: true
     strategy:
       matrix:
         go: [ '1.23', '1.22', '1.21', '1.20', '1.19' ]
