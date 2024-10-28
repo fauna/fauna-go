@@ -92,6 +92,11 @@ func URL(url string) ClientConfigFn {
 	return func(c *Client) { c.url = url }
 }
 
+// WithLogger set the [fauna.Client] Logger
+func WithLogger(logger Logger) ClientConfigFn {
+	return func(c *Client) { c.logger = logger }
+}
+
 // QueryOptFn function to set options on the [Client.Query]
 type QueryOptFn func(req *queryRequest)
 

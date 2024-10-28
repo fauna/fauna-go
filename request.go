@@ -40,6 +40,8 @@ func (apiReq *apiRequest) post(cli *Client, url *url.URL, bytesOut []byte) (atte
 	if attempts, httpRes, err = cli.doWithRetry(httpReq); err != nil {
 		err = ErrNetwork(fmt.Errorf("network error: %w", err))
 	}
+	cli.logger.LogResponse(cli.ctx, bytesOut, httpRes)
+
 	return
 }
 
@@ -112,6 +114,7 @@ func (qReq *queryRequest) do(cli *Client) (qSus *QuerySuccess, err error) {
 	if qRes, err = parseQueryResponse(httpRes); err != nil {
 		return
 	}
+	cli.logger.LogResponse(cli.ctx, bytesOut, httpRes)
 
 	cli.lastTxnTime.sync(qRes.TxnTime)
 	qRes.Header = httpRes.Header
@@ -161,6 +164,7 @@ func (streamReq *streamRequest) do(cli *Client) (bytes io.ReadCloser, err error)
 	if attempts, httpRes, err = streamReq.post(cli, streamURL, bytesOut); err != nil {
 		return
 	}
+	cli.logger.LogResponse(cli.ctx, bytesOut, httpRes)
 
 	if httpRes.StatusCode != http.StatusOK {
 		var qRes *queryResponse
