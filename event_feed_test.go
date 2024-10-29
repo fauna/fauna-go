@@ -92,7 +92,7 @@ func TestEventFeed(t *testing.T) {
 		eventSource = getEventSource(t, client)
 		require.NotNil(t, eventSource, "failed to get an EventSource")
 
-		feed, feedErr = client.FeedWithStartTime(eventSource, fauna.EventFeedStartTime(time.Now().Add(-time.Minute*10).UnixMicro()))
+		feed, feedErr = client.FeedWithStartTime(eventSource, time.Now().Add(-time.Minute*10))
 		require.NoError(t, feedErr, "failed to init events feed")
 
 		feedRes, eventsErr := feed.Events()

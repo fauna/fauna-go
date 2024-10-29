@@ -453,23 +453,13 @@ func (c *Client) FeedFromQuery(fql *Query, opts ...QueryOptFn) (*EventFeed, erro
 }
 
 // FeedFromQueryWithStartTime initiates an event from the event source returned by the [fauna.Query] with custom options
-func (c *Client) FeedFromQueryWithStartTime(fql *Query, start FeedStartFn, opts ...QueryOptFn) (*EventFeed, error) {
+func (c *Client) FeedFromQueryWithStartTime(fql *Query, time time.Time, opts ...QueryOptFn) (*EventFeed, error) {
 	token, err := c.getEventSource(fql, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	return newEventFeed(c, *token, start)
-}
-
-// FeedFromQueryWithCursor initiates an event from the event source returned by the [fauna.Query] with custom options
-func (c *Client) FeedFromQueryWithCursor(fql *Query, cursor FeedStartFn, opts ...QueryOptFn) (*EventFeed, error) {
-	token, err := c.getEventSource(fql, opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return newEventFeed(c, *token, cursor)
+	return newEventFeed(c, *token, EventFeedStartTime(time.UnixMicro()))
 }
 
 // Feed opens an event feed from the event source
@@ -478,11 +468,11 @@ func (c *Client) Feed(stream EventSource) (*EventFeed, error) {
 }
 
 // FeedWithStartTime opens an event feed from the event source with options
-func (c *Client) FeedWithStartTime(stream EventSource, start FeedStartFn) (*EventFeed, error) {
-	return newEventFeed(c, stream, start)
+func (c *Client) FeedWithStartTime(stream EventSource, start time.Time) (*EventFeed, error) {
+	return newEventFeed(c, stream, EventFeedStartTime(start.UnixMicro()))
 }
 
 // FeedWithCursor opens an event feed from the event source with options
-func (c *Client) FeedWithCursor(stream EventSource, cursor FeedStartFn) (*EventFeed, error) {
-	return newEventFeed(c, stream, cursor)
+func (c *Client) FeedWithCursor(stream EventSource, cursor string) (*EventFeed, error) {
+	return newEventFeed(c, stream, EventFeedCursor(cursor))
 }
