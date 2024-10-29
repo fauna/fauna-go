@@ -9,14 +9,14 @@ type EventFeed struct {
 	client *Client
 
 	source EventSource
-	opts   []FeedOptFn
+	opts   []FeedStartFn
 
 	decoder *json.Decoder
 
 	lastCursor string
 }
 
-func newEventFeed(client *Client, source EventSource, opts ...FeedOptFn) (*EventFeed, error) {
+func newEventFeed(client *Client, source EventSource, opts ...FeedStartFn) (*EventFeed, error) {
 	feed := &EventFeed{
 		client: client,
 		source: source,
@@ -30,7 +30,7 @@ func newEventFeed(client *Client, source EventSource, opts ...FeedOptFn) (*Event
 	return feed, nil
 }
 
-func (ef *EventFeed) open(opts ...FeedOptFn) error {
+func (ef *EventFeed) open(opts ...FeedStartFn) error {
 	req := feedRequest{
 		apiRequest: apiRequest{
 			ef.client.ctx,

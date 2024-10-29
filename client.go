@@ -428,8 +428,7 @@ func (c *Client) setHeader(key, val string) {
 	c.headers[key] = val
 }
 
-// FeedFromQuery opens an event feed from the event source returned by the [fauna.Query].
-func (c *Client) FeedFromQuery(fql *Query, opts ...QueryOptFn) (*EventFeed, error) {
+func (c *Client) getEventSource(fql *Query, opts ...QueryOptFn) (*EventSource, error) {
 	res, err := c.Query(fql, opts...)
 	if err != nil {
 		return nil, err
@@ -440,25 +439,50 @@ func (c *Client) FeedFromQuery(fql *Query, opts ...QueryOptFn) (*EventFeed, erro
 		return nil, fmt.Errorf("query should return a fauna.EventSource but got %T", res.Data)
 	}
 
-	return newEventFeed(c, token)
+	return &token, nil
 }
 
-// FeedFromQueryWithStartTime initiates an event from the event source returned by the [fauna.Query] from the given start time
-func (c *Client) FeedFromQueryWithStartTime(fql *Query, startTime time.Time, opts ...QueryOptFn) (*EventFeed, error) {
-	res, err := c.Query(fql, opts...)
+// FeedFromQuery opens an event feed from the event source returned by the [fauna.Query].
+func (c *Client) FeedFromQuery(fql *Query, opts ...QueryOptFn) (*EventFeed, error) {
+	token, err := c.getEventSource(fql, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	token, ok := res.Data.(EventSource)
-	if !ok {
-		return nil, fmt.Errorf("query should return a fauna.EventSource but got %T", res.Data)
+	return newEventFeed(c, *token)
+}
+
+// FeedFromQueryWithStartTime initiates an event from the event source returned by the [fauna.Query] with custom options
+func (c *Client) FeedFromQueryWithStartTime(fql *Query, start FeedStartFn, opts ...QueryOptFn) (*EventFeed, error) {
+	token, err := c.getEventSource(fql, opts...)
+	if err != nil {
+		return nil, err
 	}
 
-	return newEventFeed(c, token, FeedStartFn(startTime.UnixMicro()))
+	return newEventFeed(c, *token, start)
+}
+
+// FeedFromQueryWithCursor initiates an event from the event source returned by the [fauna.Query] with custom options
+func (c *Client) FeedFromQueryWithCursor(fql *Query, cursor FeedStartFn, opts ...QueryOptFn) (*EventFeed, error) {
+	token, err := c.getEventSource(fql, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return newEventFeed(c, *token, cursor)
 }
 
 // Feed opens an event feed from the event source
-func (c *Client) Feed(stream EventSource, opts ...FeedOptFn) (*EventFeed, error) {
-	return newEventFeed(c, stream, opts...)
+func (c *Client) Feed(stream EventSource) (*EventFeed, error) {
+	return newEventFeed(c, stream)
+}
+
+// FeedWithStartTime opens an event feed from the event source with options
+func (c *Client) FeedWithStartTime(stream EventSource, start FeedStartFn) (*EventFeed, error) {
+	return newEventFeed(c, stream, start)
+}
+
+// FeedWithCursor opens an event feed from the event source with options
+func (c *Client) FeedWithCursor(stream EventSource, cursor FeedStartFn) (*EventFeed, error) {
+	return newEventFeed(c, stream, cursor)
 }
