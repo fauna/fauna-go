@@ -456,7 +456,7 @@ func (c *Client) FeedFromQuery(fql *Query, opts ...QueryOptFn) (*EventFeed, erro
 }
 
 // FeedFromQueryWithOptions initiates an event from the event source returned by the [fauna.Query] with custom options
-func (c *Client) FeedFromQueryWithOptions(fql *Query, feedOpts []FeedOptFn, opts ...QueryOptFn) (*EventFeed, error) {
+func (c *Client) FeedFromQueryWithStart(fql *Query, feedStart FeedStartFn, opts ...QueryOptFn) (*EventFeed, error) {
 	res, err := c.Query(fql, opts...)
 	if err != nil {
 		return nil, err
