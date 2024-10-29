@@ -441,7 +441,7 @@ the API reference.
 
 ## Event Feeds (beta)
 
-The driver supports [Event Feeds](https://docs.fauna.com/fauna/current/learn/cdc/#event-feeds) see [example](event_feed_example_test.go).
+The driver supports [Event Feeds](https://docs.fauna.com/fauna/current/learn/cdc/#event-feeds). See [example](event_feed_example_test.go).
 
 ## Debug logging
 
