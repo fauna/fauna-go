@@ -655,7 +655,7 @@ func TestMarshalEventSourceStructs(t *testing.T) {
 				Context: context.Background(),
 				Headers: map[string]string{},
 			},
-			Stream:  "",
+			Source:  "",
 			StartTS: 0,
 			Cursor:  "",
 		})

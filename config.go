@@ -171,10 +171,6 @@ func argsStringFromMap(input map[string]string, currentArgs ...string) string {
 // FeedOptFn function to set options on the [Client.NewEventFeed]
 type FeedOptFn func(req *feedRequest)
 
-func EventFeedCursor(cursor string) FeedOptFn {
-	return func(req *feedRequest) { req.Cursor = cursor }
-}
-
-func EventFeedStartTime(ts int64) FeedOptFn {
+func FeedStartFn(ts int64) FeedOptFn {
 	return func(req *feedRequest) { req.StartTS = ts }
 }

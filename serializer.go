@@ -524,7 +524,7 @@ func encode(v any, hint string) (any, error) {
 		return out, nil
 
 	case feedRequest:
-		out := map[string]any{"token": string(vt.Stream)}
+		out := map[string]any{"token": string(vt.Source)}
 		if vt.StartTS > 0 {
 			out["start_ts"] = vt.StartTS
 		}

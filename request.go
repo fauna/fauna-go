@@ -182,7 +182,7 @@ func (streamReq *streamRequest) do(cli *Client) (bytes io.ReadCloser, err error)
 
 type feedRequest struct {
 	apiRequest
-	Stream  EventSource
+	Source  EventSource
 	StartTS int64
 	Cursor  string
 }

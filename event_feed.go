@@ -8,7 +8,7 @@ import (
 type EventFeed struct {
 	client *Client
 
-	stream EventSource
+	source EventSource
 	opts   []FeedOptFn
 
 	decoder *json.Decoder
@@ -16,27 +16,27 @@ type EventFeed struct {
 	lastCursor string
 }
 
-func newEventFeed(client *Client, token EventSource, opts ...FeedOptFn) (*EventFeed, error) {
+func newEventFeed(client *Client, source EventSource, opts ...FeedOptFn) (*EventFeed, error) {
 	feed := &EventFeed{
 		client: client,
-		stream: token,
+		source: source,
 		opts:   opts,
 	}
 
-	if err := feed.reconnect(opts...); err != nil {
+	if err := feed.open(opts...); err != nil {
 		return nil, err
 	}
 
 	return feed, nil
 }
 
-func (ef *EventFeed) reconnect(opts ...FeedOptFn) error {
+func (ef *EventFeed) open(opts ...FeedOptFn) error {
 	req := feedRequest{
 		apiRequest: apiRequest{
 			ef.client.ctx,
 			ef.client.headers,
 		},
-		Stream: ef.stream,
+		Source: ef.source,
 		Cursor: ef.lastCursor,
 	}
 
@@ -69,7 +69,7 @@ type FeedResponse struct {
 // Events return the next FeedResponse from the EventFeed
 func (ef *EventFeed) Events() (*FeedResponse, error) {
 	var response FeedResponse
-	if err := ef.reconnect(); err != nil {
+	if err := ef.open(); err != nil {
 		return nil, err
 	}
 

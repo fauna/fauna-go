@@ -197,10 +197,6 @@ func (c *Client) parseQueryURL() (*url.URL, error) {
 		}
 	}
 
-	if c.queryURL == nil {
-		return nil, fmt.Errorf("query url is not set")
-	}
-
 	return c.queryURL, nil
 }
 
@@ -213,10 +209,6 @@ func (c *Client) parseStreamURL() (*url.URL, error) {
 		}
 	}
 
-	if c.streamURL == nil {
-		return nil, fmt.Errorf("stream url is not set")
-	}
-
 	return c.streamURL, nil
 }
 
@@ -227,10 +219,6 @@ func (c *Client) parseFeedURL() (*url.URL, error) {
 		} else {
 			c.feedURL = feedURL.JoinPath("feed", "1")
 		}
-	}
-
-	if c.feedURL == nil {
-		return nil, fmt.Errorf("feed url is not set")
 	}
 
 	return c.feedURL, nil
@@ -455,8 +443,8 @@ func (c *Client) FeedFromQuery(fql *Query, opts ...QueryOptFn) (*EventFeed, erro
 	return newEventFeed(c, token)
 }
 
-// FeedFromQueryWithOptions initiates an event from the event source returned by the [fauna.Query] with custom options
-func (c *Client) FeedFromQueryWithStart(fql *Query, feedStart FeedStartFn, opts ...QueryOptFn) (*EventFeed, error) {
+// FeedFromQueryWithStartTime initiates an event from the event source returned by the [fauna.Query] from the given start time
+func (c *Client) FeedFromQueryWithStartTime(fql *Query, startTime time.Time, opts ...QueryOptFn) (*EventFeed, error) {
 	res, err := c.Query(fql, opts...)
 	if err != nil {
 		return nil, err
@@ -467,7 +455,7 @@ func (c *Client) FeedFromQueryWithStart(fql *Query, feedStart FeedStartFn, opts 
 		return nil, fmt.Errorf("query should return a fauna.EventSource but got %T", res.Data)
 	}
 
-	return newEventFeed(c, token, feedOpts...)
+	return newEventFeed(c, token, FeedStartFn(startTime.UnixMicro()))
 }
 
 // Feed opens an event feed from the event source
