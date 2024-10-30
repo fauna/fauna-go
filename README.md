@@ -415,7 +415,7 @@ The [client configuration](#client-configuration) sets default query options for
 `StreamFromQuery()` and `Stream()`. To override these options, see [query options](#query-options).
 
 The `StreamFromQuery()` and `Stream()` methods accept
-[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v2#StreamOptFn)
+[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v3#StreamOptFn)
 functions as arguments.
 
 Use `fauna.StartTime()` to restart a stream at a specific timestamp:
@@ -436,7 +436,7 @@ client.StreamFromQuery(streamQuery, fauna.StreamOptFn{
 ```
 
 For supported functions, see
-[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v2#StreamOptFn) in
+[StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v3#StreamOptFn) in
 the API reference.
 
 ## Debug logging
