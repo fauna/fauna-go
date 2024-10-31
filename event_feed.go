@@ -40,10 +40,6 @@ func newEventFeed(client *Client, source EventSource, args *FeedArgs) (*EventFee
 		feed.pageSize = args.PageSize
 	}
 
-	if err := feed.open(); err != nil {
-		return nil, err
-	}
-
 	return feed, nil
 }
 
