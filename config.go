@@ -167,14 +167,3 @@ func argsStringFromMap(input map[string]string, currentArgs ...string) string {
 
 	return strings.ReplaceAll(params.Encode(), "&", ",")
 }
-
-// FeedStartFn function to set options on the [Client.NewEventFeed]
-type FeedStartFn func(req *feedRequest)
-
-func EventFeedCursor(cursor string) FeedStartFn {
-	return func(req *feedRequest) { req.Cursor = cursor }
-}
-
-func EventFeedStartTime(ts int64) FeedStartFn {
-	return func(req *feedRequest) { req.StartTS = ts }
-}

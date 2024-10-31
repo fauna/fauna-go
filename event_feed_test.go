@@ -19,11 +19,11 @@ func TestEventFeed(t *testing.T) {
 	resetCollection(t, client)
 
 	t.Run("returns errors correctly", func(t *testing.T) {
-		t.Run("should error when query doesn't return an event source", func(t *testing.T) {
+		t.Run("should error when the query doesn't return an event source", func(t *testing.T) {
 			query, queryErr := fauna.FQL(`42`, nil)
 			require.NoError(t, queryErr)
 
-			_, feedErr := client.FeedFromQuery(query)
+			_, feedErr := client.FeedFromQuery(query, nil)
 			require.ErrorContains(t, feedErr, "query should return a fauna.EventSource but got int")
 		})
 	})
@@ -32,7 +32,7 @@ func TestEventFeed(t *testing.T) {
 		query, queryErr := fauna.FQL(`EventFeedTest.all().eventSource()`, nil)
 		require.NoError(t, queryErr, "failed to create a query for EventSource")
 
-		feed, feedErr := client.FeedFromQuery(query)
+		feed, feedErr := client.FeedFromQuery(query, nil)
 		require.NoError(t, feedErr, "failed to init events feed")
 
 		var (
@@ -43,9 +43,10 @@ func TestEventFeed(t *testing.T) {
 		createOne(t, client, feed)
 		createMultipleDocs(t, client, start, end)
 
-		eventsRes, eventsErr := feed.Events()
+		var page fauna.FeedPage
+		eventsErr := feed.Next(&page)
 		require.NoError(t, eventsErr, "failed to get events from EventSource")
-		require.Equal(t, end-start, len(eventsRes.Events), "unexpected number of events")
+		require.Equal(t, end-start, len(page.Events), "unexpected number of events")
 	})
 
 	t.Run("can get events from EventSource", func(t *testing.T) {
@@ -57,7 +58,7 @@ func TestEventFeed(t *testing.T) {
 		t.Run("get events from an EventSource", func(t *testing.T) {
 			eventSource := getEventSource(t, client)
 
-			feed, feedErr := client.Feed(eventSource)
+			feed, feedErr := client.Feed(eventSource, nil)
 			require.NoError(t, feedErr, "failed to init events feed")
 
 			var (
@@ -68,9 +69,10 @@ func TestEventFeed(t *testing.T) {
 			createOne(t, client, feed)
 			createMultipleDocs(t, client, start, end)
 
-			eventsRes, eventsErr := feed.Events()
+			var page fauna.FeedPage
+			eventsErr := feed.Next(&page)
 			require.NoError(t, eventsErr, "failed to get events from EventSource")
-			require.Equal(t, end-start, len(eventsRes.Events), "unexpected number of events")
+			require.Equal(t, end-start, len(page.Events), "unexpected number of events")
 		})
 	})
 
@@ -82,22 +84,64 @@ func TestEventFeed(t *testing.T) {
 		eventSource := getEventSource(t, client)
 		require.NotNil(t, eventSource, "failed to get an EventSource")
 
-		feed, feedErr := client.Feed(eventSource)
+		feed, feedErr := client.Feed(eventSource, nil)
 		require.NoError(t, feedErr, "failed to init events feed")
 
-		eventsRes, eventsErr := feed.Events()
+		var page fauna.FeedPage
+		eventsErr := feed.Next(&page)
 		require.NoError(t, eventsErr, "failed to get events")
-		require.Equal(t, 0, len(eventsRes.Events), "unexpected number of events")
+		require.Equal(t, 0, len(page.Events), "unexpected number of events")
 
 		eventSource = getEventSource(t, client)
 		require.NotNil(t, eventSource, "failed to get an EventSource")
 
-		feed, feedErr = client.FeedWithStartTime(eventSource, time.Now().Add(-time.Minute*10))
+		tenMinutesAgo := time.Now().Add(-10 * time.Minute)
+		feed, feedErr = client.Feed(eventSource, &fauna.FeedArgs{
+			StartTs: &tenMinutesAgo,
+		})
 		require.NoError(t, feedErr, "failed to init events feed")
 
-		feedRes, eventsErr := feed.Events()
+		eventsErr = feed.Next(&page)
 		require.NoError(t, eventsErr, "failed to get events")
-		require.Equal(t, 1, len(feedRes.Events), "unexpected number of events")
+		require.Equal(t, 1, len(page.Events), "unexpected number of events")
+	})
+
+	t.Run("can use page size", func(t *testing.T) {
+		resetCollection(t, client)
+
+		eventSource := getEventSource(t, client)
+
+		pageSize := 3
+		feed, feedErr := client.Feed(eventSource, &fauna.FeedArgs{
+			PageSize: &pageSize,
+		})
+		require.NoError(t, feedErr, "failed to init events feed")
+
+		var (
+			start      = 5
+			end        = 20
+			page       fauna.FeedPage
+			seenEvents int
+		)
+
+		createOne(t, client, feed)
+		createMultipleDocs(t, client, start, end)
+
+		for {
+			eventsErr := feed.Next(&page)
+			require.NoError(t, eventsErr, "failed to get events from EventSource")
+
+			seenEvents += len(page.Events)
+
+			if !page.HasNext {
+				break
+			}
+
+			// every page but the last should have the right page size
+			require.Equal(t, pageSize, len(page.Events), "unexpected number of events")
+		}
+
+		require.Equal(t, end-start, seenEvents, "unexpected number of events")
 	})
 }
 
@@ -144,10 +188,11 @@ func createOne(t *testing.T, client *fauna.Client, feed *fauna.EventFeed) {
 		return
 	}
 
-	eventsRes, eventsErr := feed.Events()
+	var page fauna.FeedPage
+	eventsErr := feed.Next(&page)
 	require.NoError(t, eventsErr, "failed to get events")
 
-	assert.Equal(t, 1, len(eventsRes.Events), "unexpected number of events")
+	assert.Equal(t, 1, len(page.Events), "unexpected number of events")
 }
 
 func createMultipleDocs(t *testing.T, client *fauna.Client, start int, end int) {

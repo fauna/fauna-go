@@ -7,17 +7,17 @@ import (
 	"github.com/fauna/fauna-go/v3"
 )
 
-func ExampleEventFeed_Events() {
+func ExampleEventFeed_Next() {
 	client := fauna.NewClient("secret", fauna.DefaultTimeouts(), fauna.URL(fauna.EndpointLocal))
 
 	query, queryErr := fauna.FQL(`Collection.byName("EventFeedTest")?.delete()
 Collection.create({ name: "EventFeedTest" })
-EventFeedTest.all().toStream()`, nil)
+EventFeedTest.all().eventSource()`, nil)
 	if queryErr != nil {
 		log.Fatal(queryErr.Error())
 	}
 
-	feed, feedErr := client.FeedFromQuery(query)
+	feed, feedErr := client.FeedFromQuery(query, nil)
 	if feedErr != nil {
 		log.Fatal(feedErr.Error())
 	}
@@ -29,16 +29,17 @@ EventFeedTest.all().toStream()`, nil)
 	}
 
 	for {
-		res, eventErr := feed.Events()
+		var page fauna.FeedPage
+		eventErr := feed.Next(&page)
 		if eventErr != nil {
 			log.Fatal(eventErr.Error())
 		}
 
-		for _, event := range res.Events {
+		for _, event := range page.Events {
 			fmt.Println(event.Type)
 		}
 
-		if !res.HasNext {
+		if !page.HasNext {
 			break
 		}
 	}

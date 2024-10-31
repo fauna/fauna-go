@@ -655,9 +655,10 @@ func TestMarshalEventSourceStructs(t *testing.T) {
 				Context: context.Background(),
 				Headers: map[string]string{},
 			},
-			Source:  "",
-			StartTS: 0,
-			Cursor:  "",
+			Source:   "",
+			Cursor:   nil,
+			PageSize: nil,
+			StartTS:  nil,
 		})
 	})
 }

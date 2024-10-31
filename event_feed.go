@@ -2,6 +2,7 @@ package fauna
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 // EventFeed represents an event feed subscription.
@@ -9,43 +10,53 @@ type EventFeed struct {
 	client *Client
 
 	source EventSource
-	opts   []FeedStartFn
 
 	decoder *json.Decoder
 
-	lastCursor string
+	lastCursor *string
+	pageSize   *int
+	startTs    *int64
 }
 
-func newEventFeed(client *Client, source EventSource, opts ...FeedStartFn) (*EventFeed, error) {
+func newEventFeed(client *Client, source EventSource, args *FeedArgs) (*EventFeed, error) {
 	feed := &EventFeed{
 		client: client,
 		source: source,
-		opts:   opts,
 	}
 
-	if err := feed.open(opts...); err != nil {
+	if args != nil {
+		if args.StartTs != nil && args.Cursor != nil {
+			return nil, fmt.Errorf("StartTs and Cursor cannot be used simultaneously")
+		}
+		if args.Cursor != nil {
+			feed.lastCursor = args.Cursor
+		}
+
+		if args.StartTs != nil {
+			unixTime := args.StartTs.UnixMicro()
+			feed.startTs = &unixTime
+		}
+
+		feed.pageSize = args.PageSize
+	}
+
+	if err := feed.open(); err != nil {
 		return nil, err
 	}
 
 	return feed, nil
 }
 
-func (ef *EventFeed) open(opts ...FeedStartFn) error {
+func (ef *EventFeed) open() error {
 	req := feedRequest{
 		apiRequest: apiRequest{
 			ef.client.ctx,
 			ef.client.headers,
 		},
-		Source: ef.source,
-		Cursor: ef.lastCursor,
-	}
-
-	if (opts != nil) && (len(opts) > 0) {
-		ef.opts = append(ef.opts, opts...)
-	}
-
-	for _, optFn := range ef.opts {
-		optFn(&req)
+		Source:   ef.source,
+		Cursor:   ef.lastCursor,
+		PageSize: ef.pageSize,
+		StartTS:  ef.startTs,
 	}
 
 	byteStream, err := req.do(ef.client)
@@ -58,26 +69,25 @@ func (ef *EventFeed) open(opts ...FeedStartFn) error {
 	return nil
 }
 
-// FeedResponse represents the response from the EventFeed.Events
-type FeedResponse struct {
+// FeedPage represents the response from the EventFeed.Events
+type FeedPage struct {
 	Events  []Event `json:"events"`
 	Cursor  string  `json:"cursor"`
 	HasNext bool    `json:"has_next"`
 	Stats   Stats   `json:"stats"`
 }
 
-// Events return the next FeedResponse from the EventFeed
-func (ef *EventFeed) Events() (*FeedResponse, error) {
-	var response FeedResponse
+// Next retrieves the next FeedPage from the EventFeed
+func (ef *EventFeed) Next(page *FeedPage) error {
 	if err := ef.open(); err != nil {
-		return nil, err
+		return err
 	}
 
-	if err := ef.decoder.Decode(&response); err != nil {
-		return nil, err
+	if err := ef.decoder.Decode(&page); err != nil {
+		return err
 	}
 
-	ef.lastCursor = response.Cursor
+	ef.lastCursor = &page.Cursor
 
-	return &response, nil
+	return nil
 }

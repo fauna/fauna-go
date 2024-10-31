@@ -428,51 +428,32 @@ func (c *Client) setHeader(key, val string) {
 	c.headers[key] = val
 }
 
-func (c *Client) getEventSource(fql *Query, opts ...QueryOptFn) (*EventSource, error) {
-	res, err := c.Query(fql, opts...)
+// FeedArgs optional arguments for [fauna.Client.Feed]
+type FeedArgs struct {
+	// PageSize number of events to return per page
+	PageSize *int
+	// StartTs incompatible with Cursor
+	StartTs *time.Time
+	// Cursor incompatible with StartTs
+	Cursor *string
+}
+
+// Feed opens an event feed from the event source
+func (c *Client) Feed(stream EventSource, feedArgs *FeedArgs) (*EventFeed, error) {
+	return newEventFeed(c, stream, feedArgs)
+}
+
+// FeedFromQuery opens an event feed from a query
+func (c *Client) FeedFromQuery(query *Query, feedArgs *FeedArgs) (*EventFeed, error) {
+	res, err := c.Query(query)
 	if err != nil {
 		return nil, err
 	}
 
-	token, ok := res.Data.(EventSource)
+	eventSource, ok := res.Data.(EventSource)
 	if !ok {
 		return nil, fmt.Errorf("query should return a fauna.EventSource but got %T", res.Data)
 	}
 
-	return &token, nil
-}
-
-// FeedFromQuery opens an event feed from the event source returned by the [fauna.Query].
-func (c *Client) FeedFromQuery(fql *Query, opts ...QueryOptFn) (*EventFeed, error) {
-	token, err := c.getEventSource(fql, opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return newEventFeed(c, *token)
-}
-
-// FeedFromQueryWithStartTime initiates an event from the event source returned by the [fauna.Query] with custom options
-func (c *Client) FeedFromQueryWithStartTime(fql *Query, time time.Time, opts ...QueryOptFn) (*EventFeed, error) {
-	token, err := c.getEventSource(fql, opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return newEventFeed(c, *token, EventFeedStartTime(time.UnixMicro()))
-}
-
-// Feed opens an event feed from the event source
-func (c *Client) Feed(stream EventSource) (*EventFeed, error) {
-	return newEventFeed(c, stream)
-}
-
-// FeedWithStartTime opens an event feed from the event source with options
-func (c *Client) FeedWithStartTime(stream EventSource, start time.Time) (*EventFeed, error) {
-	return newEventFeed(c, stream, EventFeedStartTime(start.UnixMicro()))
-}
-
-// FeedWithCursor opens an event feed from the event source with options
-func (c *Client) FeedWithCursor(stream EventSource, cursor string) (*EventFeed, error) {
-	return newEventFeed(c, stream, EventFeedCursor(cursor))
+	return newEventFeed(c, eventSource, feedArgs)
 }

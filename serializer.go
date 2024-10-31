@@ -525,10 +525,13 @@ func encode(v any, hint string) (any, error) {
 
 	case feedRequest:
 		out := map[string]any{"token": string(vt.Source)}
-		if vt.StartTS > 0 {
+		if vt.PageSize != nil {
+			out["page_size"] = vt.PageSize
+		}
+		if vt.StartTS != nil {
 			out["start_ts"] = vt.StartTS
 		}
-		if len(vt.Cursor) > 0 {
+		if vt.Cursor != nil {
 			out["cursor"] = vt.Cursor
 		}
 		return out, nil
