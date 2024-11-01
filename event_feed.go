@@ -2,7 +2,6 @@ package fauna
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 // EventFeed represents an event feed subscription.
@@ -13,33 +12,27 @@ type EventFeed struct {
 
 	decoder *json.Decoder
 
-	opts       []FeedOptFn
+	opts       *feedOptions
 	lastCursor string
 }
 
-func newEventFeed(client *Client, source EventSource, fromQuery bool, opts ...FeedOptFn) (*EventFeed, error) {
+type feedOptions struct {
+	PageSize *int
+	Cursor   *string
+	StartTS  *int64
+}
+
+func newEventFeed(client *Client, source EventSource, opts *feedOptions) (*EventFeed, error) {
 	feed := &EventFeed{
 		client: client,
 		source: source,
 		opts:   opts,
 	}
 
-	// init a feed request to validate feed options
-	req, err := feed.newFeedRequest()
-	if err != nil {
-		return nil, err
-	}
-	if fromQuery && len(req.Cursor) > 0 {
-		return nil, fmt.Errorf("cannot use EventFeedCursor with FeedFromQuery")
-	}
-	if req.StartTS > 0 && len(req.Cursor) > 0 {
-		return nil, fmt.Errorf("cannot set both EventFeedStartTime and EventFeedCursor")
-	}
-
 	return feed, nil
 }
 
-func (ef *EventFeed) newFeedRequest(opts ...FeedOptFn) (*feedRequest, error) {
+func (ef *EventFeed) newFeedRequest() (*feedRequest, error) {
 	req := feedRequest{
 		apiRequest: apiRequest{
 			ef.client.ctx,
@@ -48,20 +41,21 @@ func (ef *EventFeed) newFeedRequest(opts ...FeedOptFn) (*feedRequest, error) {
 		Source: ef.source,
 		Cursor: ef.lastCursor,
 	}
-
-	if (opts != nil) && (len(opts) > 0) {
-		ef.opts = append(ef.opts, opts...)
+	if ef.opts.StartTS != nil {
+		req.StartTS = *ef.opts.StartTS
 	}
-
-	for _, optFn := range ef.opts {
-		optFn(&req)
+	if ef.opts.Cursor != nil {
+		req.Cursor = *ef.opts.Cursor
+	}
+	if ef.opts.PageSize != nil {
+		req.PageSize = *ef.opts.PageSize
 	}
 
 	return &req, nil
 }
 
-func (ef *EventFeed) open(opts ...FeedOptFn) error {
-	req, err := ef.newFeedRequest(opts...)
+func (ef *EventFeed) open() error {
+	req, err := ef.newFeedRequest()
 	if err != nil {
 		return err
 	}

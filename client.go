@@ -430,11 +430,24 @@ func (c *Client) setHeader(key, val string) {
 
 // Feed opens an event feed from the event source
 func (c *Client) Feed(stream EventSource, opts ...FeedOptFn) (*EventFeed, error) {
-	return newEventFeed(c, stream, false, opts...)
+	feedOpts, err := parseFeedOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return newEventFeed(c, stream, feedOpts)
 }
 
 // FeedFromQuery opens an event feed from a query
 func (c *Client) FeedFromQuery(query *Query, opts ...FeedOptFn) (*EventFeed, error) {
+	feedOpts, err := parseFeedOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	if feedOpts.Cursor != nil {
+		return nil, fmt.Errorf("cannot use EventFeedCursor with FeedFromQuery")
+	}
+
 	res, err := c.Query(query)
 	if err != nil {
 		return nil, err
@@ -445,5 +458,18 @@ func (c *Client) FeedFromQuery(query *Query, opts ...FeedOptFn) (*EventFeed, err
 		return nil, fmt.Errorf("query should return a fauna.EventSource but got %T", res.Data)
 	}
 
-	return newEventFeed(c, eventSource, true, opts...)
+	return newEventFeed(c, eventSource, feedOpts)
+}
+
+func parseFeedOptions(opts ...FeedOptFn) (*feedOptions, error) {
+	feedOpts := feedOptions{}
+	for _, optFn := range opts {
+		optFn(&feedOpts)
+	}
+
+	if feedOpts.StartTS != nil && feedOpts.Cursor != nil {
+		return nil, fmt.Errorf("cannot use EventFeedStartTime and EventFeedCursor together")
+	}
+
+	return &feedOpts, nil
 }

@@ -47,7 +47,7 @@ func TestEventFeed(t *testing.T) {
 			require.NoError(t, unmarshalErr, "failed to unmarshal EventSource")
 
 			_, feedErr := client.Feed(response, fauna.EventFeedStartTime(time.Now().UnixMicro()), fauna.EventFeedCursor("cursor"))
-			require.ErrorContains(t, feedErr, "cannot set both EventFeedStartTime and EventFeedCursor")
+			require.ErrorContains(t, feedErr, "cannot use EventFeedStartTime and EventFeedCursor together")
 		})
 	})
 
