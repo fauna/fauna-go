@@ -1,6 +1,7 @@
 package fauna
 
 import (
+	"context"
 	"encoding/base64"
 	"reflect"
 	"testing"
@@ -621,5 +622,43 @@ func TestComposition(t *testing.T) {
 				assert.JSONEq(t, encodedDoc, string(bs))
 			}
 		}
+	})
+}
+
+func TestMarshalEventSourceStructs(t *testing.T) {
+	t.Run("marshal query request", func(t *testing.T) {
+		marshalAndCheck(t, queryRequest{
+			apiRequest: apiRequest{
+				Context: context.Background(),
+				Headers: map[string]string{},
+			},
+			Query:     nil,
+			Arguments: nil,
+		})
+	})
+
+	t.Run("marshal stream request", func(t *testing.T) {
+		marshalAndCheck(t, streamRequest{
+			apiRequest: apiRequest{
+				Context: context.Background(),
+				Headers: map[string]string{},
+			},
+			Stream:  "",
+			StartTS: 0,
+			Cursor:  "",
+		})
+	})
+
+	t.Run("marshal feed request", func(t *testing.T) {
+		marshalAndCheck(t, feedRequest{
+			apiRequest: apiRequest{
+				Context: context.Background(),
+				Headers: map[string]string{},
+			},
+			Source:   "",
+			Cursor:   "",
+			PageSize: 0,
+			StartTS:  0,
+		})
 	})
 }

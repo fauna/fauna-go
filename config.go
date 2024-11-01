@@ -167,3 +167,23 @@ func argsStringFromMap(input map[string]string, currentArgs ...string) string {
 
 	return strings.ReplaceAll(params.Encode(), "&", ",")
 }
+
+// FeedOptFn function to set options on the [fauna.EventFeed]
+type FeedOptFn func(req *feedOptions)
+
+// EventFeedCursor set the cursor for the [fauna.EventFeed]
+// cannot be used with [EventFeedStartTime] or in [fauna.Client.FeedFromQuery]
+func EventFeedCursor(cursor string) FeedOptFn {
+	return func(req *feedOptions) { req.Cursor = &cursor }
+}
+
+// EventFeedStartTime set the start time for the [fauna.EventFeed]
+// cannot be used with [EventFeedCursor]
+func EventFeedStartTime(ts int64) FeedOptFn {
+	return func(req *feedOptions) { req.StartTS = &ts }
+}
+
+// EventFeedPageSize set the page size for the [fauna.EventFeed]
+func EventFeedPageSize(ts int) FeedOptFn {
+	return func(req *feedOptions) { req.PageSize = &ts }
+}

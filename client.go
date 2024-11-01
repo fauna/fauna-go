@@ -72,7 +72,7 @@ type Client struct {
 	maxBackoff  time.Duration
 
 	// lazily cached URLs
-	queryURL, streamURL *url.URL
+	queryURL, streamURL, feedURL *url.URL
 
 	logger Logger
 }
@@ -197,10 +197,6 @@ func (c *Client) parseQueryURL() (*url.URL, error) {
 		}
 	}
 
-	if c.queryURL == nil {
-		return nil, fmt.Errorf("query url is not set")
-	}
-
 	return c.queryURL, nil
 }
 
@@ -213,11 +209,19 @@ func (c *Client) parseStreamURL() (*url.URL, error) {
 		}
 	}
 
-	if c.streamURL == nil {
-		return nil, fmt.Errorf("stream url is not set")
+	return c.streamURL, nil
+}
+
+func (c *Client) parseFeedURL() (*url.URL, error) {
+	if c.feedURL == nil {
+		if feedURL, err := url.Parse(c.url); err != nil {
+			return nil, err
+		} else {
+			c.feedURL = feedURL.JoinPath("feed", "1")
+		}
 	}
 
-	return c.streamURL, nil
+	return c.feedURL, nil
 }
 
 func (c *Client) doWithRetry(req *http.Request) (attempts int, r *http.Response, err error) {
@@ -422,4 +426,50 @@ func (c *Client) String() string {
 
 func (c *Client) setHeader(key, val string) {
 	c.headers[key] = val
+}
+
+// Feed opens an event feed from the event source
+func (c *Client) Feed(stream EventSource, opts ...FeedOptFn) (*EventFeed, error) {
+	feedOpts, err := parseFeedOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return newEventFeed(c, stream, feedOpts)
+}
+
+// FeedFromQuery opens an event feed from a query
+func (c *Client) FeedFromQuery(query *Query, opts ...FeedOptFn) (*EventFeed, error) {
+	feedOpts, err := parseFeedOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	if feedOpts.Cursor != nil {
+		return nil, fmt.Errorf("cannot use EventFeedCursor with FeedFromQuery")
+	}
+
+	res, err := c.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	eventSource, ok := res.Data.(EventSource)
+	if !ok {
+		return nil, fmt.Errorf("query should return a fauna.EventSource but got %T", res.Data)
+	}
+
+	return newEventFeed(c, eventSource, feedOpts)
+}
+
+func parseFeedOptions(opts ...FeedOptFn) (*feedOptions, error) {
+	feedOpts := feedOptions{}
+	for _, optFn := range opts {
+		optFn(&feedOpts)
+	}
+
+	if feedOpts.StartTS != nil && feedOpts.Cursor != nil {
+		return nil, fmt.Errorf("cannot use EventFeedStartTime and EventFeedCursor together")
+	}
+
+	return &feedOpts, nil
 }
