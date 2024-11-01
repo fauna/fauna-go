@@ -430,7 +430,7 @@ func (c *Client) setHeader(key, val string) {
 
 // Feed opens an event feed from the event source
 func (c *Client) Feed(stream EventSource, opts ...FeedOptFn) (*EventFeed, error) {
-	return newEventFeed(c, stream, opts...)
+	return newEventFeed(c, stream, false, opts...)
 }
 
 // FeedFromQuery opens an event feed from a query
@@ -445,5 +445,5 @@ func (c *Client) FeedFromQuery(query *Query, opts ...FeedOptFn) (*EventFeed, err
 		return nil, fmt.Errorf("query should return a fauna.EventSource but got %T", res.Data)
 	}
 
-	return newEventFeed(c, eventSource, opts...)
+	return newEventFeed(c, eventSource, true, opts...)
 }

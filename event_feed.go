@@ -2,6 +2,7 @@ package fauna
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 // EventFeed represents an event feed subscription.
@@ -16,17 +17,29 @@ type EventFeed struct {
 	lastCursor string
 }
 
-func newEventFeed(client *Client, source EventSource, opts ...FeedOptFn) (*EventFeed, error) {
+func newEventFeed(client *Client, source EventSource, fromQuery bool, opts ...FeedOptFn) (*EventFeed, error) {
 	feed := &EventFeed{
 		client: client,
 		source: source,
 		opts:   opts,
 	}
 
+	// init a feed request to validate feed options
+	req, err := feed.newFeedRequest()
+	if err != nil {
+		return nil, err
+	}
+	if fromQuery && len(req.Cursor) > 0 {
+		return nil, fmt.Errorf("cannot use EventFeedCursor with FeedFromQuery")
+	}
+	if req.StartTS > 0 && len(req.Cursor) > 0 {
+		return nil, fmt.Errorf("cannot set both EventFeedStartTime and EventFeedCursor")
+	}
+
 	return feed, nil
 }
 
-func (ef *EventFeed) open(opts ...FeedOptFn) error {
+func (ef *EventFeed) newFeedRequest(opts ...FeedOptFn) (*feedRequest, error) {
 	req := feedRequest{
 		apiRequest: apiRequest{
 			ef.client.ctx,
@@ -42,6 +55,15 @@ func (ef *EventFeed) open(opts ...FeedOptFn) error {
 
 	for _, optFn := range ef.opts {
 		optFn(&req)
+	}
+
+	return &req, nil
+}
+
+func (ef *EventFeed) open(opts ...FeedOptFn) error {
+	req, err := ef.newFeedRequest(opts...)
+	if err != nil {
+		return err
 	}
 
 	byteStream, err := req.do(ef.client)

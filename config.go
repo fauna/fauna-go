@@ -172,11 +172,13 @@ func argsStringFromMap(input map[string]string, currentArgs ...string) string {
 type FeedOptFn func(req *feedRequest)
 
 // EventFeedCursor set the cursor for the [fauna.EventFeed]
+// cannot be used with [EventFeedStartTime] or in [fauna.Client.FeedFromQuery]
 func EventFeedCursor(cursor string) FeedOptFn {
 	return func(req *feedRequest) { req.Cursor = cursor }
 }
 
 // EventFeedStartTime set the start time for the [fauna.EventFeed]
+// cannot be used with [EventFeedCursor]
 func EventFeedStartTime(ts int64) FeedOptFn {
 	return func(req *feedRequest) { req.StartTS = ts }
 }

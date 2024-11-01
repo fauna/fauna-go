@@ -26,6 +26,29 @@ func TestEventFeed(t *testing.T) {
 			_, feedErr := client.FeedFromQuery(query)
 			require.ErrorContains(t, feedErr, "query should return a fauna.EventSource but got int")
 		})
+
+		t.Run("should error when attempting to use a cursor with a query", func(t *testing.T) {
+			query, queryErr := fauna.FQL(`EventFeedTest.all().eventSource()`, nil)
+			require.NoError(t, queryErr, "failed to create a query for EventSource")
+
+			_, feedErr := client.FeedFromQuery(query, fauna.EventFeedCursor("cursor"))
+			require.ErrorContains(t, feedErr, "cannot use EventFeedCursor with FeedFromQuery")
+		})
+
+		t.Run("should error when attempting to use a start time and a cursor", func(t *testing.T) {
+			query, queryErr := fauna.FQL(`EventFeedTest.all().eventSource()`, nil)
+			require.NoError(t, queryErr, "failed to create a query for EventSource")
+
+			req, reqErr := client.Query(query)
+			require.NoError(t, reqErr, "failed to execute query")
+
+			var response fauna.EventSource
+			unmarshalErr := req.Unmarshal(&response)
+			require.NoError(t, unmarshalErr, "failed to unmarshal EventSource")
+
+			_, feedErr := client.Feed(response, fauna.EventFeedStartTime(time.Now().UnixMicro()), fauna.EventFeedCursor("cursor"))
+			require.ErrorContains(t, feedErr, "cannot set both EventFeedStartTime and EventFeedCursor")
+		})
 	})
 
 	t.Run("can use event feeds from a query", func(t *testing.T) {
