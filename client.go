@@ -428,23 +428,13 @@ func (c *Client) setHeader(key, val string) {
 	c.headers[key] = val
 }
 
-// FeedArgs optional arguments for [fauna.Client.Feed]
-type FeedArgs struct {
-	// PageSize number of events to return per page
-	PageSize *int
-	// StartTs incompatible with Cursor
-	StartTs *time.Time
-	// Cursor incompatible with StartTs
-	Cursor *string
-}
-
 // Feed opens an event feed from the event source
-func (c *Client) Feed(stream EventSource, feedArgs *FeedArgs) (*EventFeed, error) {
-	return newEventFeed(c, stream, feedArgs)
+func (c *Client) Feed(stream EventSource, opts ...FeedOptFn) (*EventFeed, error) {
+	return newEventFeed(c, stream, opts...)
 }
 
 // FeedFromQuery opens an event feed from a query
-func (c *Client) FeedFromQuery(query *Query, feedArgs *FeedArgs) (*EventFeed, error) {
+func (c *Client) FeedFromQuery(query *Query, opts ...FeedOptFn) (*EventFeed, error) {
 	res, err := c.Query(query)
 	if err != nil {
 		return nil, err
@@ -455,5 +445,5 @@ func (c *Client) FeedFromQuery(query *Query, feedArgs *FeedArgs) (*EventFeed, er
 		return nil, fmt.Errorf("query should return a fauna.EventSource but got %T", res.Data)
 	}
 
-	return newEventFeed(c, eventSource, feedArgs)
+	return newEventFeed(c, eventSource, opts...)
 }

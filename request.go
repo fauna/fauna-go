@@ -183,9 +183,9 @@ func (streamReq *streamRequest) do(cli *Client) (bytes io.ReadCloser, err error)
 type feedRequest struct {
 	apiRequest
 	Source   EventSource
-	Cursor   *string `json:"cursor,omitempty"`
-	StartTS  *int64  `json:"start_ts,omitempty"`
-	PageSize *int    `json:"page_size,omitempty"`
+	Cursor   string
+	StartTS  int64
+	PageSize int
 }
 
 func (feedReq *feedRequest) do(cli *Client) (io.ReadCloser, error) {

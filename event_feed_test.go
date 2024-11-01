@@ -23,7 +23,7 @@ func TestEventFeed(t *testing.T) {
 			query, queryErr := fauna.FQL(`42`, nil)
 			require.NoError(t, queryErr)
 
-			_, feedErr := client.FeedFromQuery(query, nil)
+			_, feedErr := client.FeedFromQuery(query)
 			require.ErrorContains(t, feedErr, "query should return a fauna.EventSource but got int")
 		})
 	})
@@ -32,7 +32,7 @@ func TestEventFeed(t *testing.T) {
 		query, queryErr := fauna.FQL(`EventFeedTest.all().eventSource()`, nil)
 		require.NoError(t, queryErr, "failed to create a query for EventSource")
 
-		feed, feedErr := client.FeedFromQuery(query, nil)
+		feed, feedErr := client.FeedFromQuery(query)
 		require.NoError(t, feedErr, "failed to init events feed")
 
 		var (
@@ -58,7 +58,7 @@ func TestEventFeed(t *testing.T) {
 		t.Run("get events from an EventSource", func(t *testing.T) {
 			eventSource := getEventSource(t, client)
 
-			feed, feedErr := client.Feed(eventSource, nil)
+			feed, feedErr := client.Feed(eventSource)
 			require.NoError(t, feedErr, "failed to init events feed")
 
 			var (
@@ -84,7 +84,7 @@ func TestEventFeed(t *testing.T) {
 		eventSource := getEventSource(t, client)
 		require.NotNil(t, eventSource, "failed to get an EventSource")
 
-		feed, feedErr := client.Feed(eventSource, nil)
+		feed, feedErr := client.Feed(eventSource)
 		require.NoError(t, feedErr, "failed to init events feed")
 
 		var page fauna.FeedPage
@@ -96,9 +96,7 @@ func TestEventFeed(t *testing.T) {
 		require.NotNil(t, eventSource, "failed to get an EventSource")
 
 		tenMinutesAgo := time.Now().Add(-10 * time.Minute)
-		feed, feedErr = client.Feed(eventSource, &fauna.FeedArgs{
-			StartTs: &tenMinutesAgo,
-		})
+		feed, feedErr = client.Feed(eventSource, fauna.EventFeedStartTime(tenMinutesAgo.UnixMicro()))
 		require.NoError(t, feedErr, "failed to init events feed")
 
 		eventsErr = feed.Next(&page)
@@ -112,9 +110,7 @@ func TestEventFeed(t *testing.T) {
 		eventSource := getEventSource(t, client)
 
 		pageSize := 3
-		feed, feedErr := client.Feed(eventSource, &fauna.FeedArgs{
-			PageSize: &pageSize,
-		})
+		feed, feedErr := client.Feed(eventSource, fauna.EventFeedPageSize(pageSize))
 		require.NoError(t, feedErr, "failed to init events feed")
 
 		var (

@@ -2,7 +2,6 @@ package fauna
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 // EventFeed represents an event feed subscription.
@@ -13,46 +12,36 @@ type EventFeed struct {
 
 	decoder *json.Decoder
 
-	lastCursor *string
-	pageSize   *int
-	startTs    *int64
+	opts       []FeedOptFn
+	lastCursor string
 }
 
-func newEventFeed(client *Client, source EventSource, args *FeedArgs) (*EventFeed, error) {
+func newEventFeed(client *Client, source EventSource, opts ...FeedOptFn) (*EventFeed, error) {
 	feed := &EventFeed{
 		client: client,
 		source: source,
-	}
-
-	if args != nil {
-		if args.StartTs != nil && args.Cursor != nil {
-			return nil, fmt.Errorf("StartTs and Cursor cannot be used simultaneously")
-		}
-		if args.Cursor != nil {
-			feed.lastCursor = args.Cursor
-		}
-
-		if args.StartTs != nil {
-			unixTime := args.StartTs.UnixMicro()
-			feed.startTs = &unixTime
-		}
-
-		feed.pageSize = args.PageSize
+		opts:   opts,
 	}
 
 	return feed, nil
 }
 
-func (ef *EventFeed) open() error {
+func (ef *EventFeed) open(opts ...FeedOptFn) error {
 	req := feedRequest{
 		apiRequest: apiRequest{
 			ef.client.ctx,
 			ef.client.headers,
 		},
-		Source:   ef.source,
-		Cursor:   ef.lastCursor,
-		PageSize: ef.pageSize,
-		StartTS:  ef.startTs,
+		Source: ef.source,
+		Cursor: ef.lastCursor,
+	}
+
+	if (opts != nil) && (len(opts) > 0) {
+		ef.opts = append(ef.opts, opts...)
+	}
+
+	for _, optFn := range ef.opts {
+		optFn(&req)
 	}
 
 	byteStream, err := req.do(ef.client)
@@ -65,7 +54,7 @@ func (ef *EventFeed) open() error {
 	return nil
 }
 
-// FeedPage represents the response from the EventFeed.Events
+// FeedPage represents the response from [fauna.EventFeed.Next]
 type FeedPage struct {
 	Events  []Event `json:"events"`
 	Cursor  string  `json:"cursor"`
@@ -73,7 +62,7 @@ type FeedPage struct {
 	Stats   Stats   `json:"stats"`
 }
 
-// Next retrieves the next FeedPage from the EventFeed
+// Next retrieves the next FeedPage from the [fauna.EventFeed]
 func (ef *EventFeed) Next(page *FeedPage) error {
 	if err := ef.open(); err != nil {
 		return err
@@ -83,7 +72,7 @@ func (ef *EventFeed) Next(page *FeedPage) error {
 		return err
 	}
 
-	ef.lastCursor = &page.Cursor
+	ef.lastCursor = page.Cursor
 
 	return nil
 }

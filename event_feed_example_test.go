@@ -17,7 +17,7 @@ EventFeedTest.all().eventSource()`, nil)
 		log.Fatal(queryErr.Error())
 	}
 
-	feed, feedErr := client.FeedFromQuery(query, nil)
+	feed, feedErr := client.FeedFromQuery(query)
 	if feedErr != nil {
 		log.Fatal(feedErr.Error())
 	}
