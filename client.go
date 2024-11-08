@@ -444,9 +444,6 @@ func (c *Client) FeedFromQuery(query *Query, opts ...FeedOptFn) (*EventFeed, err
 	if err != nil {
 		return nil, err
 	}
-	if feedOpts.Cursor != nil {
-		return nil, fmt.Errorf("cannot use EventFeedCursor with FeedFromQuery")
-	}
 
 	res, err := c.Query(query)
 	if err != nil {
