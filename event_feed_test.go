@@ -27,12 +27,13 @@ func TestEventFeed(t *testing.T) {
 			require.ErrorContains(t, feedErr, "query should return a fauna.EventSource but got int")
 		})
 
-		t.Run("should error when attempting to use a cursor with a query", func(t *testing.T) {
+		t.Run("should allow passing a cursor with a query", func(t *testing.T) {
 			query, queryErr := fauna.FQL(`EventFeedTest.all().eventSource()`, nil)
 			require.NoError(t, queryErr, "failed to create a query for EventSource")
 
-			_, feedErr := client.FeedFromQuery(query, fauna.EventFeedCursor("cursor"))
-			require.ErrorContains(t, feedErr, "cannot use EventFeedCursor with FeedFromQuery")
+			feed, feedErr := client.FeedFromQuery(query, fauna.EventFeedCursor("cursor"))
+			require.NoError(t, feedErr, "failed to init events feed")
+			require.NotNil(t, feed, "feed is nil")
 		})
 
 		t.Run("should error when attempting to use a start time and a cursor", func(t *testing.T) {
