@@ -157,6 +157,8 @@ func getErrFauna(httpStatus int, res *queryResponse, attempts int) error {
 		return &ErrAuthentication{res.Error}
 	case http.StatusForbidden:
 		return &ErrAuthorization{res.Error}
+	case http.StatusGone:
+		return &ErrAuthorization{res.Error}
 	case http.StatusTooManyRequests:
 		return &ErrThrottling{res.Error}
 	case httpStatusQueryTimeout:
