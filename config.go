@@ -178,9 +178,18 @@ func EventFeedCursor(cursor string) FeedOptFn {
 }
 
 // EventFeedStartTime set the start time for the [fauna.EventFeed]
-// cannot be used with [EventFeedCursor]
+// cannot be used with [EventFeedCursor] -- expects unix micro timestamp
 func EventFeedStartTime(ts int64) FeedOptFn {
 	return func(req *feedOptions) { req.StartTS = &ts }
+}
+
+// EventFeedStartTimeFromTime set the start time for the [fauna.EventFeed]
+// from a time.Time -- cannot be used with [EventFeedCursor]
+func EventFeedStartTimeFromTime(ts time.Time) FeedOptFn {
+	return func(req *feedOptions) {
+		asMicro := ts.UnixMicro()
+		req.StartTS = &asMicro
+	}
 }
 
 // EventFeedPageSize set the page size for the [fauna.EventFeed]

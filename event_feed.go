@@ -89,6 +89,7 @@ func (ef *EventFeed) Next(page *FeedPage) error {
 	}
 
 	ef.lastCursor = page.Cursor
+	ef.opts = &feedOptions{}
 
 	return nil
 }
