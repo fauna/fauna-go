@@ -119,13 +119,22 @@ func TestEventFeed(t *testing.T) {
 		eventSource = getEventSource(t, client)
 		require.NotNil(t, eventSource, "failed to get an EventSource")
 
-		tenMinutesAgo := time.Now().Add(-10 * time.Minute)
-		feed, feedErr = client.Feed(eventSource, fauna.EventFeedStartTime(tenMinutesAgo.UnixMicro()))
+		feed, feedErr = client.Feed(eventSource, fauna.EventFeedStartTimeFromTime(time.Now().Add(-10*time.Minute)))
 		require.NoError(t, feedErr, "failed to init events feed")
 
 		eventsErr = feed.Next(&page)
 		require.NoError(t, eventsErr, "failed to get events")
 		require.Equal(t, 1, len(page.Events), "unexpected number of events")
+		require.NotNil(t, feed)
+
+		// get a blank page
+		for {
+			eventErr := feed.Next(&page)
+			require.NoError(t, eventErr)
+
+			break
+		}
+		require.Empty(t, page.Events)
 	})
 
 	t.Run("can use page size", func(t *testing.T) {
