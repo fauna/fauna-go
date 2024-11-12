@@ -144,7 +144,7 @@ func TestStreaming(t *testing.T) {
 			bar, err := client.Query(createBarQ)
 			require.NoError(t, err)
 
-			events, err := client.Stream(stream, fauna.StartTime(foo.TxnTime))
+			events, err := client.Stream(stream, fauna.StreamStartTimeUnixMicros(foo.TxnTime))
 			require.NoError(t, err)
 			defer func() {
 				_ = events.Close()

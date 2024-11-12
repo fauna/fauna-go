@@ -138,11 +138,22 @@ func Typecheck(enabled bool) QueryOptFn {
 // StreamOptFn function to set options on the [Client.Stream]
 type StreamOptFn func(req *streamRequest)
 
-// StartTime set the streams starting timestamp.
+// StreamStartTime set the streams starting timestamp.
 //
 // Useful when resuming a stream at a given point in time.
-func StartTime(ts int64) StreamOptFn {
-	return func(req *streamRequest) { req.StartTS = ts }
+func StreamStartTime(ts time.Time) StreamOptFn {
+	return func(req *streamRequest) {
+		req.StartTS = ts.UnixMicro()
+	}
+}
+
+// StreamStartTimeUnixMicros set the stream starting timestamp.
+//
+// Useful when resuming a stream at a given point in time.
+func StreamStartTimeUnixMicros(ts int64) StreamOptFn {
+	return func(req *streamRequest) {
+		req.StartTS = ts
+	}
 }
 
 // EventCursor set the stream starting point based on a previously received
@@ -178,17 +189,19 @@ func EventFeedCursor(cursor string) FeedOptFn {
 }
 
 // EventFeedStartTime set the start time for the [fauna.EventFeed]
-// cannot be used with [EventFeedCursor] -- expects unix micro timestamp
-func EventFeedStartTime(ts int64) FeedOptFn {
-	return func(req *feedOptions) { req.StartTS = &ts }
-}
-
-// EventFeedStartTimeFromTime set the start time for the [fauna.EventFeed]
-// from a time.Time -- cannot be used with [EventFeedCursor]
-func EventFeedStartTimeFromTime(ts time.Time) FeedOptFn {
+// cannot be used with [EventFeedCursor]
+func EventFeedStartTime(ts time.Time) FeedOptFn {
 	return func(req *feedOptions) {
 		asMicro := ts.UnixMicro()
 		req.StartTS = &asMicro
+	}
+}
+
+// EventFeedStartTimeUnixMicros set the start time for the [fauna.EventFeed]
+// cannot be used with [EventFeedCursor]
+func EventFeedStartTimeUnixMicros(ts int64) FeedOptFn {
+	return func(req *feedOptions) {
+		req.StartTS = &ts
 	}
 }
 
