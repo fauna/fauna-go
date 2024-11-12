@@ -23,7 +23,7 @@ API reference documentation for the driver is available on [pkg.go.dev](https://
 
 ## Using the Driver
 
-For FQL templates, denote variables with `${}` and pass variables as `map[string]any` to `fauna.FQL()`. You can escape a variable with by prepending
+For FQL templates, denote variables with `${}` and pass variables as `map[string]any` to `FQL()`. You can escape a variable with by prepending
 an additional `$`.
 
 ### Basic Usage
@@ -338,9 +338,9 @@ func main() {
 }
 ```
 
-In query results, the driver represents an event source as a `fauna.EventSource` value.
+In query results, the driver represents an event source as an `EventSource` value.
 
-To start a stream from a query result, call `Stream()` and pass the `fauna.EventSource`.
+To start a stream from a query result, call `Stream()` and pass the `EventSource`.
 This lets you output a stream alongside normal query results:
 
 ```go
@@ -418,16 +418,18 @@ The `StreamFromQuery()` and `Stream()` methods accept
 [StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v3#StreamOptFn)
 functions as arguments.
 
-Use `fauna.StartTime()` to restart a stream at a specific timestamp:
+Use `StreamStartTime()` to restart a stream at a specific timestamp:
 
 ```go
 streamQuery, _ := fauna.FQL(`Product.all().eventSource()`, nil)
+tenMinutesAgo := time.Now().Add(-10 * time.Minute)
+
 client.StreamFromQuery(streamQuery, fauna.StreamOptFn{
-    fauna.StartTime(1710968002310000),
+    fauna.StreamStartTime(tenMinutesAgo),
 })
 ```
 
-Use `fauna.EventCursor()` to resume a stream from an event cursor after a disconnect:
+Use `EventCursor()` to resume a stream from an event cursor after a disconnect:
 
 ```go
 client.StreamFromQuery(streamQuery, fauna.StreamOptFn{
