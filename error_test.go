@@ -83,6 +83,15 @@ func TestGetErrFauna(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "Feature not enabled",
+			args: args{
+				httpStatus:   http.StatusGone,
+				serviceError: &ErrFauna{Code: "", Message: ""},
+				errType:      &ErrAuthorization{},
+			},
+			wantErr: true,
+		},
+		{
 			name: "Too many requests",
 			args: args{
 				httpStatus:   http.StatusTooManyRequests,
