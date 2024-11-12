@@ -24,6 +24,9 @@ type Stats struct {
 	// StorageBytesWrite is the amount of data written to storage, in bytes.
 	StorageBytesWrite int `json:"storage_bytes_write"`
 
+	// ProcessingTimeMs is the amount of time producing the event, only applies to events.
+	ProcessingTimeMs *int `json:"processing_time_ms,omitempty"`
+
 	// Attempts is the number of times the client attempted to run the query.
 	Attempts int `json:"_"`
 }

@@ -40,6 +40,7 @@ func TestStreaming(t *testing.T) {
 			err = events.Next(&event)
 			require.NoError(t, err)
 			require.Equal(t, fauna.StatusEvent, event.Type)
+			require.NotNil(t, event.Stats.ProcessingTimeMs)
 		})
 
 		t.Run("Fails on non-streamable values", func(t *testing.T) {
