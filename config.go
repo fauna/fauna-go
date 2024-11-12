@@ -136,6 +136,7 @@ type StreamOptFn func(req *streamRequest)
 // StartTime set the streams starting timestamp.
 //
 // Useful when resuming a stream at a given point in time.
+// Deprecated: will be replaced in future versions
 func StartTime(ts int64) StreamOptFn {
 	return func(req *streamRequest) { req.StartTS = ts }
 }
