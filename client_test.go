@@ -46,6 +46,7 @@ func TestDefaultClient(t *testing.T) {
 				assert.Zero(t, res.Stats.WriteOps, "should not have written any bytes")
 				assert.Zero(t, res.Stats.StorageBytesRead, "should not have read from storage")
 				assert.Zero(t, res.Stats.StorageBytesWrite, "should not have written to storage")
+				assert.Nil(t, res.Stats.ProcessingTimeMs, "should not have processing time ms")
 			})
 		})
 
