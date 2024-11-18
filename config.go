@@ -193,6 +193,9 @@ func EventFeedStartTimeFromTime(ts time.Time) FeedOptFn {
 }
 
 // EventFeedPageSize set the page size for the [fauna.EventFeed]
-func EventFeedPageSize(ts int) FeedOptFn {
-	return func(req *feedOptions) { req.PageSize = &ts }
+// The page size is the maximum number of events returned per page.
+// Must be in the range 1 to 16000 (inclusive).
+// Defaults to 16.
+func EventFeedPageSize(pageSize int) FeedOptFn {
+	return func(req *feedOptions) { req.PageSize = &pageSize }
 }
