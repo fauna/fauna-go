@@ -198,6 +198,13 @@ func TestNewClient(t *testing.T) {
 		assert.NoError(t, clientErr)
 	})
 
+	t.Run("new client respects env var", func(t *testing.T) {
+		t.Setenv(fauna.EnvFaunaEndpoint, fauna.EndpointLocal)
+		client := fauna.NewClient("secret", fauna.DefaultTimeouts())
+		assert.NotNil(t, client)
+		assert.Equal(t, client.String(), fauna.EndpointLocal)
+	})
+
 	t.Run("stringify", func(t *testing.T) {
 		client := fauna.NewClient("secret", fauna.DefaultTimeouts(), fauna.URL(fauna.EndpointLocal))
 		assert.Equal(t, client.String(), fauna.EndpointLocal, "client toString should be equal to the endpoint to ensure we don't expose secrets")
