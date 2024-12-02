@@ -167,11 +167,16 @@ func NewClient(secret string, timeouts Timeouts, configFns ...ClientConfigFn) *C
 		defaultHeaders[HeaderQueryTimeoutMs] = fmt.Sprintf("%v", timeouts.QueryTimeout.Milliseconds())
 	}
 
+	endpointURL, urlFound := os.LookupEnv(EnvFaunaEndpoint)
+	if !urlFound {
+		endpointURL = EndpointDefault
+	}
+
 	client := &Client{
 		ctx:                 context.TODO(),
 		secret:              secret,
 		http:                httpClient,
-		url:                 EndpointDefault,
+		url:                 endpointURL,
 		headers:             defaultHeaders,
 		lastTxnTime:         txnTime{},
 		typeCheckingEnabled: false,
