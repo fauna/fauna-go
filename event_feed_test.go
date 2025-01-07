@@ -156,6 +156,7 @@ func TestEventFeed(t *testing.T) {
 		createOne(t, client, feed)
 		createMultipleDocs(t, client, start, end)
 
+		didPaginate := false
 		for {
 			eventsErr := feed.Next(&page)
 			require.NoError(t, eventsErr, "failed to get events from EventSource")
@@ -166,10 +167,12 @@ func TestEventFeed(t *testing.T) {
 				break
 			}
 
+			didPaginate = true
 			// every page but the last should have the right page size
 			require.Equal(t, pageSize, len(page.Events), "unexpected number of events")
 		}
 
+		require.Equal(t, true, didPaginate, "expected to have called for multiple event pages")
 		require.Equal(t, end-start, seenEvents, "unexpected number of events")
 	})
 }
