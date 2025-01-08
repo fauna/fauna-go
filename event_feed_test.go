@@ -172,7 +172,7 @@ func TestEventFeed(t *testing.T) {
 			require.Equal(t, pageSize, len(page.Events), "unexpected number of events")
 		}
 
-		require.Equal(t, true, didPaginate, "expected to have called for multiple event pages")
+		require.True(t, didPaginate, "expected to have called for multiple event pages")
 		require.Equal(t, end-start, seenEvents, "unexpected number of events")
 	})
 }
