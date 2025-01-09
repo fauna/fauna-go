@@ -89,7 +89,12 @@ func (ef *EventFeed) Next(page *FeedPage) error {
 	}
 
 	ef.lastCursor = page.Cursor
-	ef.opts = &feedOptions{}
+
+	// preserve page size
+	pageSize := ef.opts.PageSize
+	ef.opts = &feedOptions{
+		PageSize: pageSize,
+	}
 
 	return nil
 }
