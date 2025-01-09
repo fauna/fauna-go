@@ -175,6 +175,54 @@ func TestEventFeed(t *testing.T) {
 		require.True(t, didPaginate, "expected to have called for multiple event pages")
 		require.Equal(t, end-start, seenEvents, "unexpected number of events")
 	})
+
+	t.Run("can unmarshall events", func(t *testing.T) {
+		resetCollection(t, client)
+
+		createEvent := func(v string) {
+			createOneQuery, createOneQueryErr := fauna.FQL(`EventFeedTest.create({ foo: ${v} })`, map[string]any{"v": v})
+			require.NoError(t, createOneQueryErr, "failed to init query for create statement")
+			require.NotNil(t, createOneQuery, "create statement is nil")
+			_, createOneErr := client.Query(createOneQuery)
+			require.NoError(t, createOneErr, "failed to create a document")
+		}
+
+		query, queryErr := fauna.FQL(`EventFeedTest.all().eventSource()`, nil)
+		require.NoError(t, queryErr, "failed to create a query for EventSource")
+
+		feed, feedErr := client.FeedFromQuery(query)
+		require.NoError(t, feedErr, "failed to init events feed")
+
+		createEvent("bar")
+		createEvent("baz")
+		createEvent("bak")
+
+		type TestEvent struct {
+			Foo string `fauna:"foo"`
+		}
+		var (
+			page      fauna.FeedPage
+			testEvent TestEvent
+		)
+		events := make([]TestEvent, 0, 3)
+
+		for {
+			eventsErr := feed.Next(&page)
+			require.NoError(t, eventsErr, "failed to get page of events")
+
+			for _, event := range page.Events {
+				err := event.Unmarshal(&testEvent)
+				require.NoError(t, err, "error unmarshalling event")
+				events = append(events, testEvent)
+			}
+
+			if !page.HasNext {
+				break
+			}
+		}
+
+		require.Equal(t, []TestEvent{TestEvent{Foo: "bar"}, TestEvent{Foo: "baz"}, TestEvent{Foo: "bak"}}, events)
+	})
 }
 
 func resetCollection(t *testing.T, client *fauna.Client) {

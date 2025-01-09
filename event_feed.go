@@ -78,15 +78,40 @@ type FeedPage struct {
 	Stats   Stats   `json:"stats"`
 }
 
+// internalFeedPage represents what comes back from the wire from the feed API. We do further processing on the
+// events that come back to create the FeedPage returned from [fauna.EventFeed.Next]
+type internalFeedPage struct {
+	Events  []rawEvent `json:"events"`
+	Cursor  string     `json:"cursor"`
+	HasNext bool       `json:"has_next"`
+	Stats   Stats      `json:"stats"`
+}
+
 // Next retrieves the next FeedPage from the [fauna.EventFeed]
 func (ef *EventFeed) Next(page *FeedPage) error {
 	if err := ef.open(); err != nil {
 		return err
 	}
 
-	if err := ef.decoder.Decode(&page); err != nil {
+	var internalPage internalFeedPage
+	if err := ef.decoder.Decode(&internalPage); err != nil {
 		return err
 	}
+
+	parsedEvents := make([]Event, len(internalPage.Events))
+	for i, rv := range internalPage.Events {
+		var parsedEvent Event
+		err := convertRawEvent(&rv, &parsedEvent)
+		if err != nil {
+			return err
+		}
+		parsedEvents[i] = parsedEvent
+	}
+
+	page.Events = parsedEvents
+	page.HasNext = internalPage.HasNext
+	page.Stats = internalPage.Stats
+	page.Cursor = internalPage.Cursor
 
 	ef.lastCursor = page.Cursor
 
