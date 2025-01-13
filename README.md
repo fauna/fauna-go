@@ -441,7 +441,7 @@ For supported functions, see
 [StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v3#StreamOptFn) in
 the API reference.
 
-## Event Feeds (beta)
+## Event Feeds
 
 The driver supports [Event Feeds](https://docs.fauna.com/fauna/current/learn/cdc/#event-feeds). See [example](event_feed_example_test.go).
 
