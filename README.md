@@ -281,14 +281,14 @@ func main() {
 ```
 
 
-## Event Streaming
+## Event streams
 
-The driver supports [Event Streaming](https://docs.fauna.com/fauna/current/reference/cdc/).
+The driver supports [event streams](https://docs.fauna.com/fauna/current/reference/cdc/#event-streaming).
 
 
 ### Start a stream
 
-An Event Stream lets you consume events from an [event
+An event stream lets you consume events from an [event
 source](https://docs.fauna.com/fauna/current/learn/cdc/#create-an-event-source)
 as a real-time subscription.
 
@@ -441,9 +441,9 @@ For supported functions, see
 [StreamOptFn](https://pkg.go.dev/github.com/fauna/fauna-go/v3#StreamOptFn) in
 the API reference.
 
-## Event Feeds
+## Event feeds
 
-The driver supports [Event Feeds](https://docs.fauna.com/fauna/current/learn/cdc/#event-feeds). See [example](event_feed_example_test.go).
+The driver supports [event feeds](https://docs.fauna.com/fauna/current/learn/cdc/#event-feeds). See [example](event_feed_example_test.go).
 
 ## Debug logging
 
